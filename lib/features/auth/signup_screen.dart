@@ -16,7 +16,7 @@ class SignupScreen extends ConsumerStatefulWidget {
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _phoneController = TextEditingController();
-  String _countryCode = '+1';
+  String _countryCode = '+91';
 
   @override
   void dispose() {
