@@ -8,7 +8,8 @@ import '../../app_theme.dart';
 
 enum PrivacyLevel { private, balanced, shared }
 
-final privacyProvider = StateProvider<PrivacyLevel>((_) => PrivacyLevel.balanced);
+final privacyProvider =
+    StateProvider<PrivacyLevel>((_) => PrivacyLevel.balanced);
 
 // ── Screen ─────────────────────────────────────────────────────────────────
 
@@ -87,9 +88,13 @@ class PrivacyScreen extends ConsumerWidget {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _TrustChip(icon: Icons.verified_user, label: 'End-to-end Encrypted'),
+                              _TrustChip(
+                                  icon: Icons.verified_user,
+                                  label: 'End-to-end Encrypted'),
                               const SizedBox(width: 8),
-                              _TrustChip(icon: Icons.visibility_off, label: 'Zero-Knowledge Storage'),
+                              _TrustChip(
+                                  icon: Icons.visibility_off,
+                                  label: 'Zero-Knowledge Storage'),
                             ],
                           ),
                         ),
@@ -127,7 +132,8 @@ class PrivacyScreen extends ConsumerWidget {
                               Container(
                                 width: 48,
                                 height: 1,
-                                color: ZunoTheme.outlineVariant.withOpacity(0.3),
+                                color:
+                                    ZunoTheme.outlineVariant.withOpacity(0.3),
                               ),
                               const SizedBox(height: 24),
                               Text(
@@ -172,17 +178,20 @@ class PrivacyScreen extends ConsumerWidget {
                         SnackBar(
                           content: Row(
                             children: [
-                              const Icon(Icons.check_circle, color: ZunoTheme.tertiaryFixed),
+                              const Icon(Icons.check_circle,
+                                  color: ZunoTheme.tertiaryFixed),
                               const SizedBox(width: 10),
                               Text(
                                 "You're all set! Dashboard coming soon ✨",
-                                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
                           backgroundColor: ZunoTheme.onSurface,
                           behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           duration: const Duration(seconds: 3),
                         ),
                       );
@@ -217,7 +226,8 @@ class PrivacyScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                          const Icon(Icons.arrow_forward,
+                              color: Colors.white, size: 18),
                         ],
                       ),
                     ),
@@ -370,7 +380,9 @@ class _PrivacyCard extends ConsumerWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: selected ? ZunoTheme.primaryFixed : ZunoTheme.surfaceContainerHigh,
+                color: selected
+                    ? ZunoTheme.primaryFixed
+                    : ZunoTheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: ZunoTheme.primary, size: 22),
@@ -382,18 +394,23 @@ class _PrivacyCard extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: ZunoTheme.onSurface,
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: ZunoTheme.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                       if (recommended) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: ZunoTheme.tertiaryFixed,
                             borderRadius: BorderRadius.circular(4),
@@ -431,7 +448,8 @@ class _PrivacyCard extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: selected ? ZunoTheme.primary : Colors.transparent,
                 border: Border.all(
-                  color: selected ? ZunoTheme.primary : ZunoTheme.outlineVariant,
+                  color:
+                      selected ? ZunoTheme.primary : ZunoTheme.outlineVariant,
                   width: 2,
                 ),
                 shape: BoxShape.circle,
