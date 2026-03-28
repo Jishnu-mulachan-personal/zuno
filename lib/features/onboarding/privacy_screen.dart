@@ -182,7 +182,7 @@ class PrivacyScreen extends ConsumerWidget {
                                   color: ZunoTheme.tertiaryFixed),
                               const SizedBox(width: 10),
                               Text(
-                                "You're all set! Dashboard coming soon ✨",
+                                "You're all set! Let's begin ✨",
                                 style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w500),
                               ),

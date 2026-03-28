@@ -26,24 +26,32 @@ class UserRepository {
     }
 
     // 1. Insert or update the user in the `users` table
-    final userResponse = await _supabase.from('users').upsert({
-      'email': user.email, // May be null for phone auth
-      'phone': phone,
-      'display_name': name,
-      'date_of_birth': dateOfBirth.toIso8601String(),
-      'occupation': occupation,
-    }, onConflict: 'phone').select('id').single();
+    final userResponse = await _supabase
+        .from('users')
+        .upsert({
+          'email': user.email, // May be null for phone auth
+          'phone': phone,
+          'display_name': name,
+          'date_of_birth': dateOfBirth.toIso8601String(),
+          'occupation': occupation,
+        }, onConflict: 'phone')
+        .select('id')
+        .single();
 
     final userId = userResponse['id'];
 
     // 2. Insert relationship details into `relationships`
-    final relResponse = await _supabase.from('relationships').insert({
-      'status': 'dating', // Standard default until user updates later
-      'distance': relationshipDistance,
-      'anniversary_date': marriedOn.toIso8601String(),
-      'partner_a_id': userId,
-      'privacy_preference': 'balanced', // Default
-    }).select('id').single();
+    final relResponse = await _supabase
+        .from('relationships')
+        .insert({
+          'status': 'dating', // Standard default until user updates later
+          'distance': relationshipDistance,
+          'anniversary_date': marriedOn.toIso8601String(),
+          'partner_a_id': userId,
+          'privacy_preference': 'balanced', // Default
+        })
+        .select('id')
+        .single();
 
     final relId = relResponse['id'];
 
@@ -51,6 +59,19 @@ class UserRepository {
     await _supabase.from('users').update({
       'relationship_id': relId,
     }).eq('id', userId);
+  }
+
+  /// Returns true if the currently authenticated Firebase user already has
+  /// a profile in the Supabase `users` table.
+  Future<bool> isUserRegistered() async {
+    final phone = _firebaseAuth.currentUser?.phoneNumber;
+    if (phone == null || phone.isEmpty) return false;
+    final response = await _supabase
+        .from('users')
+        .select('id')
+        .eq('phone', phone)
+        .maybeSingle();
+    return response != null;
   }
 }
 

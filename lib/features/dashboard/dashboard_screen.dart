@@ -1,0 +1,800 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../app_theme.dart';
+import 'dashboard_state.dart';
+
+class DashboardScreen extends ConsumerWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(dashboardProvider);
+    final profileAsync = ref.watch(userProfileProvider);
+
+    return Scaffold(
+      backgroundColor: ZunoTheme.surface,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _DashboardAppBar(
+                userName: profileAsync.valueOrNull?.displayName ?? 'Friend',
+              ),
+              SliverPadding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _DailyCheckInSection(
+                      state: state,
+                      ref: ref,
+                      partnerName:
+                          profileAsync.valueOrNull?.partnerName ?? 'your partner',
+                    ),
+                    const SizedBox(height: 32),
+                    _StatusGrid(
+                      state: state,
+                      streakDays: profileAsync.valueOrNull?.streakDays ?? 0,
+                      partnerName:
+                          profileAsync.valueOrNull?.partnerName ?? 'Partner',
+                    ),
+                    const SizedBox(height: 32),
+                    const _DynamicCardsSection(),
+                    const SizedBox(height: 120),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+          const _BottomNavBar(),
+        ],
+      ),
+    );
+  }
+}
+
+// ── AppBar ──────────────────────────────────────────────────────────────────
+
+class _DashboardAppBar extends StatelessWidget {
+  final String userName;
+  const _DashboardAppBar({required this.userName});
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverAppBar(
+      floating: true,
+      pinned: true,
+      backgroundColor: ZunoTheme.surface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      title: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ZunoTheme.primaryFixed,
+              border:
+                  Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.2)),
+            ),
+            child: const Icon(Icons.person, color: ZunoTheme.primary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${_greeting()}, $userName',
+              style: GoogleFonts.notoSerif(
+                fontSize: 18,
+                fontWeight: FontWeight.w400,
+                color: ZunoTheme.primary,
+                letterSpacing: -0.3,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.settings_outlined, color: ZunoTheme.primary),
+        ),
+        const SizedBox(width: 4),
+      ],
+    );
+  }
+}
+
+// ── Daily Check-In ──────────────────────────────────────────────────────────
+
+class _DailyCheckInSection extends StatelessWidget {
+  final DashboardState state;
+  final WidgetRef ref;
+  final String partnerName;
+
+  const _DailyCheckInSection({
+    required this.state,
+    required this.ref,
+    required this.partnerName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final moods = ['😔', '😕', '😊', '😌', '✨'];
+    final tags = ['Work', 'Partner', 'Health', 'Home', 'Social'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'DAILY CHECK-IN',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.2,
+            color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'How is your heart today?',
+          style: GoogleFonts.notoSerif(
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            color: ZunoTheme.onSurface,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Mood row – fixed height, no overflow
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: moods.map((m) {
+            final isSelected = state.selectedMood == m;
+            return GestureDetector(
+              onTap: () => ref.read(dashboardProvider.notifier).setMood(m),
+              child: AnimatedScale(
+                scale: isSelected ? 1.25 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  m,
+                  style: TextStyle(
+                    fontSize: 32,
+                    color: isSelected ? null : Colors.grey.withOpacity(0.4),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 28),
+        // Connection & Tags Card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: ZunoTheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Feeling connected to $partnerName?',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: ZunoTheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _ToggleButton(
+                    value: state.isConnected,
+                    onChanged:
+                        ref.read(dashboardProvider.notifier).toggleConnection,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'CONTEXT TAGS',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: tags.map((t) {
+                  final isSelected = state.selectedTags.contains(t);
+                  return GestureDetector(
+                    onTap: () =>
+                        ref.read(dashboardProvider.notifier).toggleTag(t),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? ZunoTheme.tertiaryFixed
+                            : ZunoTheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: isSelected
+                              ? ZunoTheme.tertiary.withOpacity(0.15)
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: Text(
+                        t,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected
+                              ? ZunoTheme.onTertiaryFixedVariant
+                              : ZunoTheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              _GradientButton(
+                onTap: () async {
+                  await ref.read(dashboardProvider.notifier).saveLog();
+                },
+                label: 'SAVE CHECK-IN',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Status Grid ─────────────────────────────────────────────────────────────
+
+class _StatusGrid extends StatelessWidget {
+  final DashboardState state;
+  final int streakDays;
+  final String partnerName;
+
+  const _StatusGrid({
+    required this.state,
+    required this.streakDays,
+    required this.partnerName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatusCard(
+            icon: Icons.favorite_rounded,
+            label: 'PARTNER',
+            value: '$partnerName feels\n${state.partnerMood}',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatusCard(
+            icon: Icons.local_fire_department_rounded,
+            label: 'STREAK',
+            value: '$streakDays-day\nconnection',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _StatusCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: ZunoTheme.onSurface.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,  // ← fixes overflow in unbounded height
+        children: [
+          Icon(icon, color: ZunoTheme.primary, size: 26),
+          const SizedBox(height: 16),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: ZunoTheme.onSurface,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Dynamic Cards ───────────────────────────────────────────────────────────
+
+class _DynamicCardsSection extends StatelessWidget {
+  const _DynamicCardsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _DashboardSmartCard(
+          icon: Icons.refresh_rounded,
+          tag: 'CYCLE TRACKER',
+          title: 'Day 14',
+          subtitle: 'High chance of conception today.',
+          accentColor: ZunoTheme.tertiary,
+        ),
+        const SizedBox(height: 16),
+        // Insight Card
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: ZunoTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: ZunoTheme.primary.withOpacity(0.2),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome_outlined,
+                      color: Colors.white, size: 14),
+                  const SizedBox(width: 8),
+                  Text(
+                    'DAILY INSIGHT',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '"Try using \'I feel\' statements to express your needs today. It opens the hearth rather than building a wall."',
+                style: GoogleFonts.notoSerif(
+                  fontSize: 17,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.white,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Text(
+                    'EXPLORE AI SUGGESTIONS',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white, size: 14),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _PromoCard(
+          icon: Icons.child_care_rounded,
+          title: 'Pregnancy Planning',
+          subtitle: 'Unlock personalized guidance for your journey.',
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardSmartCard extends StatelessWidget {
+  final IconData icon;
+  final String tag;
+  final String title;
+  final String subtitle;
+  final Color accentColor;
+
+  const _DashboardSmartCard({
+    required this.icon,
+    required this.tag,
+    required this.title,
+    required this.subtitle,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 14, color: accentColor),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        tag,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                          color: accentColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: GoogleFonts.notoSerif(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border:
+                  Border.all(color: accentColor.withOpacity(0.2), width: 3),
+            ),
+            child:
+                Icon(Icons.auto_awesome_rounded, color: accentColor, size: 22),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PromoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _PromoCard(
+      {required this.icon, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border:
+            Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: ZunoTheme.surfaceContainerHigh,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: ZunoTheme.primary, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: ZunoTheme.outlineVariant),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Toggle ──────────────────────────────────────────────────────────────────
+
+class _ToggleButton extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _ToggleButton({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ToggleItem(
+              label: 'Yes', selected: value, onTap: () => onChanged(true)),
+          _ToggleItem(
+              label: 'No', selected: !value, onTap: () => onChanged(false)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleItem extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ToggleItem(
+      {required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? ZunoTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(99),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                      color: ZunoTheme.primary.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected
+                ? Colors.white
+                : ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Gradient Button ─────────────────────────────────────────────────────────
+
+class _GradientButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  final String label;
+
+  const _GradientButton({this.onTap, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 54,
+        decoration: BoxDecoration(
+          gradient: ZunoTheme.primaryGradient,
+          borderRadius: BorderRadius.circular(99),
+          boxShadow: [
+            BoxShadow(
+              color: ZunoTheme.primary.withOpacity(0.25),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: 2.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom Nav Bar ──────────────────────────────────────────────────────────
+
+class _BottomNavBar extends StatelessWidget {
+  const _BottomNavBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+            24, 12, 24, MediaQuery.of(context).padding.bottom + 12),
+        decoration: BoxDecoration(
+          color: ZunoTheme.surface.withOpacity(0.92),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border:
+              Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+          boxShadow: [
+            BoxShadow(
+              color: ZunoTheme.onSurface.withOpacity(0.04),
+              blurRadius: 40,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: const [
+            _NavTab(icon: Icons.calendar_today_rounded, label: 'Today', active: true),
+            _NavTab(icon: Icons.analytics_outlined, label: 'Insights'),
+            _NavTab(icon: Icons.favorite_outline_rounded, label: 'You'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavTab extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+
+  const _NavTab(
+      {required this.icon, required this.label, this.active = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      decoration: BoxDecoration(
+        color: active ? ZunoTheme.surfaceContainerHigh : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: active
+                ? ZunoTheme.primary
+                : ZunoTheme.onSurface.withOpacity(0.4),
+            size: 22,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+              color: active
+                  ? ZunoTheme.primary
+                  : ZunoTheme.onSurface.withOpacity(0.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

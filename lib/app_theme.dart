@@ -15,6 +15,7 @@ class ZunoTheme {
   static const tertiaryFixed = Color(0xFF93F2F2);
   static const tertiaryFixedDim = Color(0xFF76D6D5);
   static const tertiaryContainer = Color(0xFF3FA3A3);
+  static const onTertiaryFixedVariant = Color(0xFF004F4F);
 
   static const surface = Color(0xFFFCF9F6);
   static const surfaceBright = Color(0xFFFCF9F6);

@@ -113,4 +113,12 @@ ALTER TABLE cycle_data ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "cycle_owner_only" ON cycle_data
     FOR ALL USING (user_id = auth.uid());
+
+-- INSERT/UPDATE policies for daily_logs
+-- Note: These assume you are using Supabase Auth for auth.uid() mapping.
+CREATE POLICY "self_insert" ON daily_logs
+    FOR INSERT WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "self_update" ON daily_logs
+    FOR UPDATE USING (user_id = auth.uid());
 ```

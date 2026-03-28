@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pinput/pinput.dart';
 import '../../app_theme.dart';
 import 'auth_service.dart';
+import 'user_repository.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   final String phoneNumber;
@@ -45,7 +46,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final ok = await ref.read(authProvider.notifier).verifyOTP(otp);
     if (!mounted) return;
     if (ok) {
-      context.go('/onboarding/register');
+      final isRegistered = await ref
+          .read(userRepositoryProvider)
+          .isUserRegistered();
+      if (!mounted) return;
+      if (isRegistered) {
+        context.go('/dashboard');
+      } else {
+        context.go('/onboarding/register');
+      }
     } else {
       final err = ref.read(authProvider).error ?? 'Verification failed';
       ScaffoldMessenger.of(context).showSnackBar(
