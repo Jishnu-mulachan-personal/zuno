@@ -29,10 +29,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     if (phone.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Enter a valid phone number', style: GoogleFonts.plusJakartaSans()),
+          content: Text('Enter a valid phone number',
+              style: GoogleFonts.plusJakartaSans()),
           backgroundColor: ZunoTheme.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
@@ -132,8 +134,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: CountryCodePicker(
-                            onChanged: (c) => setState(() => _countryCode = c.dialCode ?? '+1'),
-                            initialSelection: 'US',
+                            onChanged: (c) => setState(
+                                () => _countryCode = c.dialCode ?? '+91'),
+                            initialSelection: 'IN',
                             showCountryOnly: false,
                             showOnlyCountryWhenClosed: false,
                             alignLeft: false,
@@ -150,7 +153,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           child: TextField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -159,7 +164,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             decoration: InputDecoration(
                               hintText: '000 000 0000',
                               hintStyle: GoogleFonts.plusJakartaSans(
-                                color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                                color:
+                                    ZunoTheme.onSurfaceVariant.withOpacity(0.4),
                               ),
                             ),
                           ),
@@ -217,7 +223,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 children: [
                   Text('By continuing, you agree to our ',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11, color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
+                          fontSize: 11,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
                   GestureDetector(
                     child: Text('Terms',
                         style: GoogleFonts.plusJakartaSans(
@@ -227,7 +234,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ),
                   Text(' and ',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11, color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
+                          fontSize: 11,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
                   GestureDetector(
                     child: Text('Privacy Policy',
                         style: GoogleFonts.plusJakartaSans(
@@ -237,7 +245,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ),
                   Text('.',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11, color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
+                          fontSize: 11,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
                 ],
               ),
               const SizedBox(height: 40),
@@ -282,7 +291,8 @@ class _GradientCta extends StatelessWidget {
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
                 )
               : Text(
                   label.toUpperCase(),
@@ -298,4 +308,3 @@ class _GradientCta extends StatelessWidget {
     );
   }
 }
-

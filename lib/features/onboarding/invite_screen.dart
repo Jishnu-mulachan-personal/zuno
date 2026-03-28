@@ -22,8 +22,10 @@ class _InviteScreenState extends State<InviteScreen> {
   ];
 
   Future<void> _inviteViaWhatsApp() async {
-    const message = "Join me on Zuno – our private relationship companion! 💑 Here's your invite link: https://zuno.app/join";
-    final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(message)}');
+    const message =
+        "Join me on Zuno – our private relationship companion! 💑 Here's your invite link: https://zuno.app/join";
+    final uri =
+        Uri.parse('https://wa.me/?text=${Uri.encodeComponent(message)}');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -81,42 +83,44 @@ class _InviteScreenState extends State<InviteScreen> {
                   ),
                   const SizedBox(height: 32),
                   // Hero image
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(32),
-                    child: AspectRatio(
-                      aspectRatio: 4 / 3,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&q=80',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(color: ZunoTheme.primaryFixed),
-                          ),
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: ZunoTheme.surface.withOpacity(0.82),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: ZunoTheme.onSurface.withOpacity(0.05),
-                                    blurRadius: 20,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.favorite,
-                                color: ZunoTheme.primary,
-                                size: 48,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // ClipRRect(
+                  //   borderRadius: BorderRadius.circular(32),
+                  //   child: AspectRatio(
+                  //     aspectRatio: 4 / 3,
+                  //     child: Stack(
+                  //       fit: StackFit.expand,
+                  //       children: [
+                  //         Image.network(
+                  //           'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&q=80',
+                  //           fit: BoxFit.cover,
+                  //           errorBuilder: (_, __, ___) =>
+                  //               Container(color: ZunoTheme.primaryFixed),
+                  //         ),
+                  //         Center(
+                  //           child: Container(
+                  //             padding: const EdgeInsets.all(24),
+                  //             decoration: BoxDecoration(
+                  //               color: ZunoTheme.surface.withOpacity(0.82),
+                  //               shape: BoxShape.circle,
+                  //               boxShadow: [
+                  //                 BoxShadow(
+                  //                   color:
+                  //                       ZunoTheme.onSurface.withOpacity(0.05),
+                  //                   blurRadius: 20,
+                  //                 ),
+                  //               ],
+                  //             ),
+                  //             child: const Icon(
+                  //               Icons.favorite,
+                  //               color: ZunoTheme.primary,
+                  //               size: 48,
+                  //             ),
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(height: 28),
                   Text(
                     'Invite Your Person',
@@ -155,7 +159,7 @@ class _InviteScreenState extends State<InviteScreen> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 1.5,
+                    childAspectRatio: 1.3,
                     children: _statuses.map((s) {
                       final selected = _selectedStatus == s.value;
                       return GestureDetector(
@@ -169,21 +173,22 @@ class _InviteScreenState extends State<InviteScreen> {
                                 : ZunoTheme.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: selected ? ZunoTheme.primary : Colors.transparent,
+                              color: selected
+                                  ? ZunoTheme.primary
+                                  : Colors.transparent,
                               width: 2,
                             ),
                             boxShadow: selected
                                 ? [
                                     BoxShadow(
-                                      color: ZunoTheme.primary.withOpacity(0.08),
+                                      color:
+                                          ZunoTheme.primary.withOpacity(0.08),
                                       blurRadius: 12,
                                     )
                                   ]
                                 : null,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Stack(
                             children: [
                               if (selected)
                                 Align(
@@ -199,6 +204,7 @@ class _InviteScreenState extends State<InviteScreen> {
                                 ),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
                                     s.label,
@@ -215,7 +221,10 @@ class _InviteScreenState extends State<InviteScreen> {
                                       fontSize: 12,
                                       color: ZunoTheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w300,
+                                      height: 1.2,
                                     ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
@@ -246,7 +255,8 @@ class _InviteScreenState extends State<InviteScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.share, color: Colors.white, size: 20),
+                          const Icon(Icons.share,
+                              color: Colors.white, size: 20),
                           const SizedBox(width: 10),
                           Text(
                             'INVITE VIA WHATSAPP',
@@ -327,7 +337,9 @@ class _ProgressDots extends StatelessWidget {
       width: active ? 24 : (narrow ? 16 : 16),
       height: 4,
       decoration: BoxDecoration(
-        color: active ? ZunoTheme.primary : ZunoTheme.outlineVariant.withOpacity(0.5),
+        color: active
+            ? ZunoTheme.primary
+            : ZunoTheme.outlineVariant.withOpacity(0.5),
         borderRadius: BorderRadius.circular(99),
       ),
     );

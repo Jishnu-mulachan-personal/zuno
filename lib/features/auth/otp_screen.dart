@@ -45,7 +45,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final ok = await ref.read(authProvider.notifier).verifyOTP(otp);
     if (!mounted) return;
     if (ok) {
-      context.go('/onboarding/invite');
+      context.go('/onboarding/register');
     } else {
       final err = ref.read(authProvider).error ?? 'Verification failed';
       ScaffoldMessenger.of(context).showSnackBar(
