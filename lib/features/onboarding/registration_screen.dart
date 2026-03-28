@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
+import '../auth/user_repository.dart';
 
 // ── Occupation options ────────────────────────────────────────────────────────
 
@@ -82,7 +83,9 @@ class _RegState {
 }
 
 class _RegNotifier extends StateNotifier<_RegState> {
-  _RegNotifier() : super(const _RegState());
+  final UserRepository _userRepo;
+  
+  _RegNotifier(this._userRepo) : super(const _RegState());
 
   void setName(String v) => state = state.copyWith(name: v, clearError: true);
   void setDOB(DateTime v) =>
@@ -103,14 +106,27 @@ class _RegNotifier extends StateNotifier<_RegState> {
       return;
     }
     state = state.copyWith(isLoading: true, clearError: true);
-    // TODO: persist to backend / Firestore
-    await Future.delayed(const Duration(milliseconds: 700));
-    state = state.copyWith(isLoading: false);
+    
+    try {
+      await _userRepo.createUserProfile(
+        name: state.name,
+        dateOfBirth: state.dateOfBirth!,
+        occupation: state.effectiveOccupation,
+        marriedOn: state.marriedOn!,
+        relationshipDistance: state.relationshipDistance,
+      );
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
   }
 }
 
 final _regProvider = StateNotifierProvider.autoDispose<_RegNotifier, _RegState>(
-  (ref) => _RegNotifier(),
+  (ref) {
+    final userRepo = ref.watch(userRepositoryProvider);
+    return _RegNotifier(userRepo);
+  },
 );
 
 // ── Screen ────────────────────────────────────────────────────────────────────

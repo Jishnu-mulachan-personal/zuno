@@ -6,8 +6,11 @@
 ```sql
 CREATE TABLE users (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email           TEXT NOT NULL UNIQUE,
+    email           TEXT UNIQUE, -- Now optional as we use Phone Auth
+    phone           TEXT UNIQUE, -- Added for Phone Auth
     display_name    TEXT,
+    date_of_birth   DATE,        -- Added from Registration
+    occupation      TEXT,        -- Added from Registration
     relationship_id UUID REFERENCES relationships(id),
     created_at      TIMESTAMPTZ DEFAULT now()
 );
@@ -18,6 +21,8 @@ CREATE TABLE users (
 CREATE TABLE relationships (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     status              TEXT CHECK (status IN ('dating', 'engaged', 'married', 'trying_for_baby')),
+    distance            TEXT CHECK (distance IN ('close', 'moderate', 'distant')), -- Added from Registration
+    anniversary_date    DATE, -- Added from Registration
     partner_a_id        UUID REFERENCES users(id),
     partner_b_id        UUID REFERENCES users(id),
     privacy_preference  TEXT CHECK (privacy_preference IN ('private', 'balanced', 'shared')),
