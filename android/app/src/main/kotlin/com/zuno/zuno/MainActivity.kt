@@ -1,0 +1,5 @@
+package com.zuno.zuno
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
