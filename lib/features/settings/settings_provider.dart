@@ -1,0 +1,201 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../dashboard/dashboard_state.dart';
+
+// ── Settings actions state ────────────────────────────────────────────────────
+
+enum SettingsActionStatus { idle, loading, success, error }
+
+class SettingsState {
+  final SettingsActionStatus status;
+  final String? message;
+
+  const SettingsState({
+    this.status = SettingsActionStatus.idle,
+    this.message,
+  });
+}
+
+class SettingsNotifier extends StateNotifier<SettingsState> {
+  final Ref _ref;
+  SettingsNotifier(this._ref) : super(const SettingsState());
+
+  void _setLoading() =>
+      state = const SettingsState(status: SettingsActionStatus.loading);
+
+  void _setError(String msg) =>
+      state = SettingsState(status: SettingsActionStatus.error, message: msg);
+
+  void _setSuccess(String msg) =>
+      state = SettingsState(status: SettingsActionStatus.success, message: msg);
+
+  // ── Unpair Partner ──────────────────────────────────────────────────────────
+
+  /// Clears partner_b_id from the relationships row and clears the claimer's
+  /// (i.e., the user who was NOT the creator) relationship_id from users.
+  /// User A keeps the relationship row (for their history), but it becomes
+  /// unpaired — partner_b_id = NULL.
+  Future<bool> unpairPartner() async {
+    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
+    if (phone == null) {
+      _setError('Not authenticated');
+      return false;
+    }
+
+    _setLoading();
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // 1. Get current user
+      final userRow = await supabase
+          .from('users')
+          .select('id, relationship_id')
+          .eq('phone', phone)
+          .maybeSingle();
+
+      if (userRow == null || userRow['relationship_id'] == null) {
+        _setError('No paired partner found');
+        return false;
+      }
+
+      final userId = userRow['id'] as String;
+      final relationshipId = userRow['relationship_id'] as String;
+
+      // 2. Get relationship row to find both partner IDs
+      final relRow = await supabase
+          .from('relationships')
+          .select('partner_a_id, partner_b_id')
+          .eq('id', relationshipId)
+          .maybeSingle();
+
+      if (relRow == null) {
+        _setError('Relationship record not found');
+        return false;
+      }
+
+      final partnerAId = relRow['partner_a_id'] as String?;
+      final partnerBId = relRow['partner_b_id'] as String?;
+
+      // 3. Clear partner_b_id on the relationship row
+      await supabase
+          .from('relationships')
+          .update({'partner_b_id': null}).eq('id', relationshipId);
+
+      // 4. Clear relationship_id on BOTH users so neither sees a partner
+      final idsToUnlink = <String>{
+        if (partnerAId != null) partnerAId,
+        if (partnerBId != null) partnerBId,
+        userId, // ensure current user is always included
+      };
+
+      for (final id in idsToUnlink) {
+        await supabase
+            .from('users')
+            .update({'relationship_id': null}).eq('id', id);
+      }
+
+      // 5. Invalidate & force a fresh re-fetch so UI reflects the change
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Partner unpaired');
+      return true;
+    } catch (e) {
+      debugPrint('[unpairPartner] $e');
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  // ── Delete Account ──────────────────────────────────────────────────────────
+
+  /// Deletes the Supabase user row (cascades to daily_logs, etc.) then signs
+  /// out from Firebase. The Firebase account itself is left intact since
+  /// deleting it requires recent re-authentication.
+  Future<bool> deleteAccount() async {
+    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
+    if (phone == null) {
+      _setError('Not authenticated');
+      return false;
+    }
+
+    _setLoading();
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // 1. Resolve user id
+      final userRow = await supabase
+          .from('users')
+          .select('id, relationship_id')
+          .eq('phone', phone)
+          .maybeSingle();
+
+      if (userRow == null) {
+        // Already gone — just sign out
+        await fb.FirebaseAuth.instance.signOut();
+        _setSuccess('Account deleted');
+        return true;
+      }
+
+      final userId = userRow['id'] as String;
+      final relationshipId = userRow['relationship_id'] as String?;
+
+      // 2. If paired: clear partner_b_id / partner_a_id from relationships
+      if (relationshipId != null) {
+        final relRow = await supabase
+            .from('relationships')
+            .select('partner_a_id, partner_b_id')
+            .eq('id', relationshipId)
+            .maybeSingle();
+
+        if (relRow != null) {
+          final partnerAId = relRow['partner_a_id'] as String?;
+          if (partnerAId == userId) {
+            // Current user is A — clear their reference and nullify partner_b
+            await supabase
+                .from('relationships')
+                .update({'partner_a_id': null, 'partner_b_id': null})
+                .eq('id', relationshipId);
+          } else {
+            // Current user is B — just clear partner_b_id
+            await supabase
+                .from('relationships')
+                .update({'partner_b_id': null}).eq('id', relationshipId);
+          }
+
+          // Clear the partner's relationship_id pointer
+          final partnerId = userId == partnerAId
+              ? relRow['partner_b_id'] as String?
+              : partnerAId;
+          if (partnerId != null) {
+            await supabase
+                .from('users')
+                .update({'relationship_id': null}).eq('id', partnerId);
+          }
+        }
+      }
+
+      // 3. Delete the user row (ON DELETE CASCADE handles daily_logs, etc.)
+      await supabase.from('users').delete().eq('id', userId);
+
+      // 4. Sign out from Firebase
+      await fb.FirebaseAuth.instance.signOut();
+
+      _setSuccess('Account deleted');
+      return true;
+    } catch (e) {
+      debugPrint('[deleteAccount] $e');
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  void reset() => state = const SettingsState();
+}
+
+final settingsProvider =
+    StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
+  return SettingsNotifier(ref);
+});

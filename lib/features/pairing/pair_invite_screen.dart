@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../app_theme.dart';
+import '../dashboard/dashboard_state.dart';
 import 'pair_provider.dart';
 
 class PairInviteScreen extends ConsumerStatefulWidget {
@@ -16,7 +18,8 @@ class PairInviteScreen extends ConsumerStatefulWidget {
 }
 
 class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
-  Timer? _timer;
+  Timer? _countdownTimer;
+  Timer? _pollTimer;
   Duration _remaining = Duration.zero;
 
   @override
@@ -26,21 +29,24 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
   }
 
   Future<void> _generate() async {
-    _timer?.cancel();                       // cancel any previous timer
+    _countdownTimer?.cancel();
+    _pollTimer?.cancel();
     await ref.read(inviteProvider.notifier).generateToken();
     final state = ref.read(inviteProvider);
-    if (state.expiresAt != null) {
+    if (state.expiresAt != null && state.token != null) {
       _startCountdown(state.expiresAt!);
+      _startPollForClaim(state.token!);
     }
   }
 
   void _startCountdown(DateTime expiresAt) {
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final remaining = expiresAt.difference(DateTime.now());
       if (!mounted) return;
       if (remaining.isNegative) {
         setState(() => _remaining = Duration.zero);
-        _timer?.cancel();
+        _countdownTimer?.cancel();
+        _pollTimer?.cancel();
         // Auto-refresh with a new token
         _generate();
       } else {
@@ -49,9 +55,49 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
     });
   }
 
+  /// Poll Supabase every 3 s to check if partner B has claimed the token.
+  void _startPollForClaim(String token) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) return;
+      try {
+        final row = await Supabase.instance.client
+            .from('partner_invites')
+            .select('used')
+            .eq('token', token)
+            .maybeSingle();
+
+        final used = (row?['used'] as bool?) ?? false;
+        if (used && mounted) {
+          _countdownTimer?.cancel();
+          _pollTimer?.cancel();
+          // Refresh User A's profile so the dashboard shows the partner name
+          ref.invalidate(userProfileProvider);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('🎉 Partner connected!',
+                    style: GoogleFonts.plusJakartaSans()),
+                backgroundColor: ZunoTheme.tertiary,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+            // Navigate back to You screen
+            context.go('/you');
+          }
+        }
+      } catch (e) {
+        // Silently ignore poll errors — the countdown will still expire/refresh
+      }
+    });
+  }
+
   @override
   void dispose() {
-    _timer?.cancel();
+    _countdownTimer?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
@@ -60,6 +106,7 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
     final s = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
   }
+
 
   @override
   Widget build(BuildContext context) {

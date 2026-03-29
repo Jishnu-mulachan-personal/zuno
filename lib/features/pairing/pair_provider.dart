@@ -188,19 +188,43 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
         return false;
       }
 
-      // 3. Find or create a relationship_id (use creator's existing one, or
-      //    claimer's, or generate a new UUID)
+      // 3. Find or create the relationships row
+      //    Strategy: use creator's existing relationship_id if they have one,
+      //    otherwise create a new row with partner_a_id = creatorId.
       final creatorRow = await supabase
           .from('users')
           .select('relationship_id')
           .eq('id', creatorId)
           .maybeSingle();
 
-      String relationshipId = creatorRow?['relationship_id'] as String? ??
-          claimerRow['relationship_id'] as String? ??
-          _generateUuid();
+      final existingRelId = creatorRow?['relationship_id'] as String?;
 
-      // 4. Update both users
+      String relationshipId;
+
+      if (existingRelId != null) {
+        // Creator already has a relationship row — update partner_b_id on it
+        await supabase
+            .from('relationships')
+            .update({'partner_b_id': claimerId})
+            .eq('id', existingRelId);
+
+        relationshipId = existingRelId;
+      } else {
+        // No relationship row yet — create one with both partners
+        final inserted = await supabase
+            .from('relationships')
+            .insert({
+              'partner_a_id': creatorId,
+              'partner_b_id': claimerId,
+              'status': 'dating',  // sensible default
+            })
+            .select('id')
+            .single();
+
+        relationshipId = inserted['id'] as String;
+      }
+
+      // 4. Point both user rows at the relationship
       await supabase
           .from('users')
           .update({'relationship_id': relationshipId}).eq('id', creatorId);
@@ -233,19 +257,3 @@ final claimProvider =
     StateNotifierProvider<ClaimNotifier, ClaimState>((ref) {
   return ClaimNotifier();
 });
-
-// ── Tiny UUID helper (without depending on uuid package) ────────────────────
-
-String _generateUuid() {
-  final rand = Random.secure();
-  final bytes = List<int>.generate(16, (_) => rand.nextInt(256));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  String hex(int n) => n.toRadixString(16).padLeft(2, '0');
-  return '${hex(bytes[0])}${hex(bytes[1])}${hex(bytes[2])}${hex(bytes[3])}'
-      '-${hex(bytes[4])}${hex(bytes[5])}'
-      '-${hex(bytes[6])}${hex(bytes[7])}'
-      '-${hex(bytes[8])}${hex(bytes[9])}'
-      '-${hex(bytes[10])}${hex(bytes[11])}${hex(bytes[12])}${hex(bytes[13])}${hex(bytes[14])}${hex(bytes[15])}';
-}

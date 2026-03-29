@@ -101,7 +101,7 @@ class _DashboardAppBar extends StatelessWidget {
       ),
       actions: [
         IconButton(
-          onPressed: () {},
+          onPressed: () => context.push('/settings'),
           icon: const Icon(Icons.settings_outlined, color: ZunoTheme.primary),
         ),
         const SizedBox(width: 4),
