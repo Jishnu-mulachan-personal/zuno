@@ -13,9 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, message, chatHistory, dailyInsight } = await req.json();
+    const { phone, message, chatHistory, dailyInsight, recentJournalNotes } = await req.json();
     if (!phone) throw new Error("Unauthorized or missing phone");
-    
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -58,6 +58,9 @@ serve(async (req) => {
       User: ${userData.display_name}
       Today's Insight was: "${dailyInsight}"
       
+      Recent Journal Notes (Decrypted):
+      ${(recentJournalNotes || []).join('\n')}
+
       Personal Context from previous days: ${userSummaryData?.summary_text || 'None'}
       Relationship Context: ${relSummaryData?.summary_text || 'None'}
       
@@ -66,7 +69,7 @@ serve(async (req) => {
       
       User just said: "${message}"
       
-      Respond directly to the user in a warm, empathetic, and conversational way. Keep the response relatively concise (2-4 sentences max).
+      Respond directly (as Zuno) to the user in a warm, empathetic, and conversational way. Use the specific journal notes if they help illuminate the user's current state. Keep the response relatively concise (2-4 sentences max).
     `;
 
     const result = await model.generateContent(chatPrompt);

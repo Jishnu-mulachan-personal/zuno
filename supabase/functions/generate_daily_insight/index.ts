@@ -15,6 +15,7 @@ serve(async (req) => {
   try {
     const reqBody = await req.json();
     const phone = reqBody.phone;
+    const recentJournalNotes = reqBody.recentJournalNotes || [];
     if (!phone) throw new Error("Unauthorized or missing phone");
 
     const supabaseClient = createClient(
@@ -49,7 +50,7 @@ serve(async (req) => {
         .from('users')
         .select('id')
         .eq('relationship_id', relationshipId);
-      
+
       const userIds = relationshipUsers?.map(u => u.id) || [userData.id];
       logsQuery = logsQuery.in('user_id', userIds);
     } else {
@@ -91,7 +92,10 @@ serve(async (req) => {
       Recent Activity (Last 2 Days):
       ${JSON.stringify(recentLogs, null, 2)}
       
-      Based on this data, write a brief, warm, and highly personalized insight for today. Do not be overly dramatic, just supportive and observant.
+      Recent Journal Notes (Decrypted):
+      ${recentJournalNotes.join('\n')}
+      
+      Based on this data (emotions, tags, and specific journal thoughts), write a brief, warm, and highly personalized insight for today. Do not be overly dramatic, just supportive and observant.
     `;
 
     const result = await model.generateContent(prompt);
