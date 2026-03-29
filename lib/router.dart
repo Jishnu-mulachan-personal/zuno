@@ -9,6 +9,9 @@ import 'features/onboarding/goals_screen.dart';
 import 'features/onboarding/privacy_screen.dart';
 import 'features/onboarding/registration_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
+import 'features/pairing/you_screen.dart';
+import 'features/pairing/pair_invite_screen.dart';
+import 'features/pairing/pair_scan_screen.dart';
 
 /// Routes that require the user to NOT be authenticated.
 const _authRoutes = ['/', '/signup', '/otp'];
@@ -75,5 +78,9 @@ final GoRouter appRouter = GoRouter(
         path: '/onboarding/privacy',
         builder: (ctx, _) => const PrivacyScreen()),
     GoRoute(path: '/dashboard', builder: (ctx, _) => const DashboardScreen()),
+    GoRoute(path: '/you', builder: (ctx, _) => const YouScreen()),
+    GoRoute(
+        path: '/pair/invite', builder: (ctx, _) => const PairInviteScreen()),
+    GoRoute(path: '/pair/scan', builder: (ctx, _) => const PairScanScreen()),
   ],
 );

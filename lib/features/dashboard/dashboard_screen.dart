@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import 'dashboard_state.dart';
@@ -917,6 +918,7 @@ class _BottomNavBar extends StatelessWidget {
                   ? Icons.favorite_rounded
                   : Icons.person_outline_rounded,
               label: hasParter ? 'Us' : 'You',
+              onTap: () => context.push('/you'),
             ),
           ],
         ),
@@ -929,40 +931,44 @@ class _NavTab extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final VoidCallback? onTap;
 
-  const _NavTab({required this.icon, required this.label, this.active = false});
+  const _NavTab({required this.icon, required this.label, this.active = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      decoration: BoxDecoration(
-        color: active ? ZunoTheme.surfaceContainerHigh : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: active
-                ? ZunoTheme.primary
-                : ZunoTheme.onSurface.withOpacity(0.4),
-            size: 22,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label.toUpperCase(),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.2,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? ZunoTheme.surfaceContainerHigh : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
               color: active
                   ? ZunoTheme.primary
                   : ZunoTheme.onSurface.withOpacity(0.4),
+              size: 22,
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label.toUpperCase(),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+                color: active
+                    ? ZunoTheme.primary
+                    : ZunoTheme.onSurface.withOpacity(0.4),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
