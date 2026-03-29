@@ -96,6 +96,8 @@ class DashboardState {
   final bool isSaving;
   final DateTime? lastSaved;
   final String journalNote;
+  final String? dailyInsight;
+  final bool isLoadingInsight;
 
   const DashboardState({
     this.selectedMood,
@@ -105,6 +107,8 @@ class DashboardState {
     this.isSaving = false,
     this.lastSaved,
     this.journalNote = '',
+    this.dailyInsight,
+    this.isLoadingInsight = false,
   });
 
   DashboardState copyWith({
@@ -115,6 +119,8 @@ class DashboardState {
     bool? isSaving,
     DateTime? lastSaved,
     String? journalNote,
+    String? dailyInsight,
+    bool? isLoadingInsight,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
@@ -124,13 +130,37 @@ class DashboardState {
       isSaving: isSaving ?? this.isSaving,
       lastSaved: lastSaved ?? this.lastSaved,
       journalNote: journalNote ?? this.journalNote,
+      dailyInsight: dailyInsight ?? this.dailyInsight,
+      isLoadingInsight: isLoadingInsight ?? this.isLoadingInsight,
     );
   }
 }
 
 class DashboardNotifier extends StateNotifier<DashboardState> {
   final Ref ref;
-  DashboardNotifier(this.ref) : super(const DashboardState());
+  DashboardNotifier(this.ref) : super(const DashboardState()) {
+    fetchDailyInsight();
+  }
+
+  Future<void> fetchDailyInsight() async {
+    if (state.dailyInsight != null) return;
+    
+    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
+    if (phone == null) return;
+
+    state = state.copyWith(isLoadingInsight: true);
+    try {
+      final response = await Supabase.instance.client.functions.invoke(
+        'generate_daily_insight',
+        body: {'phone': phone},
+      );
+      final insight = response.data['insight'] as String?;
+      state = state.copyWith(isLoadingInsight: false, dailyInsight: insight);
+    } catch (e) {
+      debugPrint('[fetchDailyInsight] Error: $e');
+      state = state.copyWith(isLoadingInsight: false);
+    }
+  }
 
   void setMood(String mood) => state = state.copyWith(selectedMood: mood);
 

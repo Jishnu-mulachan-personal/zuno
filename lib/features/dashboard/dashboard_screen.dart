@@ -576,14 +576,90 @@ class _StatusCard extends StatelessWidget {
 
 // ── Dynamic Cards ───────────────────────────────────────────────────────────
 
-class _DynamicCardsSection extends StatelessWidget {
+class _DynamicCardsSection extends ConsumerWidget {
   const _DynamicCardsSection();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(dashboardProvider);
+
     return Column(
       children: [
-        _DashboardSmartCard(
+        if (state.isLoadingInsight)
+          const Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Center(
+              child: CircularProgressIndicator(color: ZunoTheme.primary),
+            ),
+          )
+        else if (state.dailyInsight != null)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: ZunoTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: ZunoTheme.primary.withOpacity(0.2),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome_outlined,
+                        color: Colors.white, size: 14),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DAILY INSIGHT',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '"${state.dailyInsight!}"',
+                  style: GoogleFonts.notoSerif(
+                    fontSize: 17,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.white,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () => context.push('/ai_chat'),
+                  child: Row(
+                    children: [
+                      Text(
+                        'EXPLORE AI SUGGESTIONS',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward_rounded,
+                          color: Colors.white, size: 14),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+        const _DashboardSmartCard(
           icon: Icons.refresh_rounded,
           tag: 'CYCLE TRACKER',
           title: 'Day 14',
@@ -591,70 +667,7 @@ class _DynamicCardsSection extends StatelessWidget {
           accentColor: ZunoTheme.tertiary,
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: ZunoTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: ZunoTheme.primary.withOpacity(0.2),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.auto_awesome_outlined,
-                      color: Colors.white, size: 14),
-                  const SizedBox(width: 8),
-                  Text(
-                    'DAILY INSIGHT',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '"Try using \'I feel\' statements to express your needs today. It opens the hearth rather than building a wall."',
-                style: GoogleFonts.notoSerif(
-                  fontSize: 17,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.white,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Text(
-                    'EXPLORE AI SUGGESTIONS',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_rounded,
-                      color: Colors.white, size: 14),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _PromoCard(
+        const _PromoCard(
           icon: Icons.child_care_rounded,
           title: 'Pregnancy Planning',
           subtitle: 'Unlock personalized guidance for your journey.',
