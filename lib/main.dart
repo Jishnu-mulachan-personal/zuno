@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/encryption_service.dart';
+import 'core/notification_service.dart';
 import 'app_theme.dart';
 import 'router.dart';
 import 'firebase_options.dart';
@@ -21,6 +22,7 @@ void main() async {
   );
 
   EncryptionService.init();
+  await NotificationService().init();
 
   runApp(const ProviderScope(child: ZunoApp()));
 }

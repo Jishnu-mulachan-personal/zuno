@@ -214,6 +214,12 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           'journal_note': EncryptionService.encrypt(state.journalNote.trim()),
       });
 
+      // Trigger partner notification via Edge Function
+      supabase.functions.invoke(
+        'notify_partner',
+        body: {'phone': phone},
+      ).ignore();
+
       state = state.copyWith(isSaving: false, lastSaved: DateTime.now());
       ref.invalidate(userLogsProvider);
       return true;
