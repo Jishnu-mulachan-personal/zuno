@@ -93,6 +93,7 @@ class DashboardState {
   final String partnerMood;
   final bool isSaving;
   final DateTime? lastSaved;
+  final String journalNote;
 
   const DashboardState({
     this.selectedMood,
@@ -101,6 +102,7 @@ class DashboardState {
     this.partnerMood = '😊',
     this.isSaving = false,
     this.lastSaved,
+    this.journalNote = '',
   });
 
   DashboardState copyWith({
@@ -110,6 +112,7 @@ class DashboardState {
     String? partnerMood,
     bool? isSaving,
     DateTime? lastSaved,
+    String? journalNote,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
@@ -118,6 +121,7 @@ class DashboardState {
       partnerMood: partnerMood ?? this.partnerMood,
       isSaving: isSaving ?? this.isSaving,
       lastSaved: lastSaved ?? this.lastSaved,
+      journalNote: journalNote ?? this.journalNote,
     );
   }
 }
@@ -129,6 +133,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
   void toggleConnection(bool connected) =>
       state = state.copyWith(isConnected: connected);
+
+  void setJournalNote(String note) => state = state.copyWith(journalNote: note);
 
   void toggleTag(String tag) {
     final tags = List<String>.from(state.selectedTags);
@@ -169,6 +175,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         'connection_felt': state.isConnected,
         'context_tags': state.selectedTags,
         'log_date': DateTime.now().toIso8601String().split('T')[0],
+        if (state.journalNote.trim().isNotEmpty)
+          'journal_note': state.journalNote.trim().codeUnits,
       });
 
       state = state.copyWith(isSaving: false, lastSaved: DateTime.now());

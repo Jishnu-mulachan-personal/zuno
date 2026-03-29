@@ -80,8 +80,7 @@ class _DashboardAppBar extends StatelessWidget {
               border:
                   Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.2)),
             ),
-            child:
-                const Icon(Icons.person, color: ZunoTheme.primary, size: 20),
+            child: const Icon(Icons.person, color: ZunoTheme.primary, size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -144,7 +143,16 @@ class _DailyCheckInSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tags = ['Work', 'Partner', 'Health', 'Home', 'Social', 'Family', 'Tired', 'Grateful'];
+    final tags = [
+      'Work',
+      'Partner',
+      'Health',
+      'Home',
+      'Social',
+      'Family',
+      'Tired',
+      'Grateful'
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,43 +273,97 @@ class _DailyCheckInSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: tags.map((t) {
-                  final isSelected = state.selectedTags.contains(t);
-                  return GestureDetector(
-                    onTap: () =>
-                        ref.read(dashboardProvider.notifier).toggleTag(t),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? ZunoTheme.tertiaryFixed
-                            : ZunoTheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(99),
-                        border: Border.all(
+              // Horizontally scrollable tags
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: tags.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final t = tags[i];
+                    final isSelected = state.selectedTags.contains(t);
+                    return GestureDetector(
+                      onTap: () =>
+                          ref.read(dashboardProvider.notifier).toggleTag(t),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
                           color: isSelected
-                              ? ZunoTheme.tertiary.withOpacity(0.15)
-                              : Colors.transparent,
+                              ? ZunoTheme.tertiaryFixed
+                              : ZunoTheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(
+                            color: isSelected
+                                ? ZunoTheme.tertiary.withOpacity(0.15)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Text(
+                          t,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: isSelected
+                                ? ZunoTheme.onTertiaryFixedVariant
+                                : ZunoTheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        t,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected
-                              ? ZunoTheme.onTertiaryFixedVariant
-                              : ZunoTheme.onSurfaceVariant,
-                        ),
-                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Journal note
+              Text(
+                'JOURNAL NOTE',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                onChanged: (v) =>
+                    ref.read(dashboardProvider.notifier).setJournalNote(v),
+                maxLines: 3,
+                maxLength: 300,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: ZunoTheme.onSurface,
+                  height: 1.5,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'What\'s on your mind today…',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.35),
+                  ),
+                  counterStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.3),
+                  ),
+                  filled: true,
+                  fillColor: ZunoTheme.surfaceContainerHighest,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: ZunoTheme.primary.withOpacity(0.3),
+                      width: 1.5,
                     ),
-                  );
-                }).toList(),
+                  ),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
               ),
               const SizedBox(height: 24),
               _SaveCheckInButton(
@@ -353,8 +415,7 @@ class _DailyCheckInSection extends StatelessWidget {
         content: Text(msg, style: GoogleFonts.plusJakartaSans()),
         backgroundColor: success ? ZunoTheme.tertiary : ZunoTheme.error,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -675,11 +736,10 @@ class _DashboardSmartCard extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                  color: accentColor.withOpacity(0.2), width: 3),
+              border: Border.all(color: accentColor.withOpacity(0.2), width: 3),
             ),
-            child: Icon(Icons.auto_awesome_rounded,
-                color: accentColor, size: 22),
+            child:
+                Icon(Icons.auto_awesome_rounded, color: accentColor, size: 22),
           ),
         ],
       ),
@@ -701,8 +761,7 @@ class _PromoCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: ZunoTheme.outlineVariant.withOpacity(0.15)),
+        border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.15)),
       ),
       child: Row(
         children: [
@@ -790,8 +849,7 @@ class _ToggleItem extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? ZunoTheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
@@ -836,10 +894,8 @@ class _BottomNavBar extends StatelessWidget {
             24, 12, 24, MediaQuery.of(context).padding.bottom + 12),
         decoration: BoxDecoration(
           color: ZunoTheme.surface.withOpacity(0.92),
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(
-              color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
           boxShadow: [
             BoxShadow(
               color: ZunoTheme.onSurface.withOpacity(0.04),
@@ -855,8 +911,7 @@ class _BottomNavBar extends StatelessWidget {
                 icon: Icons.calendar_today_rounded,
                 label: 'Today',
                 active: true),
-            const _NavTab(
-                icon: Icons.analytics_outlined, label: 'Insights'),
+            const _NavTab(icon: Icons.analytics_outlined, label: 'Insights'),
             _NavTab(
               icon: hasParter
                   ? Icons.favorite_rounded
@@ -875,8 +930,7 @@ class _NavTab extends StatelessWidget {
   final String label;
   final bool active;
 
-  const _NavTab(
-      {required this.icon, required this.label, this.active = false});
+  const _NavTab({required this.icon, required this.label, this.active = false});
 
   @override
   Widget build(BuildContext context) {
