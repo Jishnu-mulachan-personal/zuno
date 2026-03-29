@@ -914,10 +914,13 @@ class _BottomNavBar extends StatelessWidget {
                 active: true),
             const _NavTab(icon: Icons.analytics_outlined, label: 'Insights'),
             _NavTab(
-              icon: hasParter
-                  ? Icons.favorite_rounded
-                  : Icons.person_outline_rounded,
-              label: hasParter ? 'Us' : 'You',
+              icon: Icons.favorite_outline_rounded,
+              label: 'Us',
+              onTap: () => context.push('/us'),
+            ),
+            _NavTab(
+              icon: Icons.person_outline_rounded,
+              label: 'You',
               onTap: () => context.push('/you'),
             ),
           ],

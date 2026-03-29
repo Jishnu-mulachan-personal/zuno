@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/encryption_service.dart';
+import '../pairing/you_state.dart';
 
 // ── User profile data loaded from Supabase ─────────────────────────────────
 
@@ -127,7 +129,8 @@ class DashboardState {
 }
 
 class DashboardNotifier extends StateNotifier<DashboardState> {
-  DashboardNotifier() : super(const DashboardState());
+  final Ref ref;
+  DashboardNotifier(this.ref) : super(const DashboardState());
 
   void setMood(String mood) => state = state.copyWith(selectedMood: mood);
 
@@ -176,10 +179,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         'context_tags': state.selectedTags,
         'log_date': DateTime.now().toIso8601String().split('T')[0],
         if (state.journalNote.trim().isNotEmpty)
-          'journal_note': state.journalNote.trim().codeUnits,
+          'journal_note': EncryptionService.encrypt(state.journalNote.trim()),
       });
 
       state = state.copyWith(isSaving: false, lastSaved: DateTime.now());
+      ref.invalidate(userLogsProvider);
       return true;
     } catch (e) {
       debugPrint('[saveLog] Error: $e');
@@ -191,5 +195,5 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
 final dashboardProvider =
     StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
-  return DashboardNotifier();
+  return DashboardNotifier(ref);
 });

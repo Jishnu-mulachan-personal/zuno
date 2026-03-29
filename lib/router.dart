@@ -10,6 +10,7 @@ import 'features/onboarding/privacy_screen.dart';
 import 'features/onboarding/registration_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/pairing/you_screen.dart';
+import 'features/pairing/us_screen.dart';
 import 'features/pairing/pair_invite_screen.dart';
 import 'features/pairing/pair_scan_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -80,6 +81,7 @@ final GoRouter appRouter = GoRouter(
         builder: (ctx, _) => const PrivacyScreen()),
     GoRoute(path: '/dashboard', builder: (ctx, _) => const DashboardScreen()),
     GoRoute(path: '/you', builder: (ctx, _) => const YouScreen()),
+    GoRoute(path: '/us', builder: (ctx, _) => const UsScreen()),
     GoRoute(
         path: '/pair/invite', builder: (ctx, _) => const PairInviteScreen()),
     GoRoute(path: '/pair/scan', builder: (ctx, _) => const PairScanScreen()),
