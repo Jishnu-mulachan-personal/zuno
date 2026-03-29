@@ -33,13 +33,13 @@ class DashboardScreen extends ConsumerWidget {
                     _DailyCheckInSection(
                       state: state,
                       ref: ref,
-                      partnerName: profile?.partnerName ?? 'your partner',
+                      partnerName: profile?.partnerName,
                     ),
                     const SizedBox(height: 32),
                     _StatusGrid(
                       state: state,
                       streakDays: profile?.streakDays ?? 0,
-                      partnerName: profile?.partnerName ?? 'Partner',
+                      partnerName: profile?.partnerName,
                     ),
                     const SizedBox(height: 32),
                     const _DynamicCardsSection(),
@@ -120,13 +120,13 @@ class _MoodOption {
 }
 
 final _moods = [
-  _MoodOption('😡', 'Angry', const Color(0xFFD32F2F)),
-  _MoodOption('😤', 'Frustrated', const Color(0xFFE64A19)),
-  _MoodOption('😔', 'Sad', const Color(0xFF7B8CC8)),
-  _MoodOption('😕', 'Meh', const Color(0xFF9E9E9E)),
-  _MoodOption('😊', 'Happy', const Color(0xFF43A047)),
-  _MoodOption('😌', 'Calm', const Color(0xFF26A69A)),
   _MoodOption('✨', 'Amazing', const Color(0xFFF9A825)),
+  _MoodOption('😌', 'Calm', const Color(0xFF26A69A)),
+  _MoodOption('😊', 'Happy', const Color(0xFF43A047)),
+  _MoodOption('😕', 'Meh', const Color(0xFF9E9E9E)),
+  _MoodOption('😔', 'Sad', const Color(0xFF7B8CC8)),
+  _MoodOption('😤', 'Frustrated', const Color(0xFFE64A19)),
+  _MoodOption('😡', 'Angry', const Color(0xFFD32F2F)),
 ];
 
 // ── Daily Check-In ──────────────────────────────────────────────────────────
@@ -134,12 +134,12 @@ final _moods = [
 class _DailyCheckInSection extends StatelessWidget {
   final DashboardState state;
   final WidgetRef ref;
-  final String partnerName;
+  final String? partnerName;
 
   const _DailyCheckInSection({
     required this.state,
     required this.ref,
-    required this.partnerName,
+    this.partnerName,
   });
 
   @override
@@ -243,27 +243,29 @@ class _DailyCheckInSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Feeling connected to $partnerName?',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: ZunoTheme.onSurface,
+              if (partnerName != null) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Feeling connected to $partnerName?',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: ZunoTheme.onSurface,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _ToggleButton(
-                    value: state.isConnected,
-                    onChanged:
-                        ref.read(dashboardProvider.notifier).toggleConnection,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+                    const SizedBox(width: 12),
+                    _ToggleButton(
+                      value: state.isConnected,
+                      onChanged:
+                          ref.read(dashboardProvider.notifier).toggleConnection,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
               Text(
                 'CONTEXT TAGS',
                 style: GoogleFonts.plusJakartaSans(
@@ -485,26 +487,28 @@ class _SaveCheckInButton extends StatelessWidget {
 class _StatusGrid extends StatelessWidget {
   final DashboardState state;
   final int streakDays;
-  final String partnerName;
+  final String? partnerName;
 
   const _StatusGrid({
     required this.state,
     required this.streakDays,
-    required this.partnerName,
+    this.partnerName,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: _StatusCard(
-            icon: Icons.favorite_rounded,
-            label: 'PARTNER',
-            value: '$partnerName feels\n${state.partnerMood}',
+        if (partnerName != null) ...[
+          Expanded(
+            child: _StatusCard(
+              icon: Icons.favorite_rounded,
+              label: 'PARTNER',
+              value: '$partnerName feels\n${state.partnerMood}',
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
+          const SizedBox(width: 12),
+        ],
         Expanded(
           child: _StatusCard(
             icon: Icons.local_fire_department_rounded,

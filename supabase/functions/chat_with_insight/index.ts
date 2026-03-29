@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+import { decryptFernet } from "../_shared/fernet.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,8 +14,11 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, message, chatHistory, dailyInsight, recentJournalNotes } = await req.json();
+    const { phone, message, chatHistory, dailyInsight } = await req.json();
     if (!phone) throw new Error("Unauthorized or missing phone");
+
+    const fernetKey = Deno.env.get('FERNET_KEY');
+    if (!fernetKey) throw new Error("FERNET_KEY not configured in Supabase Secrets");
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -48,6 +52,43 @@ serve(async (req) => {
       relSummaryData = rSummary;
     }
 
+    // Fetch and decrypt recent journal notes for context (last 2 days)
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const dateString = twoDaysAgo.toISOString();
+
+    const { data: recentLogs } = await supabaseClient
+      .from('daily_logs')
+      .select('user_id, log_date, journal_note, users(display_name)')
+      .gte('log_date', dateString)
+      .in('user_id', relationshipId ?
+        (await supabaseClient.from('users').select('id').eq('relationship_id', relationshipId)).data?.map((u: { id: string }) => u.id) || [userData.id]
+        : [userData.id]
+      );
+
+    const decryptedNotes: string[] = [];
+    if (recentLogs) {
+      for (const log of recentLogs) {
+        if (log.journal_note) {
+          try {
+            let bytes: Uint8Array;
+            if (typeof log.journal_note === 'string' && log.journal_note.startsWith('\\x')) {
+              const hex = log.journal_note.substring(2);
+              bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
+            } else if (Array.isArray(log.journal_note)) {
+              bytes = new Uint8Array(log.journal_note);
+            } else {
+              continue;
+            }
+            const decrypted = await decryptFernet(bytes, fernetKey);
+            decryptedNotes.push(`${log.users.display_name} (${log.log_date}): ${decrypted}`);
+          } catch (err) {
+            console.error(`Decryption failed:`, (err as Error).message);
+          }
+        }
+      }
+    }
+
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
@@ -59,7 +100,7 @@ serve(async (req) => {
       Today's Insight was: "${dailyInsight}"
       
       Recent Journal Notes (Decrypted):
-      ${(recentJournalNotes || []).join('\n')}
+      ${decryptedNotes.join('\n')}
 
       Personal Context from previous days: ${userSummaryData?.summary_text || 'None'}
       Relationship Context: ${relSummaryData?.summary_text || 'None'}

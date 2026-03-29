@@ -150,22 +150,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
     state = state.copyWith(isLoadingInsight: true);
     try {
-      // 1. Fetch recent logs for context (last 2 days)
-      final logsAsync = await ref.read(userLogsProvider.future);
-      final twoDaysAgo = DateTime.now().subtract(const Duration(days: 2));
-
-      final recentNotes = logsAsync
-          .where((log) => DateTime.parse(log.date).isAfter(twoDaysAgo))
-          .where(
-              (log) => log.journalNote != null && log.journalNote!.isNotEmpty)
-          .map((log) => '${log.date}: ${log.journalNote}')
-          .toList();
-      // debugPrint('[fetchDailyInsight] Recent notes: $recentNotes');
       final response = await Supabase.instance.client.functions.invoke(
         'generate_daily_insight',
         body: {
           'phone': phone,
-          'recentJournalNotes': recentNotes,
         },
       );
       final insight = response.data['insight'] as String?;

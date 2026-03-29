@@ -49,55 +49,19 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     try {
       final supabase = Supabase.instance.client;
 
-      // 1. Get current user
-      final userRow = await supabase
-          .from('users')
-          .select('id, relationship_id')
-          .eq('phone', phone)
-          .maybeSingle();
+      // Call the Edge Function to handle atomic unpairing (bypassing RLS)
+      final response = await supabase.functions.invoke(
+        'unpair_partner',
+        body: {'phone': phone},
+      );
 
-      if (userRow == null || userRow['relationship_id'] == null) {
-        _setError('No paired partner found');
+      if (response.status != 200) {
+        final errorMsg = response.data?['error'] ?? 'Unpair failed';
+        _setError(errorMsg);
         return false;
       }
 
-      final userId = userRow['id'] as String;
-      final relationshipId = userRow['relationship_id'] as String;
-
-      // 2. Get relationship row to find both partner IDs
-      final relRow = await supabase
-          .from('relationships')
-          .select('partner_a_id, partner_b_id')
-          .eq('id', relationshipId)
-          .maybeSingle();
-
-      if (relRow == null) {
-        _setError('Relationship record not found');
-        return false;
-      }
-
-      final partnerAId = relRow['partner_a_id'] as String?;
-      final partnerBId = relRow['partner_b_id'] as String?;
-
-      // 3. Clear partner_b_id on the relationship row
-      await supabase
-          .from('relationships')
-          .update({'partner_b_id': null}).eq('id', relationshipId);
-
-      // 4. Clear relationship_id on BOTH users so neither sees a partner
-      final idsToUnlink = <String>{
-        if (partnerAId != null) partnerAId,
-        if (partnerBId != null) partnerBId,
-        userId, // ensure current user is always included
-      };
-
-      for (final id in idsToUnlink) {
-        await supabase
-            .from('users')
-            .update({'relationship_id': null}).eq('id', id);
-      }
-
-      // 5. Invalidate & force a fresh re-fetch so UI reflects the change
+      // Invalidate & force a fresh re-fetch so UI reflects the change
       _ref.invalidate(userProfileProvider);
       _setSuccess('Partner unpaired');
       return true;

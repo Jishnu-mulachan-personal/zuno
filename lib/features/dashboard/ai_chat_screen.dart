@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import '../pairing/you_state.dart';
 import '../../app_theme.dart';
 import 'dashboard_state.dart';
 
@@ -44,18 +43,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       return;
     }
 
-    // Fetch recent notes for extra context in chat
-    List<String> recentNotes = [];
-    try {
-      final logs = await ref.read(userLogsProvider.future);
-      final twoDaysAgo = DateTime.now().subtract(const Duration(days: 2));
-      recentNotes = logs
-          .where((log) => DateTime.tryParse(log.date)?.isAfter(twoDaysAgo) ?? false)
-          .where((log) => log.journalNote != null && log.journalNote!.isNotEmpty)
-          .map((log) => '${log.date}: ${log.journalNote}')
-          .toList();
-    } catch (_) {}
-
+    // Recent context handled server-side now
     try {
       final response = await Supabase.instance.client.functions.invoke(
         'chat_with_insight',
@@ -63,7 +51,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           'phone': phone,
           'message': text,
           'dailyInsight': insight,
-          'recentJournalNotes': recentNotes,
           'chatHistory': _messages.where((m) => m['role'] != 'error').toList(),
         },
       );

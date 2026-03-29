@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+import { decryptFernet } from "../_shared/fernet.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,8 +16,10 @@ serve(async (req) => {
   try {
     const reqBody = await req.json();
     const phone = reqBody.phone;
-    const recentJournalNotes = reqBody.recentJournalNotes || [];
     if (!phone) throw new Error("Unauthorized or missing phone");
+
+    const fernetKey = Deno.env.get('FERNET_KEY');
+    if (!fernetKey) throw new Error("FERNET_KEY not configured in Supabase Secrets");
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -41,7 +44,7 @@ serve(async (req) => {
 
     let logsQuery = supabaseClient
       .from('daily_logs')
-      .select('user_id, log_date, mood_emoji, connection_felt, context_tags, users(display_name)')
+      .select('user_id, log_date, mood_emoji, connection_felt, context_tags, journal_note, users(display_name)')
       .gte('log_date', dateString);
 
     if (relationshipId) {
@@ -51,13 +54,39 @@ serve(async (req) => {
         .select('id')
         .eq('relationship_id', relationshipId);
 
-      const userIds = relationshipUsers?.map(u => u.id) || [userData.id];
+      const userIds = relationshipUsers?.map((u: { id: string }) => u.id) || [userData.id];
       logsQuery = logsQuery.in('user_id', userIds);
     } else {
       logsQuery = logsQuery.eq('user_id', userData.id);
     }
 
     const { data: recentLogs } = await logsQuery;
+
+    // Decrypt journal notes
+    const decryptedNotes: string[] = [];
+    if (recentLogs) {
+      for (const log of recentLogs) {
+        if (log.journal_note) {
+          try {
+            // Check if journal_note is encoded as hex string (BYTEA \x...) or int array
+            let bytes: Uint8Array;
+            if (typeof log.journal_note === 'string' && log.journal_note.startsWith('\\x')) {
+              const hex = log.journal_note.substring(2);
+              bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
+            } else if (Array.isArray(log.journal_note)) {
+              bytes = new Uint8Array(log.journal_note);
+            } else {
+              continue;
+            }
+
+            const decrypted = await decryptFernet(bytes, fernetKey);
+            decryptedNotes.push(`${log.users.display_name} (${log.log_date}): ${decrypted}`);
+          } catch (err) {
+            console.error(`Decryption failed for log ${log.log_date}:`, (err as Error).message);
+          }
+        }
+      }
+    }
 
     // Fetch personal AI summary context
     const { data: userSummary } = await supabaseClient
@@ -93,7 +122,7 @@ serve(async (req) => {
       ${JSON.stringify(recentLogs, null, 2)}
       
       Recent Journal Notes (Decrypted):
-      ${recentJournalNotes.join('\n')}
+      ${decryptedNotes.join('\n')}
       
       Based on this data (emotions, tags, and specific journal thoughts), write a brief, warm, and highly personalized insight for today. Do not be overly dramatic, just supportive and observant.
     `;

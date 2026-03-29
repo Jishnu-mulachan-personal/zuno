@@ -110,7 +110,7 @@ class SettingsScreen extends ConsumerWidget {
               value: 'Tap to pair',
               iconBg: ZunoTheme.surfaceContainerHigh,
               iconColor: ZunoTheme.onSurfaceVariant,
-              onTap: () => context.push('/you'),
+              onTap: () => context.push('/us'),
             ),
           ],
           const SizedBox(height: 32),
