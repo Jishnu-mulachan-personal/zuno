@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -90,12 +91,16 @@ class DashboardState {
   final bool isConnected;
   final List<String> selectedTags;
   final String partnerMood;
+  final bool isSaving;
+  final DateTime? lastSaved;
 
   const DashboardState({
     this.selectedMood,
     this.isConnected = true,
     this.selectedTags = const [],
     this.partnerMood = '😊',
+    this.isSaving = false,
+    this.lastSaved,
   });
 
   DashboardState copyWith({
@@ -103,12 +108,16 @@ class DashboardState {
     bool? isConnected,
     List<String>? selectedTags,
     String? partnerMood,
+    bool? isSaving,
+    DateTime? lastSaved,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
       isConnected: isConnected ?? this.isConnected,
       selectedTags: selectedTags ?? this.selectedTags,
       partnerMood: partnerMood ?? this.partnerMood,
+      isSaving: isSaving ?? this.isSaving,
+      lastSaved: lastSaved ?? this.lastSaved,
     );
   }
 }
@@ -131,31 +140,44 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     state = state.copyWith(selectedTags: tags);
   }
 
-  Future<void> saveLog() async {
+  Future<bool> saveLog() async {
     final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null || state.selectedMood == null) return;
+    if (phone == null || state.selectedMood == null) return false;
 
-    final supabase = Supabase.instance.client;
+    state = state.copyWith(isSaving: true);
 
-    // Fetch the user row
-    final userRow = await supabase
-        .from('users')
-        .select('id')
-        .eq('phone', phone)
-        .maybeSingle();
+    try {
+      final supabase = Supabase.instance.client;
 
-    if (userRow == null) return;
+      final userRow = await supabase
+          .from('users')
+          .select('id')
+          .eq('phone', phone)
+          .maybeSingle();
 
-    final userId = userRow['id'];
+      if (userRow == null) {
+        state = state.copyWith(isSaving: false);
+        return false;
+      }
 
-    // Upsert a daily log entry for today
-    await supabase.from('daily_logs').upsert({
-      'user_id': userId,
-      'mood_emoji': state.selectedMood,
-      'connection_felt': state.isConnected,
-      'context_tags': state.selectedTags,
-      'log_date': DateTime.now().toIso8601String().split('T')[0],
-    }, onConflict: 'user_id,log_date');
+      final userId = userRow['id'];
+
+      // Insert a new log entry — multiple check-ins per day are allowed
+      await supabase.from('daily_logs').insert({
+        'user_id': userId,
+        'mood_emoji': state.selectedMood,
+        'connection_felt': state.isConnected,
+        'context_tags': state.selectedTags,
+        'log_date': DateTime.now().toIso8601String().split('T')[0],
+      });
+
+      state = state.copyWith(isSaving: false, lastSaved: DateTime.now());
+      return true;
+    } catch (e) {
+      debugPrint('[saveLog] Error: $e');
+      state = state.copyWith(isSaving: false);
+      return false;
+    }
   }
 }
 

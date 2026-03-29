@@ -43,8 +43,8 @@ CREATE TABLE daily_logs (
     journal_note     BYTEA,               -- Fernet-encrypted
     is_note_private  BOOLEAN DEFAULT TRUE,
     streak_count     INTEGER DEFAULT 0,
-    created_at       TIMESTAMPTZ DEFAULT now(),
-    UNIQUE (user_id, log_date)
+    created_at       TIMESTAMPTZ DEFAULT now()
+    -- No UNIQUE constraint: multiple check-ins per day are allowed
 );
 ```
 

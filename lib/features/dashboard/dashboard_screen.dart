@@ -11,6 +11,8 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardProvider);
     final profileAsync = ref.watch(userProfileProvider);
+    final profile = profileAsync.valueOrNull;
+    final hasParter = profile?.partnerName != null;
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
@@ -20,7 +22,7 @@ class DashboardScreen extends ConsumerWidget {
             physics: const BouncingScrollPhysics(),
             slivers: [
               _DashboardAppBar(
-                userName: profileAsync.valueOrNull?.displayName ?? 'Friend',
+                userName: profile?.displayName ?? 'Friend',
               ),
               SliverPadding(
                 padding:
@@ -30,15 +32,13 @@ class DashboardScreen extends ConsumerWidget {
                     _DailyCheckInSection(
                       state: state,
                       ref: ref,
-                      partnerName:
-                          profileAsync.valueOrNull?.partnerName ?? 'your partner',
+                      partnerName: profile?.partnerName ?? 'your partner',
                     ),
                     const SizedBox(height: 32),
                     _StatusGrid(
                       state: state,
-                      streakDays: profileAsync.valueOrNull?.streakDays ?? 0,
-                      partnerName:
-                          profileAsync.valueOrNull?.partnerName ?? 'Partner',
+                      streakDays: profile?.streakDays ?? 0,
+                      partnerName: profile?.partnerName ?? 'Partner',
                     ),
                     const SizedBox(height: 32),
                     const _DynamicCardsSection(),
@@ -48,7 +48,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const _BottomNavBar(),
+          _BottomNavBar(hasParter: hasParter),
         ],
       ),
     );
@@ -60,13 +60,6 @@ class DashboardScreen extends ConsumerWidget {
 class _DashboardAppBar extends StatelessWidget {
   final String userName;
   const _DashboardAppBar({required this.userName});
-
-  String _greeting() {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,12 +80,13 @@ class _DashboardAppBar extends StatelessWidget {
               border:
                   Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.2)),
             ),
-            child: const Icon(Icons.person, color: ZunoTheme.primary, size: 20),
+            child:
+                const Icon(Icons.person, color: ZunoTheme.primary, size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '${_greeting()}, $userName',
+              'Hey, $userName 👋',
               style: GoogleFonts.notoSerif(
                 fontSize: 18,
                 fontWeight: FontWeight.w400,
@@ -116,6 +110,25 @@ class _DashboardAppBar extends StatelessWidget {
   }
 }
 
+// ── Mood data ────────────────────────────────────────────────────────────────
+
+class _MoodOption {
+  final String emoji;
+  final String label;
+  final Color color;
+  const _MoodOption(this.emoji, this.label, this.color);
+}
+
+final _moods = [
+  _MoodOption('😡', 'Angry', const Color(0xFFD32F2F)),
+  _MoodOption('😤', 'Frustrated', const Color(0xFFE64A19)),
+  _MoodOption('😔', 'Sad', const Color(0xFF7B8CC8)),
+  _MoodOption('😕', 'Meh', const Color(0xFF9E9E9E)),
+  _MoodOption('😊', 'Happy', const Color(0xFF43A047)),
+  _MoodOption('😌', 'Calm', const Color(0xFF26A69A)),
+  _MoodOption('✨', 'Amazing', const Color(0xFFF9A825)),
+];
+
 // ── Daily Check-In ──────────────────────────────────────────────────────────
 
 class _DailyCheckInSection extends StatelessWidget {
@@ -131,8 +144,7 @@ class _DailyCheckInSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final moods = ['😔', '😕', '😊', '😌', '✨'];
-    final tags = ['Work', 'Partner', 'Health', 'Home', 'Social'];
+    final tags = ['Work', 'Partner', 'Health', 'Home', 'Social', 'Family', 'Tired', 'Grateful'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,29 +168,62 @@ class _DailyCheckInSection extends StatelessWidget {
             height: 1.2,
           ),
         ),
-        const SizedBox(height: 24),
-        // Mood row – fixed height, no overflow
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: moods.map((m) {
-            final isSelected = state.selectedMood == m;
-            return GestureDetector(
-              onTap: () => ref.read(dashboardProvider.notifier).setMood(m),
-              child: AnimatedScale(
-                scale: isSelected ? 1.25 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: Text(
-                  m,
-                  style: TextStyle(
-                    fontSize: 32,
-                    color: isSelected ? null : Colors.grey.withOpacity(0.4),
+        const SizedBox(height: 20),
+        // Scrollable mood row
+        SizedBox(
+          height: 82,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _moods.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final m = _moods[i];
+              final isSelected = state.selectedMood == m.emoji;
+              return GestureDetector(
+                onTap: () =>
+                    ref.read(dashboardProvider.notifier).setMood(m.emoji),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? m.color.withOpacity(0.12)
+                        : ZunoTheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? m.color : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        m.emoji,
+                        style: TextStyle(
+                          fontSize: isSelected ? 28 : 24,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        m.label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected
+                              ? m.color
+                              : ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            },
+          ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         // Connection & Tags Card
         Container(
           padding: const EdgeInsets.all(20),
@@ -228,7 +273,8 @@ class _DailyCheckInSection extends StatelessWidget {
                   return GestureDetector(
                     onTap: () =>
                         ref.read(dashboardProvider.notifier).toggleTag(t),
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
@@ -258,16 +304,116 @@ class _DailyCheckInSection extends StatelessWidget {
                 }).toList(),
               ),
               const SizedBox(height: 24),
-              _GradientButton(
-                onTap: () async {
-                  await ref.read(dashboardProvider.notifier).saveLog();
-                },
-                label: 'SAVE CHECK-IN',
+              _SaveCheckInButton(
+                enabled: state.selectedMood != null,
+                isSaving: state.isSaving,
+                onTap: state.selectedMood == null || state.isSaving
+                    ? null
+                    : () async {
+                        final success = await ref
+                            .read(dashboardProvider.notifier)
+                            .saveLog();
+                        if (context.mounted) {
+                          _showFeedbackSnackbar(context, success);
+                        }
+                      },
               ),
+              if (state.lastSaved != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        size: 14, color: ZunoTheme.tertiary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Last saved at ${_formatTime(state.lastSaved!)}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
       ],
+    );
+  }
+
+  String _formatTime(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  void _showFeedbackSnackbar(BuildContext context, bool success) {
+    final msg = success ? 'Check-in saved! 💚' : 'Could not save. Try again.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.plusJakartaSans()),
+        backgroundColor: success ? ZunoTheme.tertiary : ZunoTheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+}
+
+// ── Save Check-In Button ─────────────────────────────────────────────────────
+
+class _SaveCheckInButton extends StatelessWidget {
+  final bool enabled;
+  final bool isSaving;
+  final VoidCallback? onTap;
+
+  const _SaveCheckInButton(
+      {required this.enabled, required this.isSaving, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: double.infinity,
+        height: 54,
+        decoration: BoxDecoration(
+          gradient: enabled ? ZunoTheme.primaryGradient : null,
+          color: enabled ? null : ZunoTheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(99),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: ZunoTheme.primary.withOpacity(0.25),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  )
+                ]
+              : null,
+        ),
+        child: Center(
+          child: isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
+                )
+              : Text(
+                  'SAVE CHECK-IN',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: enabled
+                        ? Colors.white
+                        : ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                    letterSpacing: 2.0,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }
@@ -337,7 +483,7 @@ class _StatusCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,  // ← fixes overflow in unbounded height
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: ZunoTheme.primary, size: 26),
           const SizedBox(height: 16),
@@ -383,7 +529,6 @@ class _DynamicCardsSection extends StatelessWidget {
           accentColor: ZunoTheme.tertiary,
         ),
         const SizedBox(height: 16),
-        // Insight Card
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -530,11 +675,11 @@ class _DashboardSmartCard extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border:
-                  Border.all(color: accentColor.withOpacity(0.2), width: 3),
+              border: Border.all(
+                  color: accentColor.withOpacity(0.2), width: 3),
             ),
-            child:
-                Icon(Icons.auto_awesome_rounded, color: accentColor, size: 22),
+            child: Icon(Icons.auto_awesome_rounded,
+                color: accentColor, size: 22),
           ),
         ],
       ),
@@ -556,8 +701,8 @@ class _PromoCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        border:
-            Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.15)),
+        border: Border.all(
+            color: ZunoTheme.outlineVariant.withOpacity(0.15)),
       ),
       child: Row(
         children: [
@@ -645,7 +790,8 @@ class _ToggleItem extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? ZunoTheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
@@ -673,52 +819,11 @@ class _ToggleItem extends StatelessWidget {
   }
 }
 
-// ── Gradient Button ─────────────────────────────────────────────────────────
-
-class _GradientButton extends StatelessWidget {
-  final VoidCallback? onTap;
-  final String label;
-
-  const _GradientButton({this.onTap, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: ZunoTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(99),
-          boxShadow: [
-            BoxShadow(
-              color: ZunoTheme.primary.withOpacity(0.25),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: 2.0,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ── Bottom Nav Bar ──────────────────────────────────────────────────────────
 
 class _BottomNavBar extends StatelessWidget {
-  const _BottomNavBar();
+  final bool hasParter;
+  const _BottomNavBar({required this.hasParter});
 
   @override
   Widget build(BuildContext context) {
@@ -731,9 +836,10 @@ class _BottomNavBar extends StatelessWidget {
             24, 12, 24, MediaQuery.of(context).padding.bottom + 12),
         decoration: BoxDecoration(
           color: ZunoTheme.surface.withOpacity(0.92),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border:
-              Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(
+              color: ZunoTheme.outlineVariant.withOpacity(0.12)),
           boxShadow: [
             BoxShadow(
               color: ZunoTheme.onSurface.withOpacity(0.04),
@@ -744,10 +850,19 @@ class _BottomNavBar extends StatelessWidget {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            _NavTab(icon: Icons.calendar_today_rounded, label: 'Today', active: true),
-            _NavTab(icon: Icons.analytics_outlined, label: 'Insights'),
-            _NavTab(icon: Icons.favorite_outline_rounded, label: 'You'),
+          children: [
+            const _NavTab(
+                icon: Icons.calendar_today_rounded,
+                label: 'Today',
+                active: true),
+            const _NavTab(
+                icon: Icons.analytics_outlined, label: 'Insights'),
+            _NavTab(
+              icon: hasParter
+                  ? Icons.favorite_rounded
+                  : Icons.person_outline_rounded,
+              label: hasParter ? 'Us' : 'You',
+            ),
           ],
         ),
       ),
