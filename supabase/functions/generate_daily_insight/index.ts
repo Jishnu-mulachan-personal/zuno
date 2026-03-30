@@ -9,132 +9,185 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const reqBody = await req.json();
-    const phone = reqBody.phone;
-    if (!phone) throw new Error("Unauthorized or missing phone");
-
+    const { phone } = await req.json();
     const fernetKey = Deno.env.get('FERNET_KEY');
-    if (!fernetKey) throw new Error("FERNET_KEY not configured in Supabase Secrets");
-
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Fetch user details to get relationship_id
+    // 1. Fetch User Data & Relationship
     const { data: userData } = await supabaseClient
       .from('users')
       .select('id, display_name, relationship_id')
       .eq('phone', phone)
       .single();
-
     if (!userData) throw new Error("User not found");
 
-    const relationshipId = userData.relationship_id;
+    const relId = userData.relationship_id;
 
-    // Fetch logs from the last 2 days for the user and their partner (if any)
-    const twoDaysAgo = new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    const dateString = twoDaysAgo.toISOString();
-
-    let logsQuery = supabaseClient
-      .from('daily_logs')
-      .select('user_id, log_date, mood_emoji, connection_felt, context_tags, journal_note, users(display_name)')
-      .gte('log_date', dateString);
-
-    if (relationshipId) {
-      // Fetch users in this relationship to filter logs
-      const { data: relationshipUsers } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('relationship_id', relationshipId);
-
-      const userIds = relationshipUsers?.map((u: { id: string }) => u.id) || [userData.id];
-      logsQuery = logsQuery.in('user_id', userIds);
-    } else {
-      logsQuery = logsQuery.eq('user_id', userData.id);
-    }
-
-    const { data: recentLogs } = await logsQuery;
-
-    // Decrypt journal notes
-    const decryptedNotes: string[] = [];
-    if (recentLogs) {
-      for (const log of recentLogs) {
-        if (log.journal_note) {
-          try {
-            // Check if journal_note is encoded as hex string (BYTEA \x...) or int array
-            let bytes: Uint8Array;
-            if (typeof log.journal_note === 'string' && log.journal_note.startsWith('\\x')) {
-              const hex = log.journal_note.substring(2);
-              bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
-            } else if (Array.isArray(log.journal_note)) {
-              bytes = new Uint8Array(log.journal_note);
-            } else {
-              continue;
-            }
-
-            const decrypted = await decryptFernet(bytes, fernetKey);
-            decryptedNotes.push(`${log.users.display_name} (${log.log_date}): ${decrypted}`);
-          } catch (err) {
-            console.error(`Decryption failed for log ${log.log_date}:`, (err as Error).message);
-          }
-        }
-      }
-    }
-
-    // Fetch personal AI summary context
+    // 2. Fetch Latest Memory Context
     const { data: userSummary } = await supabaseClient
       .from('ai_summary_user_session')
       .select('summary_text')
       .eq('user_id', userData.id)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    // Fetch relationship AI summary context (if applicable)
     let relSummary = null;
-    if (relationshipId) {
-      const { data: rSummary } = await supabaseClient
+    if (relId) {
+      const { data: rs } = await supabaseClient
         .from('ai_summary_relationship_session')
         .select('summary_text')
-        .eq('relationship_id', relationshipId)
-        .single();
-      relSummary = rSummary;
+        .eq('relationship_id', relId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      relSummary = rs;
     }
 
-    // Build the prompt for Gemini Flash
+    // 3. Fetch Logs for User and Partner
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    let relevantIds = [userData.id];
+
+    if (relId) {
+      const { data: partners } = await supabaseClient.from('users').select('id').eq('relationship_id', relId);
+      if (partners) relevantIds = partners.map(p => p.id);
+    }
+
+    const { data: recentLogs } = await supabaseClient
+      .from('daily_logs')
+      .select('*, users(display_name)')
+      .gte('log_date', twoDaysAgo)
+      .in('user_id', relevantIds);
+
+    // 4. Decrypt Journal Notes (Precise Mirror of Flutter Logic)
+// 4. Decrypt Journal Notes
+const journalContext: string[] = [];
+const moodContext: string[] = [];
+
+console.log(`[DEBUG] Total logs fetched: ${recentLogs?.length || 0}`);
+
+if (recentLogs && recentLogs.length > 0) {
+  for (const log of recentLogs) {
+    const isOwner = log.user_id === userData.id;
+    const name = log.users?.display_name || "Unknown";
+    
+    // Always log the mood
+    moodContext.push(`${name} felt ${log.mood_emoji || 'neutral'} on ${log.log_date}`);
+
+    console.log(`[DEBUG] Processing log for ${name}. Private: ${log.is_note_private}. Has Note: ${!!log.journal_note}`);
+
+    // Check permissions: (My note) OR (Partner note AND not private)
+    const canAccessNote = isOwner || log.is_note_private === false;
+
+    if (log.journal_note && canAccessNote) {
+      console.log(`[DEBUG] Entering decryption loop for ${name}...`);
+      try {
+        let bytesToDecrypt: number[] = [];
+        const jn = log.journal_note;
+
+        // LOG THE DATA TYPE: This is critical for debugging
+        console.log(`[DEBUG] Raw journal_note type: ${typeof jn}. Value starts with: ${String(jn).substring(0, 10)}`);
+
+        if (typeof jn === 'string' && jn.startsWith('\\x')) {
+          // 1. Convert Postgres Hex to ASCII String
+          const hexStr = jn.substring(2);
+          const asciiBytes = [];
+          for (let i = 0; i < hexStr.length; i += 2) {
+            asciiBytes.push(parseInt(hexStr.substring(i, i + 2), 16));
+          }
+          const innerStr = String.fromCharCode(...asciiBytes);
+          console.log(`[DEBUG] ASCII string decoded: ${innerStr.substring(0, 15)}...`);
+
+          // 2. Parse the stringified JSON array "[1,2,3]" if it exists
+          if (innerStr.trim().startsWith('[')) {
+            bytesToDecrypt = JSON.parse(innerStr);
+          } else {
+            bytesToDecrypt = asciiBytes;
+          }
+        } else if (Array.isArray(jn)) {
+          bytesToDecrypt = jn;
+        } else if (typeof jn === 'string') {
+          // If it's just a base64 or plain string
+          bytesToDecrypt = Array.from(new TextEncoder().encode(jn));
+        }
+
+        if (bytesToDecrypt.length > 0) {
+          const uint8 = new Uint8Array(bytesToDecrypt);
+          console.log(`[DEBUG] Byte length: ${uint8.length}. First byte: ${uint8[0]}`);
+
+          const decrypted = await decryptFernet(uint8, fernetKey!);
+          journalContext.push(`${name}'s Journal: ${decrypted}`);
+          console.log(`[DEBUG] Decryption Success for ${name}`);
+        } else {
+          console.log(`[DEBUG] No bytes extracted for ${name}`);
+        }
+
+      } catch (e) {
+        console.error(`[ERROR] Decryption process failed for ${name}: ${e.message}`);
+      }
+    } else {
+      console.log(`[DEBUG] Access denied or note empty for ${name}. isOwner: ${isOwner}, Private: ${log.is_note_private}`);
+    }
+  }
+}
+
+    // 5. Generate Insight
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `
-      You are Zuno, an empathetic AI companion for individuals and couples.
-      Your goal is to provide a short, encouraging, and insightful daily message (about 2-3 sentences).
+    const insightPrompt = `
+      You are Zuno, an empathetic AI relationship companion. 
+      User: ${userData.display_name}. 
+      History: ${userSummary?.summary_text || 'None'}.
+      Relationship History: ${relSummary?.summary_text || 'None'}.
       
-      User: ${userData.display_name}
-      Personal AI Context (previous conversations): ${userSummary?.summary_text || 'None yet.'}
-      Relationship AI Context: ${relSummary?.summary_text || 'None yet.'}
+      Logs & Moods:
+      ${moodContext.join('\n')}
       
-      Recent Activity (Last 2 Days):
-      ${JSON.stringify(recentLogs, null, 2)}
-      
-      Recent Journal Notes (Decrypted):
-      ${decryptedNotes.join('\n')}
-      
-      Based on this data (emotions, tags, and specific journal thoughts), write a brief, warm, and highly personalized insight for today. Do not be overly dramatic, just supportive and observant.
+      Decrypted Journal Insights:
+      ${journalContext.join('\n')}
+
+      Write a highly personalized, warm 2-sentence daily insight.
     `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const insightResult = await model.generateContent(insightPrompt);
+    const insightText = insightResult.response.text();
 
-    return new Response(JSON.stringify({ insight: text }), {
+    // 6. Memory Loop (Updating Tables)
+    const updateMemPrompt = (old: string, add: string) => 
+      `Update this summary with new insights: "${add}". Old: ${old}. Return concise bullet points.`;
+
+    const newUserMem = await model.generateContent(updateMemPrompt(userSummary?.summary_text || "", insightText));
+    
+    // User Summary Upsert
+    await supabaseClient.from('ai_summary_user_session').upsert({ 
+      user_id: userData.id, 
+      summary_text: newUserMem.response.text(),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+    // Relationship Summary Upsert
+    if (relId) {
+      const newRelMem = await model.generateContent(updateMemPrompt(relSummary?.summary_text || "", insightText));
+      await supabaseClient.from('ai_summary_relationship_session').upsert({ 
+        relationship_id: relId, 
+        summary_text: newRelMem.response.text(),
+        updated_at: new Date().toISOString() 
+      }, { onConflict: 'relationship_id' });
+    }
+
+    return new Response(JSON.stringify({ insight: insightText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
     });
+
   } catch (error) {
+    console.error(`[FATAL] ${error.message}`);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
