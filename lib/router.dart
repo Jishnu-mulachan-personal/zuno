@@ -15,6 +15,8 @@ import 'features/pairing/us_screen.dart';
 import 'features/pairing/pair_invite_screen.dart';
 import 'features/pairing/pair_scan_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/cycle_tracker/cycle_registration_screen.dart';
+import 'features/cycle_tracker/cycle_calendar_screen.dart';
 
 /// Routes that require the user to NOT be authenticated.
 const _authRoutes = ['/', '/signup', '/otp'];
@@ -95,5 +97,11 @@ final GoRouter appRouter = GoRouter(
         path: '/pair/invite', builder: (ctx, _) => const PairInviteScreen()),
     GoRoute(path: '/pair/scan', builder: (ctx, _) => const PairScanScreen()),
     GoRoute(path: '/settings', builder: (ctx, _) => const SettingsScreen()),
+    GoRoute(
+        path: '/cycle_registration',
+        builder: (ctx, _) => const CycleRegistrationScreen()),
+    GoRoute(
+        path: '/cycle_calendar',
+        builder: (ctx, _) => const CycleCalendarScreen()),
   ],
 );

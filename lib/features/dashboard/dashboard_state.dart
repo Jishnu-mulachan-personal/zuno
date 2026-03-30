@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/encryption_service.dart';
 import '../pairing/you_state.dart';
+import '../cycle_tracker/cycle_data_model.dart';
 
 // ── User profile data loaded from Supabase ─────────────────────────────────
 
@@ -11,11 +12,15 @@ class UserProfile {
   final String displayName;
   final String? partnerName;
   final int streakDays;
+  final String? gender;
+  final CycleData? cycleData;
 
   const UserProfile({
     required this.displayName,
     this.partnerName,
     this.streakDays = 0,
+    this.gender,
+    this.cycleData,
   });
 }
 
@@ -36,7 +41,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
   // Fetch current user + their relationship
   final userRow = await supabase
       .from('users')
-      .select('id, display_name, relationship_id')
+      .select('id, display_name, relationship_id, gender')
       .eq(column, identifier)
       .maybeSingle();
 
@@ -44,6 +49,21 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
 
   final displayName = (userRow['display_name'] as String?) ?? 'Friend';
   final relationshipId = userRow['relationship_id'];
+  final gender = userRow['gender'] as String?;
+  final userId = userRow['id'];
+
+  CycleData? cycleData;
+  if (gender == 'Female') {
+    final cycleRow = await supabase
+        .from('cycle_data')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+    
+    if (cycleRow != null) {
+      cycleData = CycleData.fromMap(cycleRow);
+    }
+  }
 
   String? partnerName;
   int streakDays = 0;
@@ -89,6 +109,8 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     displayName: displayName,
     partnerName: partnerName,
     streakDays: streakDays,
+    gender: gender,
+    cycleData: cycleData,
   );
 });
 

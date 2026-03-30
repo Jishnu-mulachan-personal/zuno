@@ -586,6 +586,8 @@ class _DynamicCardsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardProvider);
+    final profileAsync = ref.watch(userProfileProvider);
+    final profile = profileAsync.valueOrNull;
 
     return Column(
       children: [
@@ -662,14 +664,30 @@ class _DynamicCardsSection extends ConsumerWidget {
               ],
             ),
           ),
-        const SizedBox(height: 16),
-        const _DashboardSmartCard(
-          icon: Icons.refresh_rounded,
-          tag: 'CYCLE TRACKER',
-          title: 'Day 14',
-          subtitle: 'High chance of conception today.',
-          accentColor: ZunoTheme.tertiary,
-        ),
+        if (profile?.gender == 'Female')
+          if (profile?.cycleData == null) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => context.push('/cycle_registration'),
+              child: const _PromoCard(
+                icon: Icons.refresh_rounded,
+                title: 'Track Your Cycle',
+                subtitle: 'Get personalized insights for your body.',
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => context.push('/cycle_calendar'),
+              child: _DashboardSmartCard(
+                icon: Icons.calendar_month_rounded,
+                tag: 'CYCLE TRACKER',
+                title: 'Day ${profile!.cycleData!.currentCycleDay}',
+                subtitle: profile.cycleData!.phaseSubtitle,
+                accentColor: ZunoTheme.tertiary,
+              ),
+            ),
+          ],
         const SizedBox(height: 16),
         const _PromoCard(
           icon: Icons.child_care_rounded,
