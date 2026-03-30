@@ -17,6 +17,8 @@ serve(async (req) => {
     const { phone, message, chatHistory, dailyInsight } = await req.json();
     if (!phone) throw new Error("Unauthorized or missing phone");
 
+    console.log(`[DEBUG] Chat initiated for phone: ${phone}`);
+
     const fernetKey = Deno.env.get('FERNET_KEY');
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -54,10 +56,9 @@ serve(async (req) => {
       relSummary = rSum;
     }
 
-    // 3. Fetch Decrypted Logs (Including Partner Public Notes)
+    // 3. Fetch Logs for User and Partner
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     
-    // Get all user IDs in the relationship to check logs
     let relevantUserIds = [userData.id];
     if (relationshipId) {
       const { data: partners } = await supabaseClient.from('users').select('id').eq('relationship_id', relationshipId);
@@ -66,42 +67,78 @@ serve(async (req) => {
 
     const { data: recentLogs } = await supabaseClient
       .from('daily_logs')
-      .select('user_id, log_date, journal_note, is_note_private, users(display_name)')
+      .select('user_id, log_date, mood_emoji, journal_note, is_note_private, users(display_name)')
       .gte('log_date', twoDaysAgo)
       .in('user_id', relevantUserIds);
 
-    const decryptedNotes: string[] = [];
+    // 4. Process Logs & Decrypt (with Flutter parity & Privacy Logic)
+    const journalContext: string[] = [];
+    const moodContext: string[] = [];
+
     if (recentLogs) {
       for (const log of recentLogs) {
-        const isPartnerNote = log.user_id !== userData.id;
-        // Logic: Add if it's mine OR if it's the partner's and NOT private
-        if (log.journal_note && (!isPartnerNote || log.is_note_private === false)) {
+        const isOwner = log.user_id === userData.id;
+        const name = log.users?.display_name || "Unknown";
+
+        // Always pass mood/activity to AI
+        moodContext.push(`${name} was feeling ${log.mood_emoji || 'neutral'} on ${log.log_date}.`);
+
+        const canAccessNote = isOwner || log.is_note_private === false;
+
+        if (log.journal_note && canAccessNote) {
           try {
-            let bytes: Uint8Array;
-            if (typeof log.journal_note === 'string' && log.journal_note.startsWith('\\x')) {
-              const hex = log.journal_note.substring(2);
-              bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
-            } else {
-              bytes = new Uint8Array(log.journal_note);
+            let bytesToDecrypt: number[] = [];
+            const jn = log.journal_note;
+
+            if (typeof jn === 'string' && jn.startsWith('\\x')) {
+              // 1. Hex to ASCII String
+              const hexStr = jn.substring(2);
+              const asciiBytes = [];
+              for (let i = 0; i < hexStr.length; i += 2) {
+                asciiBytes.push(parseInt(hexStr.substring(i, i + 2), 16));
+              }
+              const innerStr = String.fromCharCode(...asciiBytes);
+              
+              // 2. Check if stringified JSON array
+              if (innerStr.trim().startsWith('[')) {
+                bytesToDecrypt = JSON.parse(innerStr);
+              } else {
+                bytesToDecrypt = asciiBytes;
+              }
+            } else if (Array.isArray(jn)) {
+              bytesToDecrypt = jn;
+            } else if (typeof jn === 'string') {
+              bytesToDecrypt = Array.from(new TextEncoder().encode(jn));
             }
-            const decrypted = await decryptFernet(bytes, fernetKey!);
-            const label = isPartnerNote ? `Partner (${log.users.display_name})` : "User";
-            decryptedNotes.push(`${label} [${log.log_date}]: ${decrypted}`);
-          } catch (e) { console.error("Decryption error"); }
+
+            if (bytesToDecrypt.length > 0) {
+              const uint8 = new Uint8Array(bytesToDecrypt);
+              const decrypted = await decryptFernet(uint8, fernetKey!);
+              journalContext.push(`${name}'s Journal [${log.log_date}]: ${decrypted}`);
+              console.log(`[DEBUG] Decrypted note for ${name}`);
+            }
+          } catch (e) { 
+            console.error(`[ERROR] Decryption error for ${name}: ${e.message}`); 
+          }
+        } else if (log.journal_note) {
+          console.log(`[DEBUG] Skipped private journal note for ${name}`);
         }
       }
     }
 
-    // 4. Generate AI Reply
+    // 5. Generate AI Reply
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const chatPrompt = `
-      You are Zuno, an empathetic AI companion. 
-      User: ${userData.display_name}. Insight: ${dailyInsight}
+      You are Zuno, an empathetic AI relationship companion. 
+      User: ${userData.display_name}. Insight for today: ${dailyInsight}
       
-      Recent Context (Journal):
-      ${decryptedNotes.join('\n')}
+      Recent Moods:
+      ${moodContext.join('\n')}
+
+      Recent Context (Journal Notes):
+      ${journalContext.join('\n')}
 
       Historical Personal Summary: ${userSummary?.summary_text || 'None'}
       Historical Relationship Summary: ${relSummary?.summary_text || 'None'}
@@ -109,40 +146,43 @@ serve(async (req) => {
       Current History: ${JSON.stringify(chatHistory)}
       User: "${message}"
       
-      Respond warmly as Zuno. Keep it to 2-3 sentences.
+      Respond warmly as Zuno. Keep it to 2-3 sentences. Do not mention that some notes are hidden from you.
     `;
 
     const result = await model.generateContent(chatPrompt);
     const replyText = result.response.text();
 
-    // 5. UPDATE Summaries for NEXT Context (The Memory Loop)
+    // 6. UPDATE Summaries for NEXT Context (The Memory Loop)
     const updateSummaryPrompt = (old: string, current: string) => `
-      Update the following summary with new insights from this exchange:
+      Update the following summary with new insights from this exchange. Keep it as a concise bulleted list.
       Old Summary: ${old}
       New Interaction: ${current}
-      Return only the updated, concise bulleted summary.
     `;
 
-    // Personal Summary Update
-    const userUpdateRes = await model.generateContent(updateSummaryPrompt(userSummary?.summary_text || "", `User said: ${message}`));
-    await supabaseClient
-      .from('ai_summary_user_session')
-      .upsert({ 
-        user_id: userData.id, 
-        summary_text: userUpdateRes.response.text(),
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
-
-    // Relationship Summary Update
-    if (relationshipId) {
-      const relUpdateRes = await model.generateContent(updateSummaryPrompt(relSummary?.summary_text || "", `${userData.display_name} said: ${message}`));
+    try {
+      // Personal Summary Update
+      const userUpdateRes = await model.generateContent(updateSummaryPrompt(userSummary?.summary_text || "", `User said: "${message}". Zuno replied: "${replyText}"`));
       await supabaseClient
-        .from('ai_summary_relationship_session')
+        .from('ai_summary_user_session')
         .upsert({ 
-          relationship_id: relationshipId, 
-          summary_text: relUpdateRes.response.text(),
+          user_id: userData.id, 
+          summary_text: userUpdateRes.response.text(),
           updated_at: new Date().toISOString()
-        }, { onConflict: 'relationship_id' });
+        }, { onConflict: 'user_id' });
+
+      // Relationship Summary Update
+      if (relationshipId) {
+        const relUpdateRes = await model.generateContent(updateSummaryPrompt(relSummary?.summary_text || "", `${userData.display_name} discussed: "${message}"`));
+        await supabaseClient
+          .from('ai_summary_relationship_session')
+          .upsert({ 
+            relationship_id: relationshipId, 
+            summary_text: relUpdateRes.response.text(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'relationship_id' });
+      }
+    } catch (upsertError) {
+      console.error(`[DB ERROR] Memory Loop Failed: ${upsertError.message}`);
     }
 
     return new Response(JSON.stringify({ reply: replyText }), {
@@ -150,6 +190,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
+    console.error(`[FATAL] ${error.message}`);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
