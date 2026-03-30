@@ -14,6 +14,7 @@ class UserRepository {
     required String occupation,
     required DateTime marriedOn,
     required String relationshipDistance,
+    required String gender,
   }) async {
     final sbUser = _supabase.auth.currentUser;
     final fbUser = _firebaseAuth.currentUser;
@@ -32,6 +33,7 @@ class UserRepository {
           if (email != null) 'email': email,
           if (phone != null) 'phone': phone,
           'display_name': name,
+          'gender': gender,
           'date_of_birth': dateOfBirth.toIso8601String(),
           'occupation': occupation,
         })

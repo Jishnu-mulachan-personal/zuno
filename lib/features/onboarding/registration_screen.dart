@@ -23,6 +23,13 @@ const _kOccupations = [
   'Other',
 ];
 
+const _kGenders = [
+  'Male',
+  'Female',
+  'Non-binary',
+  'Prefer not to say',
+];
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 class _RegState {
@@ -31,6 +38,7 @@ class _RegState {
   final String occupation; // selected from list OR 'Other'
   final String customOccupation; // typed value when occupation == 'Other'
   final DateTime? marriedOn;
+  final String gender;
   final String relationshipDistance;
   final bool isLoading;
   final String? error;
@@ -41,6 +49,7 @@ class _RegState {
     this.occupation = '',
     this.customOccupation = '',
     this.marriedOn,
+    this.gender = '',
     this.relationshipDistance = 'moderate',
     this.isLoading = false,
     this.error,
@@ -53,6 +62,7 @@ class _RegState {
     String? customOccupation,
     DateTime? marriedOn,
     bool? clearMarriedOn,
+    String? gender,
     String? relationshipDistance,
     bool? isLoading,
     String? error,
@@ -65,6 +75,7 @@ class _RegState {
       customOccupation: customOccupation ?? this.customOccupation,
       marriedOn:
           (clearMarriedOn == true) ? null : (marriedOn ?? this.marriedOn),
+      gender: gender ?? this.gender,
       relationshipDistance: relationshipDistance ?? this.relationshipDistance,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
@@ -77,6 +88,7 @@ class _RegState {
   bool get isValid {
     return name.trim().isNotEmpty &&
         dateOfBirth != null &&
+        gender.isNotEmpty &&
         effectiveOccupation.trim().isNotEmpty &&
         marriedOn != null;
   }
@@ -96,6 +108,7 @@ class _RegNotifier extends StateNotifier<_RegState> {
       state = state.copyWith(customOccupation: v, clearError: true);
   void setMarriedOn(DateTime v) =>
       state = state.copyWith(marriedOn: v, clearError: true);
+  void setGender(String v) => state = state.copyWith(gender: v, clearError: true);
   void setRelationshipDistance(String v) =>
       state = state.copyWith(relationshipDistance: v);
 
@@ -114,6 +127,7 @@ class _RegNotifier extends StateNotifier<_RegState> {
         occupation: state.effectiveOccupation,
         marriedOn: state.marriedOn!,
         relationshipDistance: state.relationshipDistance,
+        gender: state.gender,
       );
       state = state.copyWith(isLoading: false);
     } catch (e) {
@@ -205,8 +219,6 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     if (picked != null) ref.read(_regProvider.notifier).setMarriedOn(picked);
   }
 
-  // ── Occupation bottom sheet ───────────────────────────────────────────────
-
   void _showOccupationPicker() {
     showModalBottomSheet(
       context: context,
@@ -216,6 +228,21 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         current: ref.read(_regProvider).occupation,
         onSelected: (val) {
           ref.read(_regProvider.notifier).setOccupation(val);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  void _showGenderPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _GenderSheet(
+        current: ref.read(_regProvider).gender,
+        onSelected: (val) {
+          ref.read(_regProvider.notifier).setGender(val);
           Navigator.pop(context);
         },
       ),
@@ -333,6 +360,17 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                     hint: 'Select your birth date',
                     onTap: _pickDOB,
                     trailingIcon: Icons.cake_outlined,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Gender select
+                  _FieldLabel('GENDER'),
+                  const SizedBox(height: 8),
+                  _DropdownTile(
+                    value: s.gender.isEmpty ? null : s.gender,
+                    hint: 'Select gender',
+                    onTap: _showGenderPicker,
+                    icon: Icons.person_outline_rounded,
                   ),
                   const SizedBox(height: 24),
 
@@ -608,6 +646,102 @@ class _OccupationSheetState extends State<_OccupationSheet> {
   }
 }
 
+// ── Gender Bottom Sheet ───────────────────────────────────────────────────────
+
+class _GenderSheet extends StatelessWidget {
+  final String? current;
+  final ValueChanged<String> onSelected;
+  const _GenderSheet({this.current, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: ZunoTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: ZunoTheme.outlineVariant,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: [
+                Text(
+                  'SELECT GENDER',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.8,
+                    color: ZunoTheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ListView.builder(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+            itemCount: _kGenders.length,
+            itemBuilder: (_, i) {
+              final item = _kGenders[i];
+              final isSelected = item == current;
+              return GestureDetector(
+                onTap: () => onSelected(item),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? ZunoTheme.primaryFixed.withAlpha(178)
+                        : ZunoTheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: isSelected
+                        ? Border.all(
+                            color: ZunoTheme.primary.withAlpha(76), width: 1.5)
+                        : Border.all(color: Colors.transparent, width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        item,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected
+                              ? ZunoTheme.primary
+                              : ZunoTheme.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (isSelected)
+                        const Icon(Icons.check_circle_rounded,
+                            size: 20, color: ZunoTheme.tertiary),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Relationship Distance ─────────────────────────────────────────────────────
 
 const _kDistances = [
@@ -836,7 +970,13 @@ class _DropdownTile extends StatelessWidget {
   final String? value;
   final String hint;
   final VoidCallback onTap;
-  const _DropdownTile({this.value, required this.hint, required this.onTap});
+  final IconData icon;
+  const _DropdownTile({
+    this.value,
+    required this.hint,
+    required this.onTap,
+    this.icon = Icons.work_outline_rounded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -855,7 +995,7 @@ class _DropdownTile extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              Icons.work_outline_rounded,
+              icon,
               size: 16,
               color: hasValue
                   ? ZunoTheme.primary

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../app_theme.dart';
 import '../dashboard/dashboard_state.dart';
 import 'settings_provider.dart';
@@ -132,7 +134,15 @@ class SettingsScreen extends ConsumerWidget {
               confirmLabel: 'Sign Out',
               confirmColor: ZunoTheme.onSurface,
               onConfirm: () async {
+                // Clear Supabase Session
+                await Supabase.instance.client.auth.signOut();
+                // Clear Firebase Phone Session
                 await fb.FirebaseAuth.instance.signOut();
+                // Clear Google Auth Session
+                try {
+                  await GoogleSignIn().signOut();
+                } catch (_) {}
+                
                 if (context.mounted) context.go('/');
               },
             ),

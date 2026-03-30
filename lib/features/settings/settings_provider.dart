@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../dashboard/dashboard_state.dart';
 
 // ── Settings actions state ────────────────────────────────────────────────────
@@ -151,8 +152,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       // 3. Delete the user row (ON DELETE CASCADE handles daily_logs, etc.)
       await supabase.from('users').delete().eq('id', userId);
 
-      // 4. Sign out from Firebase
+      // 4. Sign out completely
+      await supabase.auth.signOut();
       await fb.FirebaseAuth.instance.signOut();
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
 
       _setSuccess('Account deleted');
       return true;

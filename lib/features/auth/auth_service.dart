@@ -47,6 +47,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // Auto-retrieval or instant verification (Android only)
         try {
           await _auth.signInWithCredential(credential);
+          // Kill any lingering Supabase/Google session
+          await supabase.Supabase.instance.client.auth.signOut();
+          try { await gsign.GoogleSignIn().signOut(); } catch (_) {}
+          
           state = state.copyWith(isLoading: false);
         } on FirebaseAuthException catch (e) {
           state = state.copyWith(isLoading: false, error: e.message);
@@ -84,6 +88,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     try {
       await _auth.signInWithCredential(credential);
+      
+      // Kill any lingering Supabase/Google session
+      await supabase.Supabase.instance.client.auth.signOut();
+      try { await gsign.GoogleSignIn().signOut(); } catch (_) {}
+
       state = state.copyWith(isLoading: false);
       return true;
     } on FirebaseAuthException catch (e) {
@@ -130,6 +139,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         idToken: idToken,
         accessToken: accessToken,
       );
+
+      // Kill any lingering Firebase Phone session
+      await _auth.signOut();
 
       state = state.copyWith(isLoading: false);
       return true;
