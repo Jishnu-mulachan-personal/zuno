@@ -12,21 +12,23 @@ serve(async (req) => {
   }
 
   try {
-    const { phone } = await req.json();
-    if (!phone) throw new Error("Missing phone number");
+    const { identifier } = await req.json();
+    if (!identifier) throw new Error("Missing identifier");
 
-    console.log(`[notify_partner] Request received for phone: ${phone}`);
+    console.log(`[notify_partner] Request received for identifier: ${identifier}`);
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
+    const column = String(identifier).includes('@') ? 'email' : 'phone';
+    
     // 1. Find the user and their relationship
     const { data: user, error: userError } = await supabaseClient
       .from('users')
       .select('id, relationship_id')
-      .eq('phone', phone)
+      .eq(column, identifier)
       .single();
 
     if (userError || !user) throw new Error("User not found");

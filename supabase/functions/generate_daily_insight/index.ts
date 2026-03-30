@@ -12,18 +12,21 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { phone } = await req.json();
+    const { identifier } = await req.json();
+    if (!identifier) throw new Error("Missing identifier");
     const fernetKey = Deno.env.get('FERNET_KEY');
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    const column = String(identifier).includes('@') ? 'email' : 'phone';
+
     // 1. Fetch User Data & Relationship
     const { data: userData } = await supabaseClient
       .from('users')
       .select('id, display_name, relationship_id')
-      .eq('phone', phone)
+      .eq(column, identifier)
       .single();
     if (!userData) throw new Error("User not found");
 

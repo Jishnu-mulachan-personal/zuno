@@ -23,15 +23,19 @@ class DailyLog {
 }
 
 final userLogsProvider = FutureProvider<List<DailyLog>>((ref) async {
-  final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-  if (phone == null) return [];
+  final sbUser = Supabase.instance.client.auth.currentUser;
+  final fbUser = fb.FirebaseAuth.instance.currentUser;
+  final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+
+  if (identifier == null) return [];
 
   final supabase = Supabase.instance.client;
-  
+  final column = identifier.contains('@') ? 'email' : 'phone';
+
   final userRow = await supabase
       .from('users')
       .select('id')
-      .eq('phone', phone)
+      .eq(column, identifier)
       .maybeSingle();
       
   if (userRow == null) return [];

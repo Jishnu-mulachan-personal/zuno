@@ -20,18 +20,24 @@ class UserProfile {
 }
 
 final userProfileProvider = FutureProvider<UserProfile>((ref) async {
-  final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-  if (phone == null) {
+  final sbUser = Supabase.instance.client.auth.currentUser;
+  final fbUser = fb.FirebaseAuth.instance.currentUser;
+  
+  final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+
+  if (identifier == null) {
     return const UserProfile(displayName: 'Friend');
   }
 
   final supabase = Supabase.instance.client;
 
+  final column = identifier.contains('@') ? 'email' : 'phone';
+
   // Fetch current user + their relationship
   final userRow = await supabase
       .from('users')
       .select('id, display_name, relationship_id')
-      .eq('phone', phone)
+      .eq(column, identifier)
       .maybeSingle();
 
   if (userRow == null) return const UserProfile(displayName: 'Friend');
@@ -145,15 +151,17 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   Future<void> fetchDailyInsight() async {
     if (state.dailyInsight != null) return;
 
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null) return;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+    if (identifier == null) return;
 
     state = state.copyWith(isLoadingInsight: true);
     try {
       final response = await Supabase.instance.client.functions.invoke(
         'generate_daily_insight',
         body: {
-          'phone': phone,
+          'identifier': identifier,
         },
       );
       final insight = response.data['insight'] as String?;
@@ -182,18 +190,23 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   }
 
   Future<bool> saveLog() async {
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null || state.selectedMood == null) return false;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+    
+    if (identifier == null || state.selectedMood == null) return false;
 
     state = state.copyWith(isSaving: true);
 
     try {
       final supabase = Supabase.instance.client;
 
+      final column = identifier.contains('@') ? 'email' : 'phone';
+
       final userRow = await supabase
           .from('users')
           .select('id')
-          .eq('phone', phone)
+          .eq(column, identifier)
           .maybeSingle();
 
       if (userRow == null) {
@@ -217,7 +230,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       // Trigger partner notification via Edge Function
       supabase.functions.invoke(
         'notify_partner',
-        body: {'phone': phone},
+        body: {'identifier': identifier},
       ).ignore();
 
       state = state.copyWith(isSaving: false, lastSaved: DateTime.now());

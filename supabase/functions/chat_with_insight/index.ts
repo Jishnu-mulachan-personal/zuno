@@ -14,10 +14,10 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, message, chatHistory, dailyInsight } = await req.json();
-    if (!phone) throw new Error("Unauthorized or missing phone");
+    const { identifier, message, chatHistory, dailyInsight } = await req.json();
+    if (!identifier) throw new Error("Unauthorized or missing identifier");
 
-    console.log(`[DEBUG] Chat initiated for phone: ${phone}`);
+    console.log(`[DEBUG] Chat initiated for identifier: ${identifier}`);
 
     const fernetKey = Deno.env.get('FERNET_KEY');
     const supabaseClient = createClient(
@@ -26,10 +26,11 @@ serve(async (req) => {
     );
 
     // 1. Get User and Relationship Context
+    const column = String(identifier).includes('@') ? 'email' : 'phone';
     const { data: userData } = await supabaseClient
       .from('users')
       .select('id, display_name, relationship_id')
-      .eq('phone', phone)
+      .eq(column, identifier)
       .single();
 
     if (!userData) throw new Error("User not found");

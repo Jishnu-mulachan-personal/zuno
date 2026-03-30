@@ -33,9 +33,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
     final state = ref.read(dashboardProvider);
     final insight = state.dailyInsight ?? 'No insight today.';
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
 
-    if (phone == null) {
+    if (identifier == null) {
       setState(() {
         _messages.add({'role': 'error', 'content': 'You must be logged in.'});
         _isLoading = false;
@@ -48,7 +50,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       final response = await Supabase.instance.client.functions.invoke(
         'chat_with_insight',
         body: {
-          'phone': phone,
+          'identifier': identifier,
           'message': text,
           'dailyInsight': insight,
           'chatHistory': _messages.where((m) => m['role'] != 'error').toList(),

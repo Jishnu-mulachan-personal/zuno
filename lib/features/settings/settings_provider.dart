@@ -38,8 +38,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// User A keeps the relationship row (for their history), but it becomes
   /// unpaired — partner_b_id = NULL.
   Future<bool> unpairPartner() async {
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null) {
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+
+    if (identifier == null) {
       _setError('Not authenticated');
       return false;
     }
@@ -52,7 +55,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       // Call the Edge Function to handle atomic unpairing (bypassing RLS)
       final response = await supabase.functions.invoke(
         'unpair_partner',
-        body: {'phone': phone},
+        body: {'identifier': identifier},
       );
 
       if (response.status != 200) {
@@ -78,8 +81,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// out from Firebase. The Firebase account itself is left intact since
   /// deleting it requires recent re-authentication.
   Future<bool> deleteAccount() async {
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null) {
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+
+    if (identifier == null) {
       _setError('Not authenticated');
       return false;
     }
@@ -90,10 +96,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       final supabase = Supabase.instance.client;
 
       // 1. Resolve user id
+      final column = identifier.contains('@') ? 'email' : 'phone';
       final userRow = await supabase
           .from('users')
           .select('id, relationship_id')
-          .eq('phone', phone)
+          .eq(column, identifier)
           .maybeSingle();
 
       if (userRow == null) {

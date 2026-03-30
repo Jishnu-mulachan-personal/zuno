@@ -75,12 +75,16 @@ class NotificationService {
 
   void _setupRealtimeNotifications() {
     final supabase = Supabase.instance.client;
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null) return;
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+    if (identifier == null) return;
+
+    final column = identifier.contains('@') ? 'email' : 'phone';
 
     // We can't filter deeply on a mapped relation, so we listen to all inserts
     // and just filter client-side based on the user's ID.
-    supabase.from('users').select('id').eq('phone', phone).maybeSingle().then((userRow) {
+    supabase.from('users').select('id').eq(column, identifier).maybeSingle().then((userRow) {
       if (userRow == null) return;
       final userId = userRow['id'];
 
@@ -121,14 +125,18 @@ class NotificationService {
       String? token = await _firebaseMessaging.getToken();
       if (token == null) return;
 
-      final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-      if (phone == null) return;
+      final sbUser = Supabase.instance.client.auth.currentUser;
+      final fbUser = fb.FirebaseAuth.instance.currentUser;
+      final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+      if (identifier == null) return;
+
+      final column = identifier.contains('@') ? 'email' : 'phone';
 
       final supabase = Supabase.instance.client;
       await supabase
           .from('users')
           .update({'fcm_token': token})
-          .eq('phone', phone);
+          .eq(column, identifier);
       debugPrint('Saved FCM token to database');
     } catch (e) {
       debugPrint('Error saving FCM token: $e');

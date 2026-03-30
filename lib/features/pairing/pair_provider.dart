@@ -56,8 +56,11 @@ class InviteNotifier extends StateNotifier<InviteState> {
 
   /// Generates a new one-time invite token, stores it in `partner_invites`.
   Future<void> generateToken() async {
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null) {
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+
+    if (identifier == null) {
       state = state.copyWith(error: 'Not authenticated');
       return;
     }
@@ -68,10 +71,11 @@ class InviteNotifier extends StateNotifier<InviteState> {
       final supabase = Supabase.instance.client;
 
       // Resolve current user's id
+      final column = identifier.contains('@') ? 'email' : 'phone';
       final userRow = await supabase
           .from('users')
           .select('id')
-          .eq('phone', phone)
+          .eq(column, identifier)
           .maybeSingle();
 
       if (userRow == null) {
@@ -124,8 +128,11 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
 
   /// Validates and claims `token`, linking both users under a shared relationship_id.
   Future<bool> claimToken(String token) async {
-    final phone = fb.FirebaseAuth.instance.currentUser?.phoneNumber;
-    if (phone == null) {
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    final fbUser = fb.FirebaseAuth.instance.currentUser;
+    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+
+    if (identifier == null) {
       state = const ClaimState(
           status: ClaimStatus.error, message: 'Not authenticated');
       return false;
@@ -166,10 +173,11 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
       }
 
       // 2. Resolve claimer's user id
+      final column = identifier.contains('@') ? 'email' : 'phone';
       final claimerRow = await supabase
           .from('users')
           .select('id, relationship_id')
-          .eq('phone', phone)
+          .eq(column, identifier)
           .maybeSingle();
 
       if (claimerRow == null) {

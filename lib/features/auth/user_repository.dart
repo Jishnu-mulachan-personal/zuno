@@ -15,26 +15,26 @@ class UserRepository {
     required DateTime marriedOn,
     required String relationshipDistance,
   }) async {
-    final user = _firebaseAuth.currentUser;
-    if (user == null) {
-      throw Exception('User is not authenticated via Firebase.');
+    final sbUser = _supabase.auth.currentUser;
+    final fbUser = _firebaseAuth.currentUser;
+
+    if (sbUser == null && fbUser == null) {
+      throw Exception('User is not authenticated.');
     }
 
-    final phone = user.phoneNumber;
-    if (phone == null || phone.isEmpty) {
-      throw Exception('No phone number found for authenticated user.');
-    }
+    final email = sbUser?.email ?? fbUser?.email;
+    final phone = fbUser?.phoneNumber;
 
-    // 1. Insert or update the user in the `users` table
+    // 1. Insert the user in the `users` table
     final userResponse = await _supabase
         .from('users')
-        .upsert({
-          'email': user.email, // May be null for phone auth
-          'phone': phone,
+        .insert({
+          if (email != null) 'email': email,
+          if (phone != null) 'phone': phone,
           'display_name': name,
           'date_of_birth': dateOfBirth.toIso8601String(),
           'occupation': occupation,
-        }, onConflict: 'phone')
+        })
         .select('id')
         .single();
 
@@ -61,9 +61,19 @@ class UserRepository {
     }).eq('id', userId);
   }
 
-  /// Returns true if the currently authenticated Firebase user already has
+  /// Returns true if the currently authenticated user already has
   /// a profile in the Supabase `users` table.
   Future<bool> isUserRegistered() async {
+    final sbUser = _supabase.auth.currentUser;
+    if (sbUser != null && sbUser.email != null) {
+      final response = await _supabase
+          .from('users')
+          .select('id')
+          .eq('email', sbUser.email!)
+          .maybeSingle();
+      if (response != null) return true;
+    }
+
     final phone = _firebaseAuth.currentUser?.phoneNumber;
     if (phone == null || phone.isEmpty) return false;
     final response = await _supabase

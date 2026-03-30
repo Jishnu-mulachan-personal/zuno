@@ -31,26 +31,33 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   redirect: (context, state) async {
     final firebaseUser = fb.FirebaseAuth.instance.currentUser;
+    final supabaseUser = Supabase.instance.client.auth.currentUser;
 
     // Not logged in → only allow access to auth routes.
-    if (firebaseUser == null) {
+    if (firebaseUser == null && supabaseUser == null) {
       if (_authRoutes.contains(state.matchedLocation)) return null;
       return '/';
     }
 
-    final phone = firebaseUser.phoneNumber;
     final isAuthOrOnboarding = _authRoutes.contains(state.matchedLocation) ||
         _onboardingRoutes.any((r) => state.matchedLocation.startsWith(r));
 
     // Already authenticated → check if profile exists in Supabase.
     if (isAuthOrOnboarding) {
-      if (phone == null || phone.isEmpty) return null;
-
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('id')
-          .eq('phone', phone)
-          .maybeSingle();
+      Map<String, dynamic>? response;
+      if (supabaseUser != null && supabaseUser.email != null) {
+        response = await Supabase.instance.client
+            .from('users')
+            .select('id')
+            .eq('email', supabaseUser.email!)
+            .maybeSingle();
+      } else if (firebaseUser != null && firebaseUser.phoneNumber != null && firebaseUser.phoneNumber!.isNotEmpty) {
+        response = await Supabase.instance.client
+            .from('users')
+            .select('id')
+            .eq('phone', firebaseUser.phoneNumber!)
+            .maybeSingle();
+      }
 
       if (response != null) {
         // Profile found → skip to dashboard.

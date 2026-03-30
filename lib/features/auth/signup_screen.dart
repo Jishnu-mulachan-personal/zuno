@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import '../../app_theme.dart';
 import 'auth_service.dart';
+import 'user_repository.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -48,6 +49,33 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       );
     } else {
       context.go('/otp', extra: phone);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    final success = await ref.read(authProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    
+    if (success) {
+      final isRegistered = await ref.read(userRepositoryProvider).isUserRegistered();
+      if (!mounted) return;
+      if (isRegistered) {
+        context.go('/dashboard');
+      } else {
+        context.go('/onboarding/register');
+      }
+    } else {
+      final err = ref.read(authProvider).error;
+      if (err != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err, style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: ZunoTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     }
   }
 
@@ -182,6 +210,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         onTap: auth.isLoading ? null : _sendOTP,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _OutlinedCta(
+                        label: 'Continue with Google',
+                        isLoading: auth.isLoading,
+                        onTap: auth.isLoading ? null : _signInWithGoogle,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -300,6 +337,47 @@ class _GradientCta extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
+                    letterSpacing: 2.2,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OutlinedCta extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final bool isLoading;
+
+  const _OutlinedCta({required this.label, this.onTap, this.isLoading = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(color: ZunoTheme.outlineVariant, width: 1.5),
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Center(
+          child: isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      color: ZunoTheme.primary, strokeWidth: 2),
+                )
+              : Text(
+                  label.toUpperCase(),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: ZunoTheme.onSurface,
                     letterSpacing: 2.2,
                   ),
                 ),
