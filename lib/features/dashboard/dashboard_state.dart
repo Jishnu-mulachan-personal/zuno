@@ -9,6 +9,7 @@ import '../cycle_tracker/cycle_data_model.dart';
 // ── User profile data loaded from Supabase ─────────────────────────────────
 
 class UserProfile {
+  final String id;
   final String displayName;
   final String? partnerName;
   final int streakDays;
@@ -16,6 +17,7 @@ class UserProfile {
   final CycleData? cycleData;
 
   const UserProfile({
+    required this.id,
     required this.displayName,
     this.partnerName,
     this.streakDays = 0,
@@ -31,7 +33,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
   final identifier = sbUser?.email ?? fbUser?.phoneNumber;
 
   if (identifier == null) {
-    return const UserProfile(displayName: 'Friend');
+    return const UserProfile(id: '', displayName: 'Friend');
   }
 
   final supabase = Supabase.instance.client;
@@ -45,7 +47,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       .eq(column, identifier)
       .maybeSingle();
 
-  if (userRow == null) return const UserProfile(displayName: 'Friend');
+  if (userRow == null) return const UserProfile(id: '', displayName: 'Friend');
 
   final displayName = (userRow['display_name'] as String?) ?? 'Friend';
   final relationshipId = userRow['relationship_id'];
@@ -106,6 +108,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
   }
 
   return UserProfile(
+    id: userId,
     displayName: displayName,
     partnerName: partnerName,
     streakDays: streakDays,

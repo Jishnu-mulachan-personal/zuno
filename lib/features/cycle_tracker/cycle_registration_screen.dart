@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../app_theme.dart';
 import '../dashboard/dashboard_state.dart';
 
@@ -55,7 +54,7 @@ class _CycleRegNotifier extends StateNotifier<_CycleRegState> {
   void setPeriodDuration(double v) =>
       state = state.copyWith(periodDuration: v.toInt());
 
-  Future<void> submit() async {
+  Future<void> submit(String userId) async {
     if (!state.isValid) {
       state = state.copyWith(error: 'Please select your last period date.');
       return;
@@ -64,26 +63,12 @@ class _CycleRegNotifier extends StateNotifier<_CycleRegState> {
 
     try {
       final supabase = Supabase.instance.client;
-      final fbUser = fb.FirebaseAuth.instance.currentUser;
-      final sbUser = supabase.auth.currentUser;
-      final identifier = sbUser?.email ?? fbUser?.phoneNumber;
-      
-      if (identifier == null) throw Exception('Not authenticated');
-      
-      final column = identifier.contains('@') ? 'email' : 'phone';
-      final userRow = await supabase
-          .from('users')
-          .select('id')
-          .eq(column, identifier)
-          .maybeSingle();
-          
-      if (userRow == null) throw Exception('Profile not found.');
-      final userId = userRow['id'];
 
       // Add to cycle_data table
       await supabase.from('cycle_data').upsert({
         'user_id': userId,
-        'last_period_date': state.lastPeriodDate!.toIso8601String().split('T')[0],
+        'last_period_date':
+            state.lastPeriodDate!.toIso8601String().split('T')[0],
         'cycle_length': state.cycleLength,
         'period_duration': state.periodDuration,
         'is_tracking': true,
@@ -145,9 +130,15 @@ class _CycleRegistrationScreenState
   }
 
   Future<void> _submit() async {
+    final profile = ref.read(userProfileProvider).valueOrNull;
+    if (profile == null) {
+      _showError('Profile not loaded. Please try again.');
+      return;
+    }
+
     final notifier = ref.read(_cycleRegProvider.notifier);
     try {
-      await notifier.submit();
+      await notifier.submit(profile.id);
       if (!mounted) return;
       final err = ref.read(_cycleRegProvider).error;
       if (err != null) {

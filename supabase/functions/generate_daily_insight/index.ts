@@ -25,7 +25,7 @@ serve(async (req) => {
     // 1. Fetch User Data & Relationship
     const { data: userData } = await supabaseClient
       .from('users')
-      .select('id, display_name, relationship_id')
+      .select('id, display_name, relationship_id, gender')
       .eq(column, identifier)
       .single();
     if (!userData) throw new Error("User not found");
@@ -53,92 +53,99 @@ serve(async (req) => {
       relSummary = rs;
     }
 
-    // 3. Fetch Logs for User and Partner
+    // 3. Fetch logs and cycle info for all relevant users
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-    let relevantIds = [userData.id];
+    let relevantUsers: any[] = [userData];
 
     if (relId) {
-      const { data: partners } = await supabaseClient.from('users').select('id').eq('relationship_id', relId);
-      if (partners) relevantIds = partners.map(p => p.id);
+      const { data: partners } = await supabaseClient
+        .from('users')
+        .select('id, display_name, gender')
+        .eq('relationship_id', relId);
+      if (partners) relevantUsers = partners;
     }
+    const relevantIds = relevantUsers.map((u: any) => u.id);
 
+    // Logs
     const { data: recentLogs } = await supabaseClient
       .from('daily_logs')
       .select('*, users(display_name)')
       .gte('log_date', twoDaysAgo)
       .in('user_id', relevantIds);
 
-    // 4. Decrypt Journal Notes (Precise Mirror of Flutter Logic)
-// 4. Decrypt Journal Notes
-const journalContext: string[] = [];
-const moodContext: string[] = [];
+    // Cycle Data
+    const { data: cycleRows } = await supabaseClient
+      .from('cycle_data')
+      .select('*')
+      .in('user_id', relevantIds);
 
-console.log(`[DEBUG] Total logs fetched: ${recentLogs?.length || 0}`);
+    // 4. Decrypt & Process Context
+    const journalContext: string[] = [];
+    const moodContext: string[] = [];
+    const cycleContext: string[] = [];
 
-if (recentLogs && recentLogs.length > 0) {
-  for (const log of recentLogs) {
-    const isOwner = log.user_id === userData.id;
-    const name = log.users?.display_name || "Unknown";
-    
-    // Always log the mood
-    moodContext.push(`${name} felt ${log.mood_emoji || 'neutral'} on ${log.log_date}`);
+    // Cycle Helper
+    const getPhase = (row: any) => {
+      const lastP = new Date(row.last_period_date);
+      const now = new Date();
+      const lastMid = new Date(lastP.getFullYear(), lastP.getMonth(), lastP.getDate());
+      const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diff = Math.floor((todayMid.getTime() - lastMid.getTime()) / (1000 * 60 * 60 * 24));
+      const length = row.cycle_length || 28;
+      const dur = row.period_duration || 5;
+      let day = diff + 1;
+      if (day > length && day > 0) day = (day - 1) % length + 1;
+      else if (day <= 0) day = 1;
 
-    console.log(`[DEBUG] Processing log for ${name}. Private: ${log.is_note_private}. Has Note: ${!!log.journal_note}`);
+      let phase = "Luteal";
+      const ov = length - 14; 
+      const fwS = ov - 5;
+      const fwE = ov + 1;
+      if (day <= dur) phase = "Menstruation";
+      else if (day < fwS) phase = "Follicular";
+      else if (day >= fwS && day <= fwE) phase = "Ovulation";
+      return { day, phase };
+    };
 
-    // Check permissions: (My note) OR (Partner note AND not private)
-    const canAccessNote = isOwner || log.is_note_private === false;
-
-    if (log.journal_note && canAccessNote) {
-      console.log(`[DEBUG] Entering decryption loop for ${name}...`);
-      try {
-        let bytesToDecrypt: number[] = [];
-        const jn = log.journal_note;
-
-        // LOG THE DATA TYPE: This is critical for debugging
-        console.log(`[DEBUG] Raw journal_note type: ${typeof jn}. Value starts with: ${String(jn).substring(0, 10)}`);
-
-        if (typeof jn === 'string' && jn.startsWith('\\x')) {
-          // 1. Convert Postgres Hex to ASCII String
-          const hexStr = jn.substring(2);
-          const asciiBytes = [];
-          for (let i = 0; i < hexStr.length; i += 2) {
-            asciiBytes.push(parseInt(hexStr.substring(i, i + 2), 16));
-          }
-          const innerStr = String.fromCharCode(...asciiBytes);
-          console.log(`[DEBUG] ASCII string decoded: ${innerStr.substring(0, 15)}...`);
-
-          // 2. Parse the stringified JSON array "[1,2,3]" if it exists
-          if (innerStr.trim().startsWith('[')) {
-            bytesToDecrypt = JSON.parse(innerStr);
-          } else {
-            bytesToDecrypt = asciiBytes;
-          }
-        } else if (Array.isArray(jn)) {
-          bytesToDecrypt = jn;
-        } else if (typeof jn === 'string') {
-          // If it's just a base64 or plain string
-          bytesToDecrypt = Array.from(new TextEncoder().encode(jn));
-        }
-
-        if (bytesToDecrypt.length > 0) {
-          const uint8 = new Uint8Array(bytesToDecrypt);
-          console.log(`[DEBUG] Byte length: ${uint8.length}. First byte: ${uint8[0]}`);
-
-          const decrypted = await decryptFernet(uint8, fernetKey!);
-          journalContext.push(`${name}'s Journal: ${decrypted}`);
-          console.log(`[DEBUG] Decryption Success for ${name}`);
-        } else {
-          console.log(`[DEBUG] No bytes extracted for ${name}`);
-        }
-
-      } catch (e) {
-        console.error(`[ERROR] Decryption process failed for ${name}: ${e.message}`);
+    if (cycleRows && cycleRows.length > 0) {
+      for (const row of cycleRows) {
+        const u = relevantUsers.find((user: any) => user.id === row.user_id);
+        const { day, phase } = getPhase(row);
+        cycleContext.push(`${u?.display_name || 'Partner'} is on Day ${day} (${phase} phase).`);
       }
-    } else {
-      console.log(`[DEBUG] Access denied or note empty for ${name}. isOwner: ${isOwner}, Private: ${log.is_note_private}`);
     }
-  }
-}
+
+    if (recentLogs && recentLogs.length > 0) {
+      for (const log of recentLogs) {
+        const isOwner = log.user_id === userData.id;
+        const name = log.users?.display_name || "Unknown";
+        moodContext.push(`${name} felt ${log.mood_emoji || 'neutral'} on ${log.log_date}`);
+
+        const canAccessNote = isOwner || log.is_note_private === false;
+        if (log.journal_note && canAccessNote) {
+          try {
+            let bytes: number[] = [];
+            const jn = log.journal_note;
+            if (typeof jn === 'string' && jn.startsWith('\\x')) {
+              const hex = jn.substring(2);
+              const b = [];
+              for (let i = 0; i < hex.length; i += 2) b.push(parseInt(hex.substring(i, i + 2), 16));
+              const inner = String.fromCharCode(...b);
+              if (inner.trim().startsWith('[')) bytes = JSON.parse(inner);
+              else bytes = b;
+            } else if (Array.isArray(jn)) bytes = jn;
+            else if (typeof jn === 'string') bytes = Array.from(new TextEncoder().encode(jn));
+
+            if (bytes.length > 0) {
+              const dec = await decryptFernet(new Uint8Array(bytes), fernetKey!);
+              journalContext.push(`${name}'s Journal: "${dec}"`);
+            }
+          } catch (e) {
+            console.error(`[ERROR] Decryption error for ${name}: ${e.message}`);
+          }
+        }
+      }
+    }
 
     // 5. Generate Insight
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
@@ -146,17 +153,21 @@ if (recentLogs && recentLogs.length > 0) {
 
     const insightPrompt = `
       You are Zuno, an empathetic AI relationship companion. 
-      User: ${userData.display_name}. 
-      History: ${userSummary?.summary_text || 'None'}.
+      Target User: ${userData.display_name}. 
+      History Summary: ${userSummary?.summary_text || 'None'}.
       Relationship History: ${relSummary?.summary_text || 'None'}.
       
-      Logs & Moods:
+      Biological/Cycle Context:
+      ${cycleContext.length > 0 ? cycleContext.join('\n') : 'No cycle tracking data available.'}
+
+      Recent Mood Data:
       ${moodContext.join('\n')}
       
-      Decrypted Journal Insights:
+      Recent Journal Context:
       ${journalContext.join('\n')}
 
-      Write a highly personalized, warm 2-sentence daily insight.
+      Task: Write a highly personalized, warm 2-sentence daily insight for ${userData.display_name}.
+      Instruction: If cycle data is present, consider how the current phase (e.g., Luteal sensitivity or Follicular energy) might influence their connection, stress, or needs. Be subtle, warm, and supportive.
     `;
 
     const insightResult = await model.generateContent(insightPrompt);
