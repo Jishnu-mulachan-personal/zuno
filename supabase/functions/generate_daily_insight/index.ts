@@ -14,6 +14,7 @@ serve(async (req) => {
   try {
     const { identifier } = await req.json();
     if (!identifier) throw new Error("Missing identifier");
+    
     const fernetKey = Deno.env.get('FERNET_KEY');
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -32,52 +33,28 @@ serve(async (req) => {
 
     const relId = userData.relationship_id;
 
-    // 2. Fetch Latest Memory Context
-    const { data: userSummary } = await supabaseClient
-      .from('ai_summary_user_session')
-      .select('summary_text')
-      .eq('user_id', userData.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // 2. Fetch Latest Memory Context (Running DB calls in parallel for speed)
+    const [userMemReq, relMemReq, partnersReq] = await Promise.all([
+      supabaseClient.from('ai_summary_user_session').select('summary_text').eq('user_id', userData.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      relId ? supabaseClient.from('ai_summary_relationship_session').select('summary_text').eq('relationship_id', relId).order('created_at', { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      relId ? supabaseClient.from('users').select('id, display_name, gender').eq('relationship_id', relId) : Promise.resolve({ data: [userData] })
+    ]);
 
-    let relSummary = null;
-    if (relId) {
-      const { data: rs } = await supabaseClient
-        .from('ai_summary_relationship_session')
-        .select('summary_text')
-        .eq('relationship_id', relId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      relSummary = rs;
-    }
-
-    // 3. Fetch logs and cycle info for all relevant users
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-    let relevantUsers: any[] = [userData];
-
-    if (relId) {
-      const { data: partners } = await supabaseClient
-        .from('users')
-        .select('id, display_name, gender')
-        .eq('relationship_id', relId);
-      if (partners) relevantUsers = partners;
-    }
+    const userSummary = userMemReq.data;
+    const relSummary = relMemReq.data;
+    const relevantUsers = partnersReq.data || [userData];
     const relevantIds = relevantUsers.map((u: any) => u.id);
 
-    // Logs
-    const { data: recentLogs } = await supabaseClient
-      .from('daily_logs')
-      .select('*, users(display_name)')
-      .gte('log_date', twoDaysAgo)
-      .in('user_id', relevantIds);
+    // 3. Fetch logs and cycle info
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    
+    const [logsReq, cycleReq] = await Promise.all([
+      supabaseClient.from('daily_logs').select('*, users(display_name)').gte('log_date', twoDaysAgo).in('user_id', relevantIds),
+      supabaseClient.from('cycle_data').select('*').in('user_id', relevantIds)
+    ]);
 
-    // Cycle Data
-    const { data: cycleRows } = await supabaseClient
-      .from('cycle_data')
-      .select('*')
-      .in('user_id', relevantIds);
+    const recentLogs = logsReq.data;
+    const cycleRows = cycleReq.data;
 
     // 4. Decrypt & Process Context
     const journalContext: string[] = [];
@@ -86,6 +63,7 @@ serve(async (req) => {
 
     // Cycle Helper
     const getPhase = (row: any) => {
+      // ... (Your exact cycle math logic stays the same here) ...
       const lastP = new Date(row.last_period_date);
       const now = new Date();
       const lastMid = new Date(lastP.getFullYear(), lastP.getMonth(), lastP.getDate());
@@ -124,6 +102,7 @@ serve(async (req) => {
         const canAccessNote = isOwner || log.is_note_private === false;
         if (log.journal_note && canAccessNote) {
           try {
+            // ... (Your exact fernet decryption logic stays the same here) ...
             let bytes: number[] = [];
             const jn = log.journal_note;
             if (typeof jn === 'string' && jn.startsWith('\\x')) {
@@ -141,7 +120,7 @@ serve(async (req) => {
               journalContext.push(`${name}'s Journal: "${dec}"`);
             }
           } catch (e) {
-            console.error(`[ERROR] Decryption error for ${name}: ${e.message}`);
+            console.error(`[ERROR] Decryption error: ${e.message}`);
           }
         }
       }
@@ -149,7 +128,12 @@ serve(async (req) => {
 
     // 5. Generate Insight
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    
+    // 🔥 FIX: Set standard Flash model and configure temperature for empathy
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      generationConfig: { temperature: 0.7 } 
+    });
 
     const insightPrompt = `
       You are Zuno, an empathetic AI relationship companion. 
@@ -157,7 +141,7 @@ serve(async (req) => {
       History Summary: ${userSummary?.summary_text || 'None'}.
       Relationship History: ${relSummary?.summary_text || 'None'}.
       
-      Biological/Cycle Context:
+      Biological Context:
       ${cycleContext.length > 0 ? cycleContext.join('\n') : 'No cycle tracking data available.'}
 
       Recent Mood Data:
@@ -167,34 +151,17 @@ serve(async (req) => {
       ${journalContext.join('\n')}
 
       Task: Write a highly personalized, warm 2-sentence daily insight for ${userData.display_name}.
-      Instruction: If cycle data is present, consider how the current phase (e.g., Luteal sensitivity or Follicular energy) might influence their connection, stress, or needs. Be subtle, warm, and supportive.
+      Instruction: If cycle data is present, consider how the current phase might influence their needs. Be supportive, not robotic.
     `;
 
     const insightResult = await model.generateContent(insightPrompt);
     const insightText = insightResult.response.text();
 
-    // 6. Memory Loop (Updating Tables)
-    const updateMemPrompt = (old: string, add: string) => 
-      `Update this summary with new insights: "${add}". Old: ${old}. Return concise bullet points.`;
-
-    const newUserMem = await model.generateContent(updateMemPrompt(userSummary?.summary_text || "", insightText));
+    // 🔥 FIX: Remove the synchronous memory updating from here. 
+    // Return the response to the user INSTANTLY so the app feels fast.
     
-    // User Summary Upsert
-    await supabaseClient.from('ai_summary_user_session').upsert({ 
-      user_id: userData.id, 
-      summary_text: newUserMem.response.text(),
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
-
-    // Relationship Summary Upsert
-    if (relId) {
-      const newRelMem = await model.generateContent(updateMemPrompt(relSummary?.summary_text || "", insightText));
-      await supabaseClient.from('ai_summary_relationship_session').upsert({ 
-        relationship_id: relId, 
-        summary_text: newRelMem.response.text(),
-        updated_at: new Date().toISOString() 
-      }, { onConflict: 'relationship_id' });
-    }
+    // (Optional Future Step): You can trigger a background edge function here to update memory, 
+    // or just rely on a weekly database cron job to generate the `ai_summary_user_session`.
 
     return new Response(JSON.stringify({ insight: insightText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
