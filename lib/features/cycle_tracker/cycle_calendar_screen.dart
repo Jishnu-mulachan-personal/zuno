@@ -120,6 +120,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             const SizedBox(height: 8),
             _LegendItem(color: Colors.green.shade400, label: 'Fertile Window'),
             const SizedBox(height: 8),
+            _LegendItem(color: Colors.green.shade200, label: 'Maybe Fertile'),
+            const SizedBox(height: 8),
             const _LegendItem(color: Colors.red, label: 'Predicted Period', isDot: true),
           ],
         ),
@@ -127,10 +129,24 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildCalendarDay(DateTime day, CycleData cycle) {
+  Widget _buildCalendarDay(DateTime day, CycleData cycle, {bool isToday = false}) {
+    final type = cycle.getDayType(day);
+    final prevType = cycle.getDayType(day.subtract(const Duration(days: 1)));
+    final nextType = cycle.getDayType(day.add(const Duration(days: 1)));
+
+    final isConnectedLeft =
+        type != 'normal' && type != 'next_period' && prevType == type;
+    final isConnectedRight =
+        type != 'normal' && type != 'next_period' && nextType == type;
+
     return Container(
-      margin: const EdgeInsets.all(4.0),
-      decoration: _getBoxDecoration(day, cycle),
+      margin: EdgeInsets.only(
+        top: 4,
+        bottom: 4,
+        left: isConnectedLeft ? 0 : 4,
+        right: isConnectedRight ? 0 : 4,
+      ),
+      decoration: _getBoxDecoration(day, cycle, isToday: isToday),
       alignment: Alignment.center,
       child: Stack(
         alignment: Alignment.center,
@@ -138,11 +154,11 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           Text(
             '${day.day}',
             style: GoogleFonts.plusJakartaSans(
-              color: _getTextColor(day, cycle),
-              fontWeight: FontWeight.w500,
+              color: _getTextColor(day, cycle, isToday: isToday),
+              fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
-          if (cycle.getDayType(day) == 'next_period')
+          if (type == 'next_period')
             Positioned(
               bottom: 4,
               child: Container(
@@ -175,21 +191,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   }
 
   Widget _buildToday(DateTime day, CycleData cycle) {
-    return Container(
-      margin: const EdgeInsets.all(4.0),
-      decoration: BoxDecoration(
-        border: Border.all(color: ZunoTheme.primary, width: 2),
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        '${day.day}',
-        style: GoogleFonts.plusJakartaSans(
-          color: ZunoTheme.onSurface,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
+    return _buildCalendarDay(day, cycle, isToday: true);
   }
 
   Widget _buildOutsideDay(DateTime day) {
@@ -206,36 +208,61 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   }
 
   BoxDecoration? _getBoxDecoration(DateTime day, CycleData cycle,
-      {bool isSelected = false}) {
-    final type = cycle.getDayType(day);
+      {bool isSelected = false, bool isToday = false}) {
     if (isSelected) {
       return const BoxDecoration(
         color: ZunoTheme.primary,
         shape: BoxShape.circle,
       );
     }
-    
-    // Solid colors for background
-    if (type == 'period') {
-      return BoxDecoration(
-        color: Colors.red.shade400.withOpacity(0.8),
-        shape: BoxShape.circle,
-      );
-    } else if (type == 'fertile') {
-      return BoxDecoration(
-        color: Colors.green.shade400.withOpacity(0.8),
-        shape: BoxShape.circle,
-      );
+
+    final type = cycle.getDayType(day);
+    if (type == 'normal' || type == 'next_period') {
+      if (isToday) {
+        return BoxDecoration(
+          border: Border.all(color: ZunoTheme.primary, width: 2),
+          shape: BoxShape.circle,
+        );
+      }
+      return null;
     }
-    return null;
+
+    final prevType = cycle.getDayType(day.subtract(const Duration(days: 1)));
+    final nextType = cycle.getDayType(day.add(const Duration(days: 1)));
+
+    final isStart = prevType != type;
+    final isEnd = nextType != type;
+
+    Color color;
+    if (type == 'period') {
+      color = Colors.red.shade400.withOpacity(0.8);
+    } else if (type == 'fertile') {
+      color = Colors.green.shade400.withOpacity(0.8);
+    } else if (type == 'maybe_fertile') {
+      color = Colors.green.shade200.withOpacity(0.6);
+    } else {
+      return null;
+    }
+
+    return BoxDecoration(
+      color: color,
+      border: isToday ? Border.all(color: Colors.black, width: 2) : null,
+      borderRadius: BorderRadius.horizontal(
+        left: isStart ? const Radius.circular(20) : Radius.zero,
+        right: isEnd ? const Radius.circular(20) : Radius.zero,
+      ),
+    );
   }
 
-  Color _getTextColor(DateTime day, CycleData cycle) {
+  Color _getTextColor(DateTime day, CycleData cycle, {bool isToday = false}) {
     final type = cycle.getDayType(day);
     if (type == 'period' || type == 'fertile') {
-      return Colors.white; // Ensure contrast against colored boxes
+      return Colors.white;
     }
-    return ZunoTheme.onSurface;
+    if (type == 'maybe_fertile') {
+      return Colors.green.shade900;
+    }
+    return isToday ? ZunoTheme.primary : ZunoTheme.onSurface;
   }
 }
 

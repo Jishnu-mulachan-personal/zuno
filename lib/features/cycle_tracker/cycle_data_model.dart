@@ -123,9 +123,14 @@ class CycleData {
     final ovForTarget = nextPForTarget.subtract(const Duration(days: 14));
     final fwStart = ovForTarget.subtract(const Duration(days: 5));
     final fwEnd = ovForTarget.add(const Duration(days: 1));
+    
+    // Maybe fertile window (2 days before and 1 day after main window)
+    final maybeFwStart = fwStart.subtract(const Duration(days: 2));
+    final maybeFwEnd = fwEnd.add(const Duration(days: 1));
 
     if (dayOfCycle <= periodDuration) return 'period';
     if (!t.isBefore(fwStart) && !t.isAfter(fwEnd)) return 'fertile';
+    if (!t.isBefore(maybeFwStart) && !t.isAfter(maybeFwEnd)) return 'maybe_fertile';
     if (t.isAtSameMomentAs(nextPForTarget)) return 'next_period';
 
     return 'normal';
