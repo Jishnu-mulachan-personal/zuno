@@ -136,6 +136,44 @@ class CycleData {
     return 'normal';
   }
 
+  /// Whether to show the confirmation card (1 day before, day of, or up to 5 days late)
+  bool get shouldShowConfirmationCard {
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final nextPMidnight =
+        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
+
+    final diff = todayMidnight.difference(nextPMidnight).inDays;
+
+    return diff >= -1 && diff <= 5;
+  }
+
+  /// User-friendly text for the confirmation card
+  String get confirmationCardTitle {
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final nextPMidnight =
+        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
+
+    final diff = todayMidnight.difference(nextPMidnight).inDays;
+
+    if (diff == -1) return "Expected period starts tomorrow";
+    if (diff == 0) return "Expected period starts today";
+    if (diff > 0) {
+      return "Your cycle is delayed by $diff ${diff == 1 ? 'day' : 'days'}";
+    }
+    return "Is your period late?";
+  }
+
+  /// Whether the period is currently considered late
+  bool get isPeriodDelayed {
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final nextPMidnight =
+        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
+    return todayMidnight.isAfter(nextPMidnight);
+  }
+
   factory CycleData.fromMap(Map<String, dynamic> map) {
     return CycleData(
       id: map['id'],

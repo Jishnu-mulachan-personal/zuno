@@ -267,6 +267,31 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       return false;
     }
   }
+
+  Future<void> updateCycleStartDate(String userId, DateTime date) async {
+    final supabase = Supabase.instance.client;
+    final dateStr = date.toIso8601String().split('T')[0];
+    try {
+      // 1. Update the prediction anchor
+      await supabase.from('cycle_data').upsert({
+        'user_id': userId,
+        'last_period_date': dateStr,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      // 2. Log to history table for future graphing
+      // Note: UPSERT here handles the case where user changes their mind on the same day
+      await supabase.from('cycle_periods').upsert({
+        'user_id': userId,
+        'start_date': dateStr,
+      }, onConflict: 'user_id, start_date');
+
+      // Refresh the profile to update cycle calculations
+      ref.invalidate(userProfileProvider);
+    } catch (e) {
+      debugPrint('[updateCycleStartDate] Error: $e');
+    }
+  }
 }
 
 final dashboardProvider =

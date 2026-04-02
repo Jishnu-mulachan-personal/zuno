@@ -64,16 +64,23 @@ class _CycleRegNotifier extends StateNotifier<_CycleRegState> {
     try {
       final supabase = Supabase.instance.client;
 
-      // Add to cycle_data table
+      final dateStr = state.lastPeriodDate!.toIso8601String().split('T')[0];
+
+      // 1. Add to cycle_data table (prediction anchor)
       await supabase.from('cycle_data').upsert({
         'user_id': userId,
-        'last_period_date':
-            state.lastPeriodDate!.toIso8601String().split('T')[0],
+        'last_period_date': dateStr,
         'cycle_length': state.cycleLength,
         'period_duration': state.periodDuration,
         'is_tracking': true,
         'updated_at': DateTime.now().toIso8601String(),
       });
+
+      // 2. Add to cycle_periods (historical log)
+      await supabase.from('cycle_periods').upsert({
+        'user_id': userId,
+        'start_date': dateStr,
+      }, onConflict: 'user_id, start_date');
 
       state = state.copyWith(isLoading: false);
       // Invalidate dashboard provider so it fetches the new cycle data
@@ -103,14 +110,15 @@ class CycleRegistrationScreen extends ConsumerStatefulWidget {
 class _CycleRegistrationScreenState
     extends ConsumerState<CycleRegistrationScreen> {
   Future<void> _pickDate() async {
-    final now = DateTime.now();
+    final today = DateTime.now();
+    final now = DateTime(today.year, today.month, today.day);
     final first = now.subtract(const Duration(days: 90));
     final current = ref.read(_cycleRegProvider).lastPeriodDate ?? now;
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: current,
-      firstDate: first,
+      initialDate: current.isAfter(now) ? now : current,
+      firstDate: first.isAfter(current) ? current : first,
       lastDate: now,
       builder: (ctx, child) => Theme(
         data: ThemeData.light().copyWith(

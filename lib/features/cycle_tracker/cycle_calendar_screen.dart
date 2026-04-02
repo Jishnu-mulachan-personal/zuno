@@ -18,6 +18,43 @@ class CycleCalendarScreen extends ConsumerStatefulWidget {
 class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  bool _isSnoozed = false;
+
+  Future<void> _handlePeriodConfirmation(
+      String userId, CycleData cycle, bool started) async {
+    if (!started) {
+      setState(() => _isSnoozed = true);
+      return;
+    }
+
+    final today = DateTime.now();
+    final now = DateTime(today.year, today.month, today.day);
+    final nextP =
+        DateTime(cycle.nextPeriodDate.year, cycle.nextPeriodDate.month, cycle.nextPeriodDate.day);
+    final initial = nextP.isAfter(now) ? now : nextP;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: now.subtract(const Duration(days: 90)), // Allow up to 90 days back
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: ThemeData.light().copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: ZunoTheme.primary,
+            onPrimary: Colors.white,
+            surface: ZunoTheme.surfaceContainerLowest,
+            onSurface: ZunoTheme.onSurface,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null && mounted) {
+      ref.read(dashboardProvider.notifier).updateCycleStartDate(userId, picked);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,62 +83,189 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
       ),
       body: cycleData == null
           ? const Center(child: Text('No cycle data available.'))
-          : Column(
-              children: [
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: TableCalendar(
-                    firstDay: DateTime.utc(2020, 10, 16),
-                    lastDay: DateTime.utc(2030, 3, 14),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
+                    _buildConfirmationCard(profile!.id, cycleData),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: TableCalendar(
+                      firstDay: DateTime.utc(2020, 10, 16),
+                      lastDay: DateTime.utc(2030, 3, 14),
+                      focusedDay: _focusedDay,
+                      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                      onDaySelected: (selectedDay, focusedDay) {
+                        setState(() {
+                          _selectedDay = selectedDay;
+                          _focusedDay = focusedDay;
+                        });
+                      },
+                      onPageChanged: (focusedDay) {
                         _focusedDay = focusedDay;
-                      });
-                    },
-                    onPageChanged: (focusedDay) {
-                      _focusedDay = focusedDay;
-                    },
-                    headerStyle: HeaderStyle(
-                      formatButtonVisible: false,
-                      titleCentered: true,
-                      titleTextStyle: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: ZunoTheme.onSurface,
+                      },
+                      headerStyle: HeaderStyle(
+                        formatButtonVisible: false,
+                        titleCentered: true,
+                        titleTextStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurface,
+                        ),
                       ),
-                    ),
-                    calendarBuilders: CalendarBuilders(
-                      defaultBuilder: (context, day, focusedDay) =>
-                          _buildCalendarDay(day, cycleData),
-                      selectedBuilder: (context, day, focusedDay) =>
-                          _buildSelectedDay(day, cycleData),
-                      todayBuilder: (context, day, focusedDay) =>
-                          _buildToday(day, cycleData),
-                      outsideBuilder: (context, day, focusedDay) =>
-                          _buildOutsideDay(day),
-                    ),
-                    daysOfWeekStyle: DaysOfWeekStyle(
-                      weekdayStyle: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: ZunoTheme.onSurfaceVariant,
+                      calendarBuilders: CalendarBuilders(
+                        defaultBuilder: (context, day, focusedDay) =>
+                            _buildCalendarDay(day, cycleData),
+                        selectedBuilder: (context, day, focusedDay) =>
+                            _buildSelectedDay(day, cycleData),
+                        todayBuilder: (context, day, focusedDay) =>
+                            _buildToday(day, cycleData),
+                        outsideBuilder: (context, day, focusedDay) =>
+                            _buildOutsideDay(day),
                       ),
-                      weekendStyle: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                      daysOfWeekStyle: DaysOfWeekStyle(
+                        weekdayStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurfaceVariant,
+                        ),
+                        weekendStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 32),
-                _buildLegend(),
-              ],
+                  const SizedBox(height: 32),
+                  _buildLegend(),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
+    );
+  }
+
+  Widget _buildConfirmationCard(String userId, CycleData cycle) {
+    final bool isDelayed = cycle.isPeriodDelayed;
+    final List<Color> gradientColors = isDelayed
+        ? [
+            const Color(0xFFD32F2F).withOpacity(0.9), // Material Red 700
+            const Color(0xFFB71C1C).withOpacity(0.8), // Material Red 900
+          ]
+        : [
+            ZunoTheme.primary.withOpacity(0.9),
+            ZunoTheme.primaryContainer.withOpacity(0.8),
+          ];
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: ZunoTheme.primary.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isDelayed ? Icons.warning_amber_rounded : Icons.water_drop,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  cycle.confirmationCardTitle,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Keep your predictions accurate by logging the exact start date of your cycle.',
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () =>
+                      _handlePeriodConfirmation(userId, cycle, true),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: ZunoTheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Yes, started',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextButton(
+                  onPressed: () =>
+                      _handlePeriodConfirmation(userId, cycle, false),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: Colors.white.withOpacity(0.5)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Not yet',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

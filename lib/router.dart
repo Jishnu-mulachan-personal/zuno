@@ -41,30 +41,38 @@ final GoRouter appRouter = GoRouter(
       return '/';
     }
 
+    // 2. Check if profile exists in Supabase for authenticated users
+    Map<String, dynamic>? userRow;
+    if (supabaseUser != null && supabaseUser.email != null) {
+      userRow = await Supabase.instance.client
+          .from('users')
+          .select('id')
+          .eq('email', supabaseUser.email!)
+          .maybeSingle();
+    } else if (firebaseUser != null &&
+        firebaseUser.phoneNumber != null &&
+        firebaseUser.phoneNumber!.isNotEmpty) {
+      userRow = await Supabase.instance.client
+          .from('users')
+          .select('id')
+          .eq('phone', firebaseUser.phoneNumber!)
+          .maybeSingle();
+    }
+
+    final hasProfile = userRow != null;
+
     final isAuthOrOnboarding = _authRoutes.contains(state.matchedLocation) ||
         _onboardingRoutes.any((r) => state.matchedLocation.startsWith(r));
 
-    // Already authenticated → check if profile exists in Supabase.
     if (isAuthOrOnboarding) {
-      Map<String, dynamic>? response;
-      if (supabaseUser != null && supabaseUser.email != null) {
-        response = await Supabase.instance.client
-            .from('users')
-            .select('id')
-            .eq('email', supabaseUser.email!)
-            .maybeSingle();
-      } else if (firebaseUser != null && firebaseUser.phoneNumber != null && firebaseUser.phoneNumber!.isNotEmpty) {
-        response = await Supabase.instance.client
-            .from('users')
-            .select('id')
-            .eq('phone', firebaseUser.phoneNumber!)
-            .maybeSingle();
-      }
+      // Skip onboarding if profile already exists
+      if (hasProfile) return '/dashboard';
+      return null;
+    }
 
-      if (response != null) {
-        // Profile found → skip to dashboard.
-        return '/dashboard';
-      }
+    // Authenticated on a main route but no profile -> Force registration
+    if (!hasProfile) {
+      return '/onboarding/register';
     }
 
     return null;
