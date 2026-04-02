@@ -27,12 +27,18 @@ class UserProfile {
 }
 
 final userProfileProvider = FutureProvider<UserProfile>((ref) async {
+  debugPrint('[userProfileProvider] Start fetching profile...');
   final sbUser = Supabase.instance.client.auth.currentUser;
   final fbUser = fb.FirebaseAuth.instance.currentUser;
   
-  final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+  debugPrint('[userProfileProvider] sbUser: ${sbUser?.id}, email: ${sbUser?.email}');
+  debugPrint('[userProfileProvider] fbUser: ${fbUser?.uid}, email: ${fbUser?.email}, phone: ${fbUser?.phoneNumber}');
+
+  final identifier = sbUser?.email ?? fbUser?.email ?? fbUser?.phoneNumber;
+  debugPrint('[userProfileProvider] Resolved identifier: $identifier');
 
   if (identifier == null) {
+    debugPrint('[userProfileProvider] No identifier found, returning default');
     return const UserProfile(id: '', displayName: 'Friend');
   }
 
@@ -40,81 +46,104 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
 
   final column = identifier.contains('@') ? 'email' : 'phone';
 
-  // Fetch current user + their relationship
-  final userRow = await supabase
-      .from('users')
-      .select('id, display_name, relationship_id, gender')
-      .eq(column, identifier)
-      .maybeSingle();
-
-  if (userRow == null) return const UserProfile(id: '', displayName: 'Friend');
-
-  final displayName = (userRow['display_name'] as String?) ?? 'Friend';
-  final relationshipId = userRow['relationship_id'];
-  final gender = userRow['gender'] as String?;
-  final userId = userRow['id'];
-
-  CycleData? cycleData;
-  if (gender == 'Female') {
-    final cycleRow = await supabase
-        .from('cycle_data')
-        .select('*')
-        .eq('user_id', userId)
+  try {
+    debugPrint('[userProfileProvider] Querying users table by $column = $identifier');
+    // Fetch current user + their relationship
+    final userRow = await supabase
+        .from('users')
+        .select('id, display_name, relationship_id, gender')
+        .eq(column, identifier.trim())
         .maybeSingle();
-    
-    if (cycleRow != null) {
-      cycleData = CycleData.fromMap(cycleRow);
+
+    if (userRow == null) {
+      debugPrint('[userProfileProvider] userRow is NULL (User not found in DB)');
+      return const UserProfile(id: '', displayName: 'Friend');
     }
-  }
 
-  String? partnerName;
-  int streakDays = 0;
+    debugPrint('[userProfileProvider] userRow found: $userRow');
 
-  if (relationshipId != null) {
+    final displayName = (userRow['display_name'] as String?) ?? 'Friend';
+    final relationshipId = userRow['relationship_id'];
+    final gender = userRow['gender'] as String?;
     final userId = userRow['id'];
 
-    // Fetch partner (the other person in the relationship)
-    final partnerRow = await supabase
-        .from('users')
-        .select('display_name')
-        .eq('relationship_id', relationshipId)
-        .neq('id', userId)
-        .maybeSingle();
-
-    partnerName = partnerRow?['display_name'] as String?;
-
-    // Streak: count consecutive days with a daily_logs entry
-    final logs = await supabase
-        .from('daily_logs')
-        .select('log_date')
-        .eq('user_id', userId)
-        .order('log_date', ascending: false)
-        .limit(60);
-
-    if (logs is List && logs.isNotEmpty) {
-      final today = DateTime.now();
-      var streak = 0;
-      for (var i = 0; i < logs.length; i++) {
-        final dt = DateTime.parse(logs[i]['log_date'] as String);
-        final diff = today.difference(dt).inDays;
-        if (diff == i) {
-          streak++;
-        } else {
-          break;
-        }
+    CycleData? cycleData;
+    if (gender == 'Female') {
+      debugPrint('[userProfileProvider] Fetching cycle data for userId: $userId');
+      final cycleRow = await supabase
+          .from('cycle_data')
+          .select('*')
+          .eq('user_id', userId)
+          .order('updated_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      
+      if (cycleRow != null) {
+        cycleData = CycleData.fromMap(cycleRow);
+        debugPrint('[userProfileProvider] Cycle data found: ${cycleData.currentCycleDay}');
+      } else {
+        debugPrint('[userProfileProvider] No cycle data row found');
       }
-      streakDays = streak;
     }
-  }
 
-  return UserProfile(
-    id: userId,
-    displayName: displayName,
-    partnerName: partnerName,
-    streakDays: streakDays,
-    gender: gender,
-    cycleData: cycleData,
-  );
+    String? partnerName;
+    int streakDays = 0;
+
+    if (relationshipId != null) {
+      debugPrint('[userProfileProvider] Fetching partner for relationship: $relationshipId');
+      // Fetch partner (the other person in the relationship)
+      final partnerRow = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('relationship_id', relationshipId)
+          .neq('id', userId)
+          .limit(1) // Safety
+          .maybeSingle();
+
+      partnerName = partnerRow?['display_name'] as String?;
+      debugPrint('[userProfileProvider] Partner found: $partnerName');
+
+      // Streak calculation...
+      final logs = await supabase
+          .from('daily_logs')
+          .select('log_date')
+          .eq('user_id', userId)
+          .order('log_date', ascending: false)
+          .limit(60);
+
+      if (logs is List && logs.isNotEmpty) {
+        final today = DateTime.now();
+        var streak = 0;
+        for (var i = 0; i < logs.length; i++) {
+          final dt = DateTime.parse(logs[i]['log_date'] as String);
+          final diff = today.difference(dt).inDays;
+          if (diff == i) {
+            streak++;
+          } else {
+            break;
+          }
+        }
+        streakDays = streak;
+      }
+    }
+
+    debugPrint('[userProfileProvider] Profile fetch complete.');
+    return UserProfile(
+      id: userId,
+      displayName: displayName,
+      partnerName: partnerName,
+      streakDays: streakDays,
+      gender: gender,
+      cycleData: cycleData,
+    );
+  } catch (e) {
+    debugPrint('[userProfileProvider] ERROR: $e');
+    if (e is PostgrestException) {
+      debugPrint('[userProfileProvider] PostgrestException DETAILS: ${e.message}, ${e.details}, ${e.hint}');
+    }
+    // Re-throw so the FutureProvider enters an error state that the UI can handle
+    rethrow;
+  }
 });
 
 // ── Dashboard interaction state ─────────────────────────────────────────────
@@ -273,11 +302,13 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     final dateStr = date.toIso8601String().split('T')[0];
     try {
       // 1. Update the prediction anchor
-      await supabase.from('cycle_data').upsert({
-        'user_id': userId,
-        'last_period_date': dateStr,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await supabase
+          .from('cycle_data')
+          .update({
+            'last_period_date': dateStr,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('user_id', userId);
 
       // 2. Log to history table for future graphing
       // Note: UPSERT here handles the case where user changes their mind on the same day

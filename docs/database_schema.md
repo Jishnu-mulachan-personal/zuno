@@ -11,6 +11,7 @@ CREATE TABLE users (
     display_name    TEXT,
     date_of_birth   DATE,        -- Added from Registration
     occupation      TEXT,        -- Added from Registration
+    gender          TEXT,        -- Added from Registration
     relationship_id UUID REFERENCES relationships(id),
     created_at      TIMESTAMPTZ DEFAULT now()
 );
@@ -35,7 +36,7 @@ CREATE TABLE relationships (
 ```sql
 CREATE TABLE daily_logs (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id          UUID NOT NULL REFERENCES users(id),
+    user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     log_date         DATE NOT NULL DEFAULT CURRENT_DATE,
     mood_emoji       TEXT,
     connection_felt  BOOLEAN,
@@ -52,7 +53,7 @@ CREATE TABLE daily_logs (
 ```sql
 CREATE TABLE cycle_data (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id          UUID NOT NULL REFERENCES users(id),
+    user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     last_period_date DATE,
     cycle_length     INTEGER DEFAULT 28,
     is_tracking      BOOLEAN DEFAULT FALSE,
@@ -65,7 +66,7 @@ CREATE TABLE cycle_data (
 ```sql
 CREATE TABLE ai_summaries (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id       UUID NOT NULL REFERENCES users(id),
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     summary_text  TEXT,
     week_start    DATE,
     generated_at  TIMESTAMPTZ DEFAULT now()

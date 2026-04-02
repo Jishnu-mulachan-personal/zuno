@@ -74,7 +74,7 @@ class _CycleRegNotifier extends StateNotifier<_CycleRegState> {
         'period_duration': state.periodDuration,
         'is_tracking': true,
         'updated_at': DateTime.now().toIso8601String(),
-      });
+      }, onConflict: 'user_id');
 
       // 2. Add to cycle_periods (historical log)
       await supabase.from('cycle_periods').upsert({

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
+import '../cycle_tracker/cycle_data_model.dart';
 import 'dashboard_state.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -12,46 +13,114 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardProvider);
     final profileAsync = ref.watch(userProfileProvider);
-    final profile = profileAsync.valueOrNull;
-    final hasParter = profile?.partnerName != null;
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
-      body: Stack(
-        children: [
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              _DashboardAppBar(
-                userName: profile?.displayName ?? 'Friend',
-              ),
-              SliverPadding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _DailyCheckInSection(
-                      state: state,
-                      ref: ref,
-                      partnerName: profile?.partnerName,
-                    ),
-                    const SizedBox(height: 32),
-                    _StatusGrid(
-                      state: state,
-                      streakDays: profile?.streakDays ?? 0,
-                      partnerName: profile?.partnerName,
-                    ),
-                    const SizedBox(height: 32),
-                    const _DynamicCardsSection(),
-                    const SizedBox(height: 120),
-                  ]),
-                ),
-              ),
-            ],
-          ),
-          _BottomNavBar(hasParter: hasParter),
-        ],
+      body: profileAsync.when(
+        loading: () => _buildDashboard(
+          context,
+          ref,
+          state,
+          userName: '...', // Loading placeholder
+          partnerName: null,
+          gender: null,
+          streakDays: 0,
+          cycleData: null,
+          isLoading: true,
+        ),
+        error: (err, stack) {
+          // If profile fetch fails, we show the dashboard with default values
+          // but maybe a small error indicator or retry button.
+          debugPrint('[DashboardScreen] Profile error: $err');
+          return _buildDashboard(
+            context,
+            ref,
+            state,
+            userName: 'Friend',
+            partnerName: null,
+            gender: null,
+            streakDays: 0,
+            cycleData: null,
+            error: err.toString(),
+          );
+        },
+        data: (profile) => _buildDashboard(
+          context,
+          ref,
+          state,
+          userName: profile.displayName,
+          partnerName: profile.partnerName,
+          gender: profile.gender,
+          streakDays: profile.streakDays,
+          cycleData: profile.cycleData,
+          hasPartner: profile.partnerName != null,
+        ),
       ),
+    );
+  }
+
+  Widget _buildDashboard(
+    BuildContext context,
+    WidgetRef ref,
+    DashboardState state, {
+    required String userName,
+    String? partnerName,
+    String? gender,
+    required int streakDays,
+    CycleData? cycleData,
+    bool hasPartner = false,
+    bool isLoading = false,
+    String? error,
+  }) {
+    return Stack(
+      children: [
+        CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            _DashboardAppBar(
+              userName: userName,
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _DailyCheckInSection(
+                    state: state,
+                    ref: ref,
+                    partnerName: partnerName,
+                  ),
+                  const SizedBox(height: 32),
+                  _StatusGrid(
+                    state: state,
+                    streakDays: streakDays,
+                    partnerName: partnerName,
+                  ),
+                  const SizedBox(height: 32),
+                  _DynamicCardsSection(
+                    gender: gender,
+                    cycleData: cycleData,
+                    isLoading: isLoading,
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Text(
+                        'Unable to load full profile data.',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: ZunoTheme.error.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 120),
+                ]),
+              ),
+            ),
+          ],
+        ),
+        _BottomNavBar(hasParter: hasPartner),
+      ],
     );
   }
 }
@@ -581,13 +650,19 @@ class _StatusCard extends StatelessWidget {
 // ── Dynamic Cards ───────────────────────────────────────────────────────────
 
 class _DynamicCardsSection extends ConsumerWidget {
-  const _DynamicCardsSection();
+  final String? gender;
+  final CycleData? cycleData;
+  final bool isLoading;
+
+  const _DynamicCardsSection({
+    this.gender,
+    this.cycleData,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardProvider);
-    final profileAsync = ref.watch(userProfileProvider);
-    final profile = profileAsync.valueOrNull;
 
     return Column(
       children: [
@@ -664,8 +739,8 @@ class _DynamicCardsSection extends ConsumerWidget {
               ],
             ),
           ),
-        if (profile?.gender == 'Female')
-          if (profile?.cycleData == null) ...[
+        if (gender == 'Female')
+          if (cycleData == null) ...[
             const SizedBox(height: 16),
             GestureDetector(
               onTap: () => context.push('/cycle_registration'),
@@ -682,12 +757,17 @@ class _DynamicCardsSection extends ConsumerWidget {
               child: _DashboardSmartCard(
                 icon: Icons.calendar_month_rounded,
                 tag: 'CYCLE TRACKER',
-                title: 'Day ${profile!.cycleData!.currentCycleDay}',
-                subtitle: profile.cycleData!.phaseSubtitle,
+                title: 'Day ${cycleData!.currentCycleDay}',
+                subtitle: cycleData!.phaseSubtitle,
                 accentColor: ZunoTheme.tertiary,
               ),
             ),
           ],
+        if (isLoading && gender == null) 
+          const Padding(
+            padding: EdgeInsets.only(top: 16),
+            child: _LoadingSmartCard(),
+          ),
         const SizedBox(height: 16),
         const _PromoCard(
           icon: Icons.child_care_rounded,
@@ -776,6 +856,68 @@ class _DashboardSmartCard extends StatelessWidget {
             ),
             child:
                 Icon(Icons.auto_awesome_rounded, color: accentColor, size: 22),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingSmartCard extends StatelessWidget {
+  const _LoadingSmartCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: ZunoTheme.onSurface.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: 140,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: ZunoTheme.onSurface.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 100,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: ZunoTheme.onSurface.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ZunoTheme.onSurface.withOpacity(0.05),
+            ),
           ),
         ],
       ),

@@ -49,14 +49,16 @@ final GoRouter appRouter = GoRouter(
           .select('id')
           .eq('email', supabaseUser.email!)
           .maybeSingle();
-    } else if (firebaseUser != null &&
-        firebaseUser.phoneNumber != null &&
-        firebaseUser.phoneNumber!.isNotEmpty) {
-      userRow = await Supabase.instance.client
-          .from('users')
-          .select('id')
-          .eq('phone', firebaseUser.phoneNumber!)
-          .maybeSingle();
+    } else if (firebaseUser != null) {
+      final identifier = firebaseUser.email ?? firebaseUser.phoneNumber;
+      if (identifier != null && identifier.isNotEmpty) {
+        final column = identifier.contains('@') ? 'email' : 'phone';
+        userRow = await Supabase.instance.client
+            .from('users')
+            .select('id')
+            .eq(column, identifier)
+            .maybeSingle();
+      }
     }
 
     final hasProfile = userRow != null;

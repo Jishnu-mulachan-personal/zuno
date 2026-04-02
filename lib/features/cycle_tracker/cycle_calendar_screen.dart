@@ -52,7 +52,13 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
 
     if (picked != null && mounted) {
-      ref.read(dashboardProvider.notifier).updateCycleStartDate(userId, picked);
+      // Show some basic local feedback/loading if needed
+      await ref
+          .read(dashboardProvider.notifier)
+          .updateCycleStartDate(userId, picked);
+      
+      // Explicitly refresh so the value is absolutely latest
+      ref.refresh(userProfileProvider);
     }
   }
 
