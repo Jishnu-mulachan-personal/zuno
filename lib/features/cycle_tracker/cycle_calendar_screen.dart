@@ -66,96 +66,136 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
     final profile = profileAsync.valueOrNull;
-    final cycleData = profile?.cycleData;
+    var cycleData = profile?.cycleData;
+
+    // Watch historical periods
+    final historyState = profile != null
+        ? ref.watch(cycleHistoryNotifierProvider(profile.id))
+        : CycleHistoryState();
+
+    // Inject history into cycleData for calendar display
+    if (cycleData != null && historyState.historicalPeriods.isNotEmpty) {
+      cycleData = cycleData.copyWith(
+          historicalPeriods: historyState.historicalPeriods);
+    }
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
       body: cycleData == null
           ? const Center(child: Text('No cycle data available.'))
-          : CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverAppBar(
-                  pinned: true,
-                  title: Text(
-                    'Cycle Calendar',
-                    style: GoogleFonts.notoSerif(
+          : Stack(
+              children: [
+                CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverAppBar(
+                      pinned: true,
+                      title: Text(
+                        'Cycle Calendar',
+                        style: GoogleFonts.notoSerif(
+                          color: ZunoTheme.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 20,
+                        ),
+                      ),
+                      centerTitle: true,
+                      backgroundColor: ZunoTheme.onPrimary,
+                      elevation: 0,
+                      leading: IconButton(
+                        icon: const Icon(Icons.arrow_back,
+                            color: ZunoTheme.primary),
+                        onPressed: () => context.pop(),
+                      ),
+                    ),
+                    if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
+                      SliverToBoxAdapter(
+                        child: _buildConfirmationCard(profile!.id, cycleData),
+                      ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      sliver: SliverToBoxAdapter(
+                        child: TableCalendar(
+                          firstDay: DateTime.utc(2020, 10, 16),
+                          lastDay: DateTime.utc(2030, 3, 14),
+                          focusedDay: _focusedDay,
+                          availableGestures: AvailableGestures
+                              .horizontalSwipe, // Enable vertical scroll to pass through
+                          selectedDayPredicate: (day) =>
+                              isSameDay(_selectedDay, day),
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              _selectedDay = selectedDay;
+                              _focusedDay = focusedDay;
+                            });
+                          },
+                          onPageChanged: (focusedDay) {
+                            setState(() => _focusedDay = focusedDay);
+
+                            // Detect if we need to load more history
+                            // If user swiped back to a date earlier than our earliest loaded record
+                            if (historyState.earliestLoaded != null &&
+                                focusedDay.isBefore(historyState.earliestLoaded!
+                                    .subtract(const Duration(days: 30)))) {
+                              ref
+                                  .read(cycleHistoryNotifierProvider(profile!.id)
+                                      .notifier)
+                                  .loadMore();
+                            }
+                          },
+                          headerStyle: HeaderStyle(
+                            formatButtonVisible: false,
+                            titleCentered: true,
+                            titleTextStyle: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: ZunoTheme.onSurface,
+                            ),
+                          ),
+                          calendarBuilders: CalendarBuilders(
+                            defaultBuilder: (context, day, focusedDay) =>
+                                _buildCalendarDay(day, cycleData!),
+                            selectedBuilder: (context, day, focusedDay) =>
+                                _buildSelectedDay(day, cycleData!),
+                            todayBuilder: (context, day, focusedDay) =>
+                                _buildToday(day, cycleData!),
+                            outsideBuilder: (context, day, focusedDay) =>
+                                _buildOutsideDay(day),
+                          ),
+                          daysOfWeekStyle: DaysOfWeekStyle(
+                            weekdayStyle: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: ZunoTheme.onSurfaceVariant,
+                            ),
+                            weekendStyle: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 32),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildDayDetails(_selectedDay, cycleData),
+                      ),
+                    ),
+                    _buildHistoryGraph(ref),
+                  ],
+                ),
+                if (historyState.isLoading)
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: LinearProgressIndicator(
+                      backgroundColor: Colors.transparent,
                       color: ZunoTheme.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 20,
+                      minHeight: 2,
                     ),
                   ),
-                  centerTitle: true,
-                  backgroundColor: ZunoTheme.surface.withOpacity(0.9),
-                  elevation: 0,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: ZunoTheme.primary),
-                    onPressed: () => context.pop(),
-                  ),
-                ),
-                if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
-                  SliverToBoxAdapter(
-                    child: _buildConfirmationCard(profile!.id, cycleData),
-                  ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  sliver: SliverToBoxAdapter(
-                    child: TableCalendar(
-                      firstDay: DateTime.utc(2020, 10, 16),
-                      lastDay: DateTime.utc(2030, 3, 14),
-                      focusedDay: _focusedDay,
-                      availableGestures: AvailableGestures.horizontalSwipe, // Enable vertical scroll to pass through
-                      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      },
-                      onPageChanged: (focusedDay) {
-                        _focusedDay = focusedDay;
-                      },
-                      headerStyle: HeaderStyle(
-                        formatButtonVisible: false,
-                        titleCentered: true,
-                        titleTextStyle: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: ZunoTheme.onSurface,
-                        ),
-                      ),
-                      calendarBuilders: CalendarBuilders(
-                        defaultBuilder: (context, day, focusedDay) =>
-                            _buildCalendarDay(day, cycleData),
-                        selectedBuilder: (context, day, focusedDay) =>
-                            _buildSelectedDay(day, cycleData),
-                        todayBuilder: (context, day, focusedDay) =>
-                            _buildToday(day, cycleData),
-                        outsideBuilder: (context, day, focusedDay) =>
-                            _buildOutsideDay(day),
-                      ),
-                      daysOfWeekStyle: DaysOfWeekStyle(
-                        weekdayStyle: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: ZunoTheme.onSurfaceVariant,
-                        ),
-                        weekendStyle: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 32),
-                  sliver: SliverToBoxAdapter(
-                    child: _buildDayDetails(_selectedDay, cycleData),
-                  ),
-                ),
-                _buildHistoryGraph(ref),
               ],
             ),
     );

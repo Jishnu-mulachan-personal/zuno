@@ -155,8 +155,101 @@ class HistoryData {
   HistoryData({required this.history, required this.averageDays});
 }
 
+// ── Paginated Cycle History for Calendar ────────────────────────────────────
+
+class CycleHistoryState {
+  final List<DateTime> historicalPeriods;
+  final bool isLoading;
+  final DateTime? earliestLoaded;
+
+  CycleHistoryState({
+    this.historicalPeriods = const [],
+    this.isLoading = false,
+    this.earliestLoaded,
+  });
+
+  CycleHistoryState copyWith({
+    List<DateTime>? historicalPeriods,
+    bool? isLoading,
+    DateTime? earliestLoaded,
+  }) {
+    return CycleHistoryState(
+      historicalPeriods: historicalPeriods ?? this.historicalPeriods,
+      isLoading: isLoading ?? this.isLoading,
+      earliestLoaded: earliestLoaded ?? this.earliestLoaded,
+    );
+  }
+}
+
+class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
+  final String userId;
+  CycleHistoryNotifier(this.userId) : super(CycleHistoryState()) {
+    loadInitial();
+  }
+
+  Future<void> loadInitial() async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final supabase = Supabase.instance.client;
+      final rows = await supabase
+          .from('cycle_periods')
+          .select('start_date')
+          .eq('user_id', userId)
+          .order('start_date', ascending: false)
+          .limit(10); // Start with ~10 months
+
+      final dates = (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
+      state = state.copyWith(
+        historicalPeriods: dates,
+        isLoading: false,
+        earliestLoaded: dates.isEmpty ? null : dates.last,
+      );
+    } catch (e) {
+      debugPrint('[CycleHistoryNotifier] loadInitial error: $e');
+      state = state.copyWith(isLoading: false);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoading || state.earliestLoaded == null) return;
+    
+    debugPrint('[CycleHistoryNotifier] Loading more before ${state.earliestLoaded}');
+    state = state.copyWith(isLoading: true);
+    try {
+      final supabase = Supabase.instance.client;
+      final rows = await supabase
+          .from('cycle_periods')
+          .select('start_date')
+          .eq('user_id', userId)
+          .lt('start_date', state.earliestLoaded!.toIso8601String().split('T')[0])
+          .order('start_date', ascending: false)
+          .limit(6);
+
+      final dates = (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
+      if (dates.isEmpty) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+
+      state = state.copyWith(
+        historicalPeriods: [...state.historicalPeriods, ...dates],
+        isLoading: false,
+        earliestLoaded: dates.last,
+      );
+    } catch (e) {
+      debugPrint('[CycleHistoryNotifier] loadMore error: $e');
+      state = state.copyWith(isLoading: false);
+    }
+  }
+}
+
+final cycleHistoryNotifierProvider = StateNotifierProvider.family<CycleHistoryNotifier, CycleHistoryState, String>((ref, userId) {
+  return CycleHistoryNotifier(userId);
+});
+
+// ── Graph History Provider ──────────────────────────────────────────────────
+
 final cycleHistoryProvider = FutureProvider<HistoryData>((ref) async {
-  debugPrint('[cycleHistoryProvider] Fetching cycle history...');
   final supabase = Supabase.instance.client;
   final user = supabase.auth.currentUser;
   

@@ -7,6 +7,7 @@ class CycleData {
   final int cycleLength;
   final int periodDuration;
   final bool isTracking;
+  final List<DateTime> historicalPeriods;
 
   CycleData({
     required this.id,
@@ -15,6 +16,7 @@ class CycleData {
     required this.cycleLength,
     required this.periodDuration,
     required this.isTracking,
+    this.historicalPeriods = const [],
   });
 
   /// The day of the current cycle (1 to cycleLength)
@@ -115,7 +117,14 @@ class CycleData {
         DateTime(lastPeriodDate.year, lastPeriodDate.month, lastPeriodDate.day);
     final diff = t.difference(lastMidnight).inDays;
 
-    if (diff < 0) return 'normal';
+    if (diff < 0) {
+      for (final start in historicalPeriods) {
+        final s = DateTime(start.year, start.month, start.day);
+        final diffH = t.difference(s).inDays;
+        if (diffH >= 0 && diffH < periodDuration) return 'period';
+      }
+      return 'normal';
+    }
 
     final dayOfCycle = (diff % cycleLength) + 1;
     final cycleStartForTarget = t.subtract(Duration(days: dayOfCycle - 1));
@@ -182,6 +191,21 @@ class CycleData {
       cycleLength: map['cycle_length'] ?? 28,
       periodDuration: map['period_duration'] ?? 5,
       isTracking: map['is_tracking'] ?? true,
+      historicalPeriods: const [],
+    );
+  }
+
+  CycleData copyWith({
+    List<DateTime>? historicalPeriods,
+  }) {
+    return CycleData(
+      id: id,
+      userId: userId,
+      lastPeriodDate: lastPeriodDate,
+      cycleLength: cycleLength,
+      periodDuration: periodDuration,
+      isTracking: isTracking,
+      historicalPeriods: historicalPeriods ?? this.historicalPeriods,
     );
   }
 }
