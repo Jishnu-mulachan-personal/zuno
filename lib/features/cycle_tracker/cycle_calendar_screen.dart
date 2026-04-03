@@ -156,8 +156,47 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                     child: _buildDayDetails(_selectedDay, cycleData),
                   ),
                 ),
+                _buildHistoryGraph(ref),
               ],
             ),
+    );
+  }
+
+  Widget _buildHistoryGraph(WidgetRef ref) {
+    debugPrint('[_buildHistoryGraph] Watching cycleHistoryProvider...');
+    final historyAsync = ref.watch(cycleHistoryProvider);
+    
+    return SliverPadding(
+      padding: const EdgeInsets.only(bottom: 48),
+      sliver: SliverToBoxAdapter(
+        child: historyAsync.when(
+          data: (data) {
+            debugPrint('[_buildHistoryGraph] Data received. History length: ${data.history.length}');
+            return data.history.isEmpty
+                ? const SizedBox.shrink()
+                : _CycleHistoryGraph(data: data);
+          },
+          loading: () {
+            debugPrint('[_buildHistoryGraph] Loading history...');
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: CircularProgressIndicator(color: ZunoTheme.primary),
+              ),
+            );
+          },
+          error: (e, st) {
+            debugPrint('[_buildHistoryGraph] ERROR in provider: $e');
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text('Error loading history: $e', 
+                  style: const TextStyle(color: Colors.red)),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -561,5 +600,158 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     }
     return isToday ? ZunoTheme.primary : ZunoTheme.onSurface;
   }
+}
+
+class _CycleHistoryGraph extends StatelessWidget {
+  final HistoryData data;
+
+  const _CycleHistoryGraph({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    // We'll show up to the last 6 cycles
+    final recentHistory = data.history.length > 6
+        ? data.history.sublist(data.history.length - 6)
+        : data.history;
+
+    const double graphHeight = 150;
+    // Max scale: 40 days (for relative height)
+    const int maxDays = 40;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CYCLE HISTORY',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Last ${recentHistory.length} Cycles',
+                  style: GoogleFonts.notoSerif(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: graphHeight + 40, // extra for labels
+            padding: const EdgeInsets.only(top: 20, right: 10, left: 10),
+            decoration: BoxDecoration(
+              color: ZunoTheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Stack(
+              children: [
+                // Average line (dashed paint)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: (data.averageDays / maxDays) * graphHeight + 25,
+                  child: CustomPaint(
+                    size: const Size(double.infinity, 1),
+                    painter: _DashedLinePainter(color: ZunoTheme.primary.withOpacity(0.3)),
+                  ),
+                ),
+                // Average label
+                Positioned(
+                  right: 0,
+                  bottom: (data.averageDays / maxDays) * graphHeight + 30,
+                  child: Text(
+                    'Avg: ${data.averageDays.toStringAsFixed(1)}d',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: ZunoTheme.primary.withOpacity(0.5),
+                    ),
+                  ),
+                ),
+                // Bars
+                Positioned.fill(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: recentHistory.map((h) {
+                      final double barHeight = (h.durationDays / maxDays) * graphHeight;
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${h.durationDays}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: ZunoTheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: 24,
+                            height: barHeight,
+                            decoration: BoxDecoration(
+                              color: ZunoTheme.primary.withOpacity(0.8),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            h.monthLabel,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: ZunoTheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    var paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    var max = size.width;
+    var dashWidth = 5;
+    var dashSpace = 3;
+    double startX = 0;
+    while (startX < max) {
+      canvas.drawLine(Offset(startX, 0), Offset(startX + dashWidth, 0), paint);
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 

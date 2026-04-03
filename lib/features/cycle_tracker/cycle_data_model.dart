@@ -185,3 +185,15 @@ class CycleData {
     );
   }
 }
+
+class CycleHistory {
+  final DateTime startDate;
+  final int durationDays;
+  final String monthLabel;
+
+  CycleHistory({
+    required this.startDate,
+    required this.durationDays,
+    required this.monthLabel,
+  });
+}

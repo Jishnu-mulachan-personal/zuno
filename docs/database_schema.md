@@ -60,6 +60,19 @@ CREATE TABLE cycle_data (
     updated_at       TIMESTAMPTZ DEFAULT now()
 );
 -- cycle_data is PRIVATE by default — enforced by RLS
+
+### `cycle_periods` (Historical Log)
+```sql
+CREATE TABLE cycle_periods (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    start_date  DATE NOT NULL,
+    end_date    DATE,
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (user_id, start_date)
+);
+```
+-- cycle_periods is PRIVATE by default — enforced by RLS
 ```
 
 ### `ai_summaries` (Tier 3 Long-Term Memory)
