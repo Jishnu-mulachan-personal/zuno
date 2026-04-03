@@ -40,11 +40,14 @@ serve(async (req) => {
     // 2. Fetch User & Cycle Data
     const { data: userData } = await supabaseClient
       .from('users')
-      .select('display_name, gender')
+      .select('display_name, gender, user_settings(preferred_language)')
       .eq('id', userId)
       .single();
 
     console.log(`[generate_cycle_insight] User data: ${JSON.stringify(userData)}`);
+
+    const language = (userData?.user_settings as any)?.preferred_language || 'English';
+    console.log(`[generate_cycle_insight] Preferred Language: ${language}`);
 
     if (!userData || userData.gender !== 'Female') {
       throw new Error("Insight generation only available for female users.");
@@ -104,6 +107,7 @@ serve(async (req) => {
       The insight should reflect the biological and emotional state typically associated with the ${phase} phase on Day ${day}.
       Focus on self-care, energy levels, or mood. Be warm and empathetic.
       Avoid medical jargon. Keep it under 25 words.
+      CRITICAL: The output MUST be written in ${language}.
     `;
 
     const result = await model.generateContent(prompt);

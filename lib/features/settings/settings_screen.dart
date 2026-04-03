@@ -41,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         children: [
           // ── Account ───────────────────────────────────────────────────────
-          _SectionHeader(label: 'ACCOUNT'),
+          const _SectionHeader(label: 'ACCOUNT'),
           const SizedBox(height: 10),
           _InfoTile(
             icon: Icons.person_outline_rounded,
@@ -50,10 +50,19 @@ class SettingsScreen extends ConsumerWidget {
             iconBg: ZunoTheme.primaryFixed,
             iconColor: ZunoTheme.primary,
           ),
+          const SizedBox(height: 12),
+          _InfoTile(
+            icon: Icons.translate_rounded,
+            label: 'Language',
+            value: profile?.preferredLanguage ?? 'English',
+            iconBg: ZunoTheme.secondaryContainer,
+            iconColor: ZunoTheme.secondary,
+            onTap: () => _showLanguageSelector(context, ref),
+          ),
           const SizedBox(height: 32),
 
           // ── Partner ───────────────────────────────────────────────────────
-          _SectionHeader(label: 'PARTNER'),
+          const _SectionHeader(label: 'PARTNER'),
           const SizedBox(height: 10),
           if (hasParter) ...[
             _InfoTile(
@@ -83,18 +92,8 @@ class SettingsScreen extends ConsumerWidget {
                       await ref.read(settingsProvider.notifier).unpairPartner();
                   if (context.mounted) {
                     if (ok) {
-                      // go() replaces the entire stack so the dashboard rebuilds
-                      // fresh against the now-invalidated userProfileProvider
                       context.go('/dashboard');
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Partner unpaired 👋',
-                            style: GoogleFonts.plusJakartaSans()),
-                        backgroundColor: ZunoTheme.tertiary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        duration: const Duration(seconds: 3),
-                      ));
+                      _snack(context, true, success: 'Partner unpaired 👋');
                     } else {
                       _snack(context, false,
                           failure:
@@ -117,7 +116,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 32),
 
           // ── Session ───────────────────────────────────────────────────────
-          _SectionHeader(label: 'SESSION'),
+          const _SectionHeader(label: 'SESSION'),
           const SizedBox(height: 10),
           _ActionTile(
             icon: Icons.logout_rounded,
@@ -133,13 +132,10 @@ class SettingsScreen extends ConsumerWidget {
               confirmLabel: 'Sign Out',
               confirmColor: ZunoTheme.onSurface,
               onConfirm: () async {
-                // Clear Supabase Session
                 await Supabase.instance.client.auth.signOut();
-                // Clear Google Auth Session
                 try {
                   await GoogleSignIn().signOut();
                 } catch (_) {}
-                
                 if (context.mounted) context.go('/');
               },
             ),
@@ -147,7 +143,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 32),
 
           // ── Danger zone ───────────────────────────────────────────────────
-          _SectionHeader(label: 'DANGER ZONE'),
+          const _SectionHeader(label: 'DANGER ZONE'),
           const SizedBox(height: 10),
           _ActionTile(
             icon: Icons.delete_forever_rounded,
@@ -226,6 +222,17 @@ void _confirmAction({
         await onConfirm();
       },
     ),
+  );
+}
+
+void _showLanguageSelector(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: ZunoTheme.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (ctx) => const _LanguageSelectorSheet(),
   );
 }
 
@@ -492,6 +499,92 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguageSelectorSheet extends ConsumerWidget {
+  const _LanguageSelectorSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider).value;
+    final current = profile?.preferredLanguage ?? 'English';
+    final languages = ['English', 'Malayalam', 'Kannada'];
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 20, 24, MediaQuery.of(context).padding.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+                color: ZunoTheme.outlineVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(99)),
+          ),
+          Text('Select Language',
+              style: GoogleFonts.notoSerif(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: ZunoTheme.onSurface)),
+          const SizedBox(height: 8),
+          Text('AI insights will be generated in your selected language.',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.7))),
+          const SizedBox(height: 24),
+          ...languages.map((lang) {
+            final isSelected = current == lang;
+            return GestureDetector(
+              onTap: () async {
+                Navigator.pop(context);
+                if (isSelected) return;
+                final ok =
+                    await ref.read(settingsProvider.notifier).updateLanguage(lang);
+                if (context.mounted) {
+                  _snack(context, ok,
+                      success: 'Language switched to $lang');
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? ZunoTheme.primary.withOpacity(0.08)
+                      : ZunoTheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected
+                        ? ZunoTheme.primary.withOpacity(0.3)
+                        : ZunoTheme.outlineVariant.withOpacity(0.12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(lang,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? ZunoTheme.primary
+                                : ZunoTheme.onSurface)),
+                    const Spacer(),
+                    if (isSelected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: ZunoTheme.primary, size: 20),
+                  ],
+                ),
+              ),
+            );
+          }),
         ],
       ),
     );

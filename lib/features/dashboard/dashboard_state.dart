@@ -14,6 +14,7 @@ class UserProfile {
   final int streakDays;
   final String? gender;
   final CycleData? cycleData;
+  final String preferredLanguage;
 
   const UserProfile({
     required this.id,
@@ -22,6 +23,7 @@ class UserProfile {
     this.streakDays = 0,
     this.gender,
     this.cycleData,
+    this.preferredLanguage = 'English',
   });
 }
 
@@ -45,10 +47,10 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
   try {
     debugPrint(
         '[userProfileProvider] Querying users table by id = ${sbUser!.id}');
-    // Fetch current user + their relationship
+    // Fetch current user + their relationship + settings
     final userRow = await supabase
         .from('users')
-        .select('id, display_name, relationship_id, gender')
+        .select('*, user_settings(preferred_language)')
         .eq('id', sbUser.id)
         .maybeSingle();
 
@@ -64,6 +66,8 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final relationshipId = userRow['relationship_id'];
     final gender = userRow['gender'] as String?;
     final userId = userRow['id'];
+    final preferredLanguage =
+        (userRow['user_settings'] as Map<String, dynamic>?)?['preferred_language'] as String? ?? 'English';
 
     CycleData? cycleData;
     if (gender == 'Female') {
@@ -136,6 +140,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       streakDays: streakDays,
       gender: gender,
       cycleData: cycleData,
+      preferredLanguage: preferredLanguage,
     );
   } catch (e) {
     debugPrint('[userProfileProvider] ERROR: $e');

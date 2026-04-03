@@ -160,6 +160,30 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   }
 
   void reset() => state = const SettingsState();
+
+  // ── Update Language ─────────────────────────────────────────────────────────
+
+  Future<bool> updateLanguage(String lang) async {
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    if (sbUser == null) return false;
+
+    _setLoading();
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.from('user_settings').upsert({
+        'user_id': sbUser.id,
+        'preferred_language': lang,
+      });
+
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Language updated to $lang');
+      return true;
+    } catch (e) {
+      debugPrint('[updateLanguage] $e');
+      _setError(e.toString());
+      return false;
+    }
+  }
 }
 
 final settingsProvider =

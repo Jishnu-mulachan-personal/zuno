@@ -26,10 +26,12 @@ serve(async (req) => {
     // 1. Fetch User Data & Relationship
     const { data: userData } = await supabaseClient
       .from('users')
-      .select('id, display_name, relationship_id, gender')
+      .select('id, display_name, relationship_id, gender, user_settings(preferred_language)')
       .eq(column, identifier)
       .single();
     if (!userData) throw new Error("User not found");
+
+    const language = (userData?.user_settings as any)?.preferred_language || 'English';
 
     const relId = userData.relationship_id;
 
@@ -152,6 +154,7 @@ serve(async (req) => {
 
       Task: Write a highly personalized, warm 2-sentence daily insight for ${userData.display_name}.
       Instruction: If cycle data is present, consider how the current phase might influence their needs. Be supportive, not robotic.
+      CRITICAL: The output MUST be written in ${language}.
     `;
 
     const insightResult = await model.generateContent(insightPrompt);
