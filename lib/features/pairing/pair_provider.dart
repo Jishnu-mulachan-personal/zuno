@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,8 +30,7 @@ class InviteState {
     this.error,
   });
 
-  bool get isExpired =>
-      expiresAt != null && DateTime.now().isAfter(expiresAt!);
+  bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
 
   InviteState copyWith({
     String? token,
@@ -57,10 +55,8 @@ class InviteNotifier extends StateNotifier<InviteState> {
   /// Generates a new one-time invite token, stores it in `partner_invites`.
   Future<void> generateToken() async {
     final sbUser = Supabase.instance.client.auth.currentUser;
-    final fbUser = fb.FirebaseAuth.instance.currentUser;
-    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
 
-    if (identifier == null) {
+    if (sbUser == null) {
       state = state.copyWith(error: 'Not authenticated');
       return;
     }
@@ -70,21 +66,7 @@ class InviteNotifier extends StateNotifier<InviteState> {
     try {
       final supabase = Supabase.instance.client;
 
-      // Resolve current user's id
-      final column = identifier.contains('@') ? 'email' : 'phone';
-      final userRow = await supabase
-          .from('users')
-          .select('id')
-          .eq(column, identifier)
-          .maybeSingle();
-
-      if (userRow == null) {
-        state = state.copyWith(
-            isGenerating: false, error: 'User profile not found');
-        return;
-      }
-
-      final userId = userRow['id'] as String;
+      final userId = sbUser.id;
       final token = _generateToken();
       final expiresAt =
           DateTime.now().toUtc().add(const Duration(minutes: _tokenTtlMinutes));
@@ -129,10 +111,8 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
   /// Validates and claims `token`, linking both users under a shared relationship_id.
   Future<bool> claimToken(String token) async {
     final sbUser = Supabase.instance.client.auth.currentUser;
-    final fbUser = fb.FirebaseAuth.instance.currentUser;
-    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
 
-    if (identifier == null) {
+    if (sbUser == null) {
       state = const ClaimState(
           status: ClaimStatus.error, message: 'Not authenticated');
       return false;
@@ -172,21 +152,7 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
         return false;
       }
 
-      // 2. Resolve claimer's user id
-      final column = identifier.contains('@') ? 'email' : 'phone';
-      final claimerRow = await supabase
-          .from('users')
-          .select('id, relationship_id')
-          .eq(column, identifier)
-          .maybeSingle();
-
-      if (claimerRow == null) {
-        state = const ClaimState(
-            status: ClaimStatus.error, message: 'Your profile was not found');
-        return false;
-      }
-
-      final claimerId = claimerRow['id'] as String;
+      final claimerId = sbUser.id;
       final creatorId = invite['created_by'] as String;
 
       if (claimerId == creatorId) {
@@ -213,8 +179,7 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
         // Creator already has a relationship row — update partner_b_id on it
         await supabase
             .from('relationships')
-            .update({'partner_b_id': claimerId})
-            .eq('id', existingRelId);
+            .update({'partner_b_id': claimerId}).eq('id', existingRelId);
 
         relationshipId = existingRelId;
       } else {
@@ -224,7 +189,7 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
             .insert({
               'partner_a_id': creatorId,
               'partner_b_id': claimerId,
-              'status': 'dating',  // sensible default
+              'status': 'dating', // sensible default
             })
             .select('id')
             .single();
@@ -244,12 +209,10 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
       // 5. Mark invite as used
       await supabase
           .from('partner_invites')
-          .update({'used': true, 'used_by': claimerId})
-          .eq('token', token);
+          .update({'used': true, 'used_by': claimerId}).eq('token', token);
 
       state = const ClaimState(
-          status: ClaimStatus.success,
-          message: 'Paired successfully! 💚');
+          status: ClaimStatus.success, message: 'Paired successfully! 💚');
       return true;
     } catch (e) {
       debugPrint('[claimToken] $e');
@@ -261,7 +224,6 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
   void reset() => state = const ClaimState();
 }
 
-final claimProvider =
-    StateNotifierProvider<ClaimNotifier, ClaimState>((ref) {
+final claimProvider = StateNotifierProvider<ClaimNotifier, ClaimState>((ref) {
   return ClaimNotifier();
 });

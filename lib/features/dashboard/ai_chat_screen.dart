@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../app_theme.dart';
 import 'dashboard_state.dart';
 
@@ -34,8 +33,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final state = ref.read(dashboardProvider);
     final insight = state.dailyInsight ?? 'No insight today.';
     final sbUser = Supabase.instance.client.auth.currentUser;
-    final fbUser = fb.FirebaseAuth.instance.currentUser;
-    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+    final identifier = sbUser?.email;
 
     if (identifier == null) {
       setState(() {

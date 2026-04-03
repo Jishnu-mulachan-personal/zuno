@@ -293,7 +293,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   IconButton(
                     icon:
                         const Icon(Icons.arrow_back, color: ZunoTheme.primary),
-                    onPressed: () => context.go('/otp'),
+                    onPressed: () => context.go('/signup'),
                   ),
                   const Spacer(),
                   Text(

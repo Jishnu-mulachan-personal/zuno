@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,14 +28,11 @@ class UserProfile {
 final userProfileProvider = FutureProvider<UserProfile>((ref) async {
   debugPrint('[userProfileProvider] Start fetching profile...');
   final sbUser = Supabase.instance.client.auth.currentUser;
-  final fbUser = fb.FirebaseAuth.instance.currentUser;
 
   debugPrint(
       '[userProfileProvider] sbUser: ${sbUser?.id}, email: ${sbUser?.email}');
-  debugPrint(
-      '[userProfileProvider] fbUser: ${fbUser?.uid}, email: ${fbUser?.email}, phone: ${fbUser?.phoneNumber}');
 
-  final identifier = sbUser?.email ?? fbUser?.email ?? fbUser?.phoneNumber;
+  final identifier = sbUser?.email;
   debugPrint('[userProfileProvider] Resolved identifier: $identifier');
 
   if (identifier == null) {
@@ -46,16 +42,14 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
 
   final supabase = Supabase.instance.client;
 
-  final column = identifier.contains('@') ? 'email' : 'phone';
-
   try {
     debugPrint(
-        '[userProfileProvider] Querying users table by $column = $identifier');
+        '[userProfileProvider] Querying users table by id = ${sbUser!.id}');
     // Fetch current user + their relationship
     final userRow = await supabase
         .from('users')
         .select('id, display_name, relationship_id, gender')
-        .eq(column, identifier.trim())
+        .eq('id', sbUser.id)
         .maybeSingle();
 
     if (userRow == null) {
@@ -300,9 +294,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   Future<void> fetchDailyInsight() async {
     if (state.dailyInsight != null) return;
 
-    final fbUser = fb.FirebaseAuth.instance.currentUser;
     final sbUser = Supabase.instance.client.auth.currentUser;
-    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+    final identifier = sbUser?.email;
     if (identifier == null) return;
 
     state = state.copyWith(isLoadingInsight: true);
@@ -339,31 +332,19 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   }
 
   Future<bool> saveLog() async {
-    final fbUser = fb.FirebaseAuth.instance.currentUser;
     final sbUser = Supabase.instance.client.auth.currentUser;
-    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+    final identifier = sbUser?.email;
 
     if (identifier == null || state.selectedMood == null) return false;
 
     state = state.copyWith(isSaving: true);
 
+    final userId = sbUser!.id;
+
+    state = state.copyWith(isSaving: true);
+
     try {
       final supabase = Supabase.instance.client;
-
-      final column = identifier.contains('@') ? 'email' : 'phone';
-
-      final userRow = await supabase
-          .from('users')
-          .select('id')
-          .eq(column, identifier)
-          .maybeSingle();
-
-      if (userRow == null) {
-        state = state.copyWith(isSaving: false);
-        return false;
-      }
-
-      final userId = userRow['id'];
 
       // Insert a new log entry — multiple check-ins per day are allowed
       await supabase.from('daily_logs').insert({

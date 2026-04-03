@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -136,8 +135,6 @@ class SettingsScreen extends ConsumerWidget {
               onConfirm: () async {
                 // Clear Supabase Session
                 await Supabase.instance.client.auth.signOut();
-                // Clear Firebase Phone Session
-                await fb.FirebaseAuth.instance.signOut();
                 // Clear Google Auth Session
                 try {
                   await GoogleSignIn().signOut();

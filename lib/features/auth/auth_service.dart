@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart' as gsign;
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
@@ -7,26 +6,26 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // ─── Auth State ──────────────────────────────────────────────────────────────
 
 class AuthState {
-  final String? verificationId;
   final bool isLoading;
   final String? error;
+  final bool needsVerification;
 
   const AuthState({
-    this.verificationId,
     this.isLoading = false,
     this.error,
+    this.needsVerification = false,
   });
 
   AuthState copyWith({
-    String? verificationId,
     bool? isLoading,
     String? error,
+    bool? needsVerification,
     bool clearError = false,
   }) =>
       AuthState(
-        verificationId: verificationId ?? this.verificationId,
         isLoading: isLoading ?? this.isLoading,
         error: clearError ? null : (error ?? this.error),
+        needsVerification: needsVerification ?? this.needsVerification,
       );
 }
 
@@ -35,82 +34,59 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(const AuthState());
 
-  final _auth = FirebaseAuth.instance;
+  final _supabase = supabase.Supabase.instance.client;
 
-  Future<void> sendOTP(String phoneNumber) async {
-    state = state.copyWith(isLoading: true, clearError: true);
-
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        // Auto-retrieval or instant verification (Android only)
-        try {
-          await _auth.signInWithCredential(credential);
-          // Kill any lingering Supabase/Google session
-          await supabase.Supabase.instance.client.auth.signOut();
-          try { await gsign.GoogleSignIn().signOut(); } catch (_) {}
-          
-          state = state.copyWith(isLoading: false);
-        } on FirebaseAuthException catch (e) {
-          state = state.copyWith(isLoading: false, error: e.message);
-        }
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        state = state.copyWith(
-          isLoading: false,
-          error: e.message ?? 'Verification failed. Please try again.',
-        );
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        state = state.copyWith(
-          isLoading: false,
-          verificationId: verificationId,
-        );
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        // Keep verificationId fresh — user may still type the code manually
-        state = state.copyWith(verificationId: verificationId);
-      },
-    );
-  }
-
-  Future<bool> verifyOTP(String otp) async {
-    final vid = state.verificationId;
-    if (vid == null) return false;
-
-    state = state.copyWith(isLoading: true, clearError: true);
-
-    final credential = PhoneAuthProvider.credential(
-      verificationId: vid,
-      smsCode: otp,
-    );
-
+  Future<bool> signUp(String email, String password) async {
+    state = state.copyWith(isLoading: true, clearError: true, needsVerification: false);
     try {
-      await _auth.signInWithCredential(credential);
+      final response = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        emailRedirectTo: 'zuno://login-callback/',
+      );
       
-      // Kill any lingering Supabase/Google session
-      await supabase.Supabase.instance.client.auth.signOut();
-      try { await gsign.GoogleSignIn().signOut(); } catch (_) {}
-
-      state = state.copyWith(isLoading: false);
-      return true;
-    } on FirebaseAuthException catch (e) {
+      // session is null if email confirmation is required
+      final needsVerification = response.session == null;
+      
       state = state.copyWith(
         isLoading: false,
-        error: e.message ?? 'Invalid code. Please try again.',
+        needsVerification: needsVerification,
       );
+      return true;
+    } on supabase.AuthException catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
+      return false;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> signIn(String email, String password) async {
+    state = state.copyWith(isLoading: true, clearError: true, needsVerification: false);
+    try {
+      await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      state = state.copyWith(isLoading: false);
+      return true;
+    } on supabase.AuthException catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
+      return false;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
   }
 
   Future<bool> signInWithGoogle() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true, clearError: true, needsVerification: false);
 
     try {
       final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
       final iosClientId = dotenv.env['GOOGLE_IOS_CLIENT_ID'];
-      // Web client ID is required
+      
       if (webClientId == null) {
         throw 'Google Client ID not found in environment.';
       }
@@ -123,7 +99,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         state = state.copyWith(isLoading: false);
-        return false; // User dismissed sign in
+        return false;
       }
       
       final googleAuth = await googleUser.authentication;
@@ -134,14 +110,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         throw 'Missing Google Auth Tokens.';
       }
 
-      await supabase.Supabase.instance.client.auth.signInWithIdToken(
+      await _supabase.auth.signInWithIdToken(
         provider: supabase.OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
       );
-
-      // Kill any lingering Firebase Phone session
-      await _auth.signOut();
 
       state = state.copyWith(isLoading: false);
       return true;
@@ -149,6 +122,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
+  }
+
+  Future<void> signOut() async {
+    state = state.copyWith(isLoading: true);
+    await _supabase.auth.signOut();
+    try { await gsign.GoogleSignIn().signOut(); } catch (_) {}
+    state = const AuthState();
   }
 
   void reset() => state = const AuthState();

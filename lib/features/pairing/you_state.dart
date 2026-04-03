@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/encryption_service.dart';
 
@@ -24,23 +23,10 @@ class DailyLog {
 
 final userLogsProvider = FutureProvider<List<DailyLog>>((ref) async {
   final sbUser = Supabase.instance.client.auth.currentUser;
-  final fbUser = fb.FirebaseAuth.instance.currentUser;
-  final identifier = sbUser?.email ?? fbUser?.phoneNumber;
+  if (sbUser == null) return [];
 
-  if (identifier == null) return [];
-
+  final userId = sbUser.id;
   final supabase = Supabase.instance.client;
-  final column = identifier.contains('@') ? 'email' : 'phone';
-
-  final userRow = await supabase
-      .from('users')
-      .select('id')
-      .eq(column, identifier)
-      .maybeSingle();
-      
-  if (userRow == null) return [];
-  
-  final userId = userRow['id'];
   
   final response = await supabase
       .from('daily_logs')

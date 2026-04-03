@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -40,10 +39,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// unpaired — partner_b_id = NULL.
   Future<bool> unpairPartner() async {
     final sbUser = Supabase.instance.client.auth.currentUser;
-    final fbUser = fb.FirebaseAuth.instance.currentUser;
-    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
 
-    if (identifier == null) {
+    if (sbUser == null) {
       _setError('Not authenticated');
       return false;
     }
@@ -53,10 +50,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     try {
       final supabase = Supabase.instance.client;
 
-      // Call the Edge Function to handle atomic unpairing (bypassing RLS)
+      // Pass the Auth ID to the Edge Function — it should handle it as a direct UUID identifier
       final response = await supabase.functions.invoke(
         'unpair_partner',
-        body: {'identifier': identifier},
+        body: {'id': sbUser.id},
       );
 
       if (response.status != 200) {
@@ -79,14 +76,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   // ── Delete Account ──────────────────────────────────────────────────────────
 
   /// Deletes the Supabase user row (cascades to daily_logs, etc.) then signs
-  /// out from Firebase. The Firebase account itself is left intact since
-  /// deleting it requires recent re-authentication.
+  /// out from Supabase.
   Future<bool> deleteAccount() async {
     final sbUser = Supabase.instance.client.auth.currentUser;
-    final fbUser = fb.FirebaseAuth.instance.currentUser;
-    final identifier = sbUser?.email ?? fbUser?.phoneNumber;
 
-    if (identifier == null) {
+    if (sbUser == null) {
       _setError('Not authenticated');
       return false;
     }
@@ -95,23 +89,21 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
     try {
       final supabase = Supabase.instance.client;
+      final userId = sbUser.id;
 
-      // 1. Resolve user id
-      final column = identifier.contains('@') ? 'email' : 'phone';
+      // 1. Check if profile exists
       final userRow = await supabase
           .from('users')
           .select('id, relationship_id')
-          .eq(column, identifier)
+          .eq('id', userId)
           .maybeSingle();
 
       if (userRow == null) {
         // Already gone — just sign out
-        await fb.FirebaseAuth.instance.signOut();
         _setSuccess('Account deleted');
         return true;
       }
 
-      final userId = userRow['id'] as String;
       final relationshipId = userRow['relationship_id'] as String?;
 
       // 2. If paired: clear partner_b_id / partner_a_id from relationships
@@ -154,7 +146,6 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
       // 4. Sign out completely
       await supabase.auth.signOut();
-      await fb.FirebaseAuth.instance.signOut();
       try {
         await GoogleSignIn().signOut();
       } catch (_) {}

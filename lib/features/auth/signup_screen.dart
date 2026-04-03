@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:country_code_picker/country_code_picker.dart';
 import '../../app_theme.dart';
 import 'auth_service.dart';
 import 'user_repository.dart';
@@ -16,46 +15,72 @@ class SignupScreen extends ConsumerStatefulWidget {
 }
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
-  final _phoneController = TextEditingController();
-  String _countryCode = '+91';
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLogin = true;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOTP() async {
-    final phone = '$_countryCode${_phoneController.text.trim()}';
-    if (phone.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Enter a valid phone number',
-              style: GoogleFonts.plusJakartaSans()),
-          backgroundColor: ZunoTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+  Future<void> _handleAuth() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || !email.contains('@')) {
+      _showSnackBar('Please enter a valid email address');
       return;
     }
-    await ref.read(authProvider.notifier).sendOTP(phone);
-    if (!mounted) return;
-    final err = ref.read(authProvider).error;
-    if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err), backgroundColor: ZunoTheme.error),
-      );
-    } else {
-      context.go('/otp', extra: phone);
+    if (password.length < 6) {
+      _showSnackBar('Password must be at least 6 characters');
+      return;
     }
+
+    final success = _isLogin
+        ? await ref.read(authProvider.notifier).signIn(email, password)
+        : await ref.read(authProvider.notifier).signUp(email, password);
+
+    if (!mounted) return;
+
+    final state = ref.read(authProvider);
+    if (success) {
+      if (state.needsVerification) {
+        // The UI will update based on auth.needsVerification
+      } else {
+        final isRegistered = await ref.read(userRepositoryProvider).isUserRegistered();
+        if (!mounted) return;
+        if (isRegistered) {
+          context.go('/dashboard');
+        } else {
+          context.go('/onboarding/register');
+        }
+      }
+    } else {
+      if (state.error != null) {
+        _showSnackBar(state.error!);
+      }
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.plusJakartaSans()),
+        backgroundColor: ZunoTheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Future<void> _signInWithGoogle() async {
     final success = await ref.read(authProvider.notifier).signInWithGoogle();
     if (!mounted) return;
-    
+
     if (success) {
       final isRegistered = await ref.read(userRepositoryProvider).isUserRegistered();
       if (!mounted) return;
@@ -67,14 +92,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     } else {
       final err = ref.read(authProvider).error;
       if (err != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(err, style: GoogleFonts.plusJakartaSans()),
-            backgroundColor: ZunoTheme.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+        _showSnackBar(err);
       }
     }
   }
@@ -102,141 +120,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 56),
-              // Hero text
-              Text(
-                'Welcome Home',
-                style: GoogleFonts.notoSerif(
-                  fontSize: 42,
-                  fontWeight: FontWeight.w600,
-                  color: ZunoTheme.onSurface,
-                  height: 1.15,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'SECURE & PRIVATE FOR YOU.',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2.2,
-                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.8),
-                ),
-              ),
-              const SizedBox(height: 48),
-              // Form card
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: ZunoTheme.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: ZunoTheme.onSurface.withOpacity(0.04),
-                      blurRadius: 40,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Label
-                    Text(
-                      'MOBILE NUMBER',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.8,
-                        color: ZunoTheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Phone row
-                    Row(
-                      children: [
-                        // Country code
-                        Container(
-                          decoration: BoxDecoration(
-                            color: ZunoTheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: CountryCodePicker(
-                            onChanged: (c) => setState(
-                                () => _countryCode = c.dialCode ?? '+91'),
-                            initialSelection: 'IN',
-                            showCountryOnly: false,
-                            showOnlyCountryWhenClosed: false,
-                            alignLeft: false,
-                            textStyle: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: ZunoTheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Number
-                        Expanded(
-                          child: TextField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: ZunoTheme.onSurface,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: '000 000 0000',
-                              hintStyle: GoogleFonts.plusJakartaSans(
-                                color:
-                                    ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    // Send Code button
-                    SizedBox(
-                      width: double.infinity,
-                      child: _GradientCta(
-                        label: 'Send Code',
-                        isLoading: auth.isLoading,
-                        onTap: auth.isLoading ? null : _sendOTP,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _OutlinedCta(
-                        label: 'Continue with Google',
-                        isLoading: auth.isLoading,
-                        onTap: auth.isLoading ? null : _signInWithGoogle,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Decorative image
+
+              if (auth.needsVerification)
+                _buildVerificationState()
+              else
+                _buildAuthForm(auth),
+
               const SizedBox(height: 40),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: Image.network(
-                    'https://images.unsplash.com/photo-1513689125086-6c432170e843?w=600&q=80',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: ZunoTheme.primaryFixed,
-                    ),
-                  ),
-                ),
-              ),
+              // Decorative footer
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -254,42 +145,216 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              Wrap(
-                alignment: WrapAlignment.center,
-                children: [
-                  Text('By continuing, you agree to our ',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
-                  GestureDetector(
-                    child: Text('Terms',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
-                            decoration: TextDecoration.underline)),
-                  ),
-                  Text(' and ',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
-                  GestureDetector(
-                    child: Text('Privacy Policy',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
-                            decoration: TextDecoration.underline)),
-                  ),
-                  Text('.',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.5))),
-                ],
-              ),
               const SizedBox(height: 40),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAuthForm(AuthState auth) {
+    return Column(
+      children: [
+        // Hero text
+        Text(
+          _isLogin ? 'Welcome Back' : 'Join Zuno',
+          style: GoogleFonts.notoSerif(
+            fontSize: 42,
+            fontWeight: FontWeight.w600,
+            color: ZunoTheme.onSurface,
+            height: 1.15,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _isLogin
+              ? 'SIGN IN TO YOUR PRIVATE SPACE.'
+              : 'SECURE & PRIVATE FOR YOU.',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.2,
+            color: ZunoTheme.onSurfaceVariant.withOpacity(0.8),
+          ),
+        ),
+        const SizedBox(height: 48),
+        // Form card
+        Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: ZunoTheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: ZunoTheme.onSurface.withOpacity(0.04),
+                blurRadius: 40,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Email Field
+              Text(
+                'EMAIL ADDRESS',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.8,
+                  color: ZunoTheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: ZunoTheme.onSurface,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'you@example.com',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Password Field
+              Text(
+                'PASSWORD',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.8,
+                  color: ZunoTheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: ZunoTheme.onSurface,
+                ),
+                decoration: InputDecoration(
+                  hintText: '••••••••',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      size: 20,
+                      color: ZunoTheme.onSurfaceVariant,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // CTA button
+              SizedBox(
+                width: double.infinity,
+                child: _GradientCta(
+                  label: _isLogin ? 'Sign In' : 'Create Account',
+                  isLoading: auth.isLoading,
+                  onTap: auth.isLoading ? null : _handleAuth,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Toggle Login/Signup
+              Center(
+                child: TextButton(
+                  onPressed: () => setState(() {
+                    _isLogin = !_isLogin;
+                    ref.read(authProvider.notifier).reset();
+                  }),
+                  child: Text(
+                    _isLogin
+                        ? "Don't have an account? Sign Up"
+                        : "Already have an account? Sign In",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: ZunoTheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Divider(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: _OutlinedCta(
+                  label: 'Continue with Google',
+                  isLoading: auth.isLoading,
+                  onTap: auth.isLoading ? null : _signInWithGoogle,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVerificationState() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: ZunoTheme.primary.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ZunoTheme.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.mark_email_read, size: 40, color: ZunoTheme.primary),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Check your inbox',
+            style: GoogleFonts.notoSerif(
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              color: ZunoTheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'We have sent a verification link to\n${_emailController.text}',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              color: ZunoTheme.onSurfaceVariant,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 32),
+          _GradientCta(
+            label: 'Back to Login',
+            onTap: () {
+              setState(() {
+                _isLogin = true;
+                ref.read(authProvider.notifier).reset();
+              });
+            },
+          ),
+        ],
       ),
     );
   }
@@ -372,14 +437,24 @@ class _OutlinedCta extends StatelessWidget {
                   child: CircularProgressIndicator(
                       color: ZunoTheme.primary, strokeWidth: 2),
                 )
-              : Text(
-                  label.toUpperCase(),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: ZunoTheme.onSurface,
-                    letterSpacing: 2.2,
-                  ),
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/google_logo.png',
+                      height: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      label.toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: ZunoTheme.onSurface,
+                        letterSpacing: 2.2,
+                      ),
+                    ),
+                  ],
                 ),
         ),
       ),

@@ -1,12 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 class UserRepository {
   final SupabaseClient _supabase;
-  final fb.FirebaseAuth _firebaseAuth;
 
-  UserRepository(this._supabase, this._firebaseAuth);
+  UserRepository(this._supabase);
 
   Future<void> createUserProfile({
     required String name,
@@ -17,30 +15,25 @@ class UserRepository {
     required String gender,
   }) async {
     final sbUser = _supabase.auth.currentUser;
-    final fbUser = _firebaseAuth.currentUser;
 
-    if (sbUser == null && fbUser == null) {
+    if (sbUser == null) {
       throw Exception('User is not authenticated.');
     }
 
-    final email = sbUser?.email ?? fbUser?.email;
-    final phone = fbUser?.phoneNumber;
+    final userId = sbUser.id;
+    final email = sbUser.email;
 
-    // 1. Insert the user in the `users` table
-    final userResponse = await _supabase
+    // 1. Insert the user in the `users` table using their Auth UUID
+    await _supabase
         .from('users')
         .insert({
+          'id': userId,
           if (email != null) 'email': email,
-          if (phone != null) 'phone': phone,
           'display_name': name,
           'gender': gender,
           'date_of_birth': dateOfBirth.toIso8601String(),
           'occupation': occupation,
-        })
-        .select('id')
-        .single();
-
-    final userId = userResponse['id'];
+        });
 
     // 2. Insert relationship details into `relationships`
     final relResponse = await _supabase
@@ -67,22 +60,14 @@ class UserRepository {
   /// a profile in the Supabase `users` table.
   Future<bool> isUserRegistered() async {
     final sbUser = _supabase.auth.currentUser;
-    if (sbUser != null && sbUser.email != null) {
-      final response = await _supabase
-          .from('users')
-          .select('id')
-          .eq('email', sbUser.email!)
-          .maybeSingle();
-      if (response != null) return true;
-    }
+    if (sbUser == null) return false;
 
-    final phone = _firebaseAuth.currentUser?.phoneNumber;
-    if (phone == null || phone.isEmpty) return false;
     final response = await _supabase
         .from('users')
         .select('id')
-        .eq('phone', phone)
+        .eq('id', sbUser.id)
         .maybeSingle();
+    
     return response != null;
   }
 }
@@ -90,6 +75,5 @@ class UserRepository {
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository(
     Supabase.instance.client,
-    fb.FirebaseAuth.instance,
   );
 });
