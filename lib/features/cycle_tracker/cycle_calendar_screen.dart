@@ -76,8 +76,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverAppBar(
-                  floating: true,
-                  snap: true,
+                  pinned: true,
                   title: Text(
                     'Cycle Calendar',
                     style: GoogleFonts.notoSerif(
