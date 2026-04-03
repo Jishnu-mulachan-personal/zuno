@@ -17,7 +17,7 @@ class CycleCalendarScreen extends ConsumerStatefulWidget {
 
 class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  DateTime _selectedDay = DateTime.now(); // Default to today
   bool _isSnoozed = false;
 
   Future<void> _handlePeriodConfirmation(
@@ -70,37 +70,42 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
-      appBar: AppBar(
-        title: Text(
-          'Cycle Calendar',
-          style: GoogleFonts.notoSerif(
-            color: ZunoTheme.primary,
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: ZunoTheme.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: ZunoTheme.primary),
-          onPressed: () => context.pop(),
-        ),
-      ),
       body: cycleData == null
           ? const Center(child: Text('No cycle data available.'))
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
-                    _buildConfirmationCard(profile!.id, cycleData),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          : CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverAppBar(
+                  floating: true,
+                  snap: true,
+                  title: Text(
+                    'Cycle Calendar',
+                    style: GoogleFonts.notoSerif(
+                      color: ZunoTheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                    ),
+                  ),
+                  centerTitle: true,
+                  backgroundColor: ZunoTheme.surface.withOpacity(0.9),
+                  elevation: 0,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: ZunoTheme.primary),
+                    onPressed: () => context.pop(),
+                  ),
+                ),
+                if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
+                  SliverToBoxAdapter(
+                    child: _buildConfirmationCard(profile!.id, cycleData),
+                  ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  sliver: SliverToBoxAdapter(
                     child: TableCalendar(
                       firstDay: DateTime.utc(2020, 10, 16),
                       lastDay: DateTime.utc(2030, 3, 14),
                       focusedDay: _focusedDay,
+                      availableGestures: AvailableGestures.horizontalSwipe, // Enable vertical scroll to pass through
                       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                       onDaySelected: (selectedDay, focusedDay) {
                         setState(() {
@@ -144,13 +149,158 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  _buildLegend(),
-                  const SizedBox(height: 32),
-                ],
-              ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 32),
+                  sliver: SliverToBoxAdapter(
+                    child: _buildDayDetails(_selectedDay, cycleData),
+                  ),
+                ),
+              ],
             ),
     );
+  }
+
+  Widget _buildDayDetails(DateTime day, CycleData cycle) {
+    final type = cycle.getDayType(day);
+    String title;
+    String subtitle;
+    IconData icon;
+    Color color;
+
+    switch (type) {
+      case 'period':
+        title = 'Menstruation';
+        subtitle = 'Your period is active. Prioritize rest and hydration.';
+        icon = Icons.water_drop_rounded;
+        color = Colors.red.shade400;
+        break;
+      case 'fertile':
+        title = 'High Fertility';
+        subtitle = 'You are in your peak fertile window.';
+        icon = Icons.auto_awesome_rounded;
+        color = Colors.green.shade400;
+        break;
+      case 'maybe_fertile':
+        title = 'Potential Fertility';
+        subtitle = 'Light chances of conception. Energy may be rising.';
+        icon = Icons.favorite_rounded;
+        color = Colors.green.shade200;
+        break;
+      case 'next_period':
+        title = 'Expected Period';
+        subtitle = 'Your next cycle is predicted to start today.';
+        icon = Icons.event_repeat_rounded;
+        color = Colors.red;
+        break;
+      default:
+        title = 'Regular Day';
+        subtitle = 'Standard phase of your cycle. Keep tracking daily.';
+        icon = Icons.wb_sunny_rounded;
+        color = ZunoTheme.onSurfaceVariant.withOpacity(0.5);
+    }
+
+    final dateStr = '${_getMonthName(day.month)} ${day.day}, ${day.year}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: ZunoTheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: ZunoTheme.onSurface.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  dateStr.toUpperCase(),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                  ),
+                ),
+                if (type != 'normal')
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      title.toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: color,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.notoSerif(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: ZunoTheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month - 1];
   }
 
   Widget _buildConfirmationCard(String userId, CycleData cycle) {
@@ -275,29 +425,6 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildLegend() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ZunoTheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            _LegendItem(color: Colors.red.shade400, label: 'Menstruation'),
-            const SizedBox(height: 8),
-            _LegendItem(color: Colors.green.shade400, label: 'Fertile Window'),
-            const SizedBox(height: 8),
-            _LegendItem(color: Colors.green.shade200, label: 'Maybe Fertile'),
-            const SizedBox(height: 8),
-            const _LegendItem(color: Colors.red, label: 'Predicted Period', isDot: true),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildCalendarDay(DateTime day, CycleData cycle, {bool isToday = false}) {
     final type = cycle.getDayType(day);
@@ -436,37 +563,3 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   }
 }
 
-class _LegendItem extends StatelessWidget {
-  final Color color;
-  final String label;
-  final bool isDot;
-
-  const _LegendItem(
-      {required this.color, required this.label, this.isDot = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            shape: isDot ? BoxShape.circle : BoxShape.rectangle,
-            borderRadius: isDot ? null : BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: ZunoTheme.onSurface,
-          ),
-        ),
-      ],
-    );
-  }
-}

@@ -21,6 +21,7 @@ class DashboardScreen extends ConsumerWidget {
           context,
           ref,
           state,
+          userId: '',
           userName: '...', // Loading placeholder
           partnerName: null,
           gender: null,
@@ -36,6 +37,7 @@ class DashboardScreen extends ConsumerWidget {
             context,
             ref,
             state,
+            userId: '',
             userName: 'Friend',
             partnerName: null,
             gender: null,
@@ -48,6 +50,7 @@ class DashboardScreen extends ConsumerWidget {
           context,
           ref,
           state,
+          userId: profile.id,
           userName: profile.displayName,
           partnerName: profile.partnerName,
           gender: profile.gender,
@@ -63,6 +66,7 @@ class DashboardScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     DashboardState state, {
+    required String userId,
     required String userName,
     String? partnerName,
     String? gender,
@@ -97,6 +101,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   _DynamicCardsSection(
+                    userId: userId,
                     gender: gender,
                     cycleData: cycleData,
                     isLoading: isLoading,
@@ -650,11 +655,13 @@ class _StatusCard extends StatelessWidget {
 // ── Dynamic Cards ───────────────────────────────────────────────────────────
 
 class _DynamicCardsSection extends ConsumerWidget {
+  final String? userId;
   final String? gender;
   final CycleData? cycleData;
   final bool isLoading;
 
   const _DynamicCardsSection({
+    this.userId,
     this.gender,
     this.cycleData,
     this.isLoading = false,
@@ -739,7 +746,13 @@ class _DynamicCardsSection extends ConsumerWidget {
               ],
             ),
           ),
-        if (gender == 'Female')
+        if (state.dailyInsight != null && gender == 'Female')
+          const SizedBox(height: 16),
+        if (gender == 'Female') ...[
+          if (cycleData != null && cycleData!.shouldShowConfirmationCard) ...[
+            _CycleConfirmationCard(userId: userId!, cycle: cycleData!),
+            const SizedBox(height: 16),
+          ],
           if (cycleData == null) ...[
             const SizedBox(height: 16),
             GestureDetector(
@@ -763,7 +776,8 @@ class _DynamicCardsSection extends ConsumerWidget {
               ),
             ),
           ],
-        if (isLoading && gender == null) 
+        ],
+        if (isLoading && gender == null)
           const Padding(
             padding: EdgeInsets.only(top: 16),
             child: _LoadingSmartCard(),
@@ -856,6 +870,160 @@ class _DashboardSmartCard extends StatelessWidget {
             ),
             child:
                 Icon(Icons.auto_awesome_rounded, color: accentColor, size: 22),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CycleConfirmationCard extends ConsumerWidget {
+  final String userId;
+  final CycleData cycle;
+
+  const _CycleConfirmationCard({
+    required this.userId,
+    required this.cycle,
+  });
+
+  Future<void> _pickStartDate(BuildContext context, WidgetRef ref) async {
+    final today = DateTime.now();
+    final now = DateTime(today.year, today.month, today.day);
+    final first = now.subtract(const Duration(days: 90));
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: first,
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: ThemeData.light().copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: ZunoTheme.primary,
+            onPrimary: Colors.white,
+            surface: ZunoTheme.surfaceContainerLowest,
+            onSurface: ZunoTheme.onSurface,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null) {
+      await ref
+          .read(dashboardProvider.notifier)
+          .updateCycleStartDate(userId, picked);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ZunoTheme.primary,
+            ZunoTheme.primaryContainer.withOpacity(0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: ZunoTheme.primary.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child:
+                    const Icon(Icons.water_drop, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  cycle.confirmationCardTitle,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Keep your tracking accurate by confirming the start of your period.',
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () async {
+                    await ref
+                        .read(dashboardProvider.notifier)
+                        .updateCycleStartDate(userId, DateTime.now());
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Started Today',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: ZunoTheme.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _pickStartDate(context, ref),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white.withOpacity(0.5)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Started Earlier',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1113,7 +1281,11 @@ class _NavTab extends StatelessWidget {
   final bool active;
   final VoidCallback? onTap;
 
-  const _NavTab({required this.icon, required this.label, this.active = false, this.onTap});
+  const _NavTab(
+      {required this.icon,
+      required this.label,
+      this.active = false,
+      this.onTap});
 
   @override
   Widget build(BuildContext context) {
