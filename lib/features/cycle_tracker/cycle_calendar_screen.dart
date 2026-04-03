@@ -614,8 +614,11 @@ class _CycleHistoryGraph extends StatelessWidget {
         : data.history;
 
     const double graphHeight = 150;
-    // Max scale: 40 days (for relative height)
-    const int maxDays = 40;
+    // Dynamically calculate max scale based on data, minimum 40 days
+    final int maxDaysInHistory = recentHistory.isEmpty 
+        ? 40 
+        : recentHistory.map((h) => h.durationDays).reduce((a, b) => a > b ? a : b);
+    final int maxDays = maxDaysInHistory > 40 ? maxDaysInHistory + 5 : 40;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -649,8 +652,8 @@ class _CycleHistoryGraph extends StatelessWidget {
             ),
           ),
           Container(
-            height: graphHeight + 40, // extra for labels
-            padding: const EdgeInsets.only(top: 20, right: 10, left: 10),
+            height: graphHeight + 120, // increased further for safety
+            padding: const EdgeInsets.only(top: 20, right: 10, left: 10, bottom: 20),
             decoration: BoxDecoration(
               color: ZunoTheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(24),
@@ -688,6 +691,7 @@ class _CycleHistoryGraph extends StatelessWidget {
                     children: recentHistory.map((h) {
                       final double barHeight = (h.durationDays / maxDays) * graphHeight;
                       return Column(
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Text(
