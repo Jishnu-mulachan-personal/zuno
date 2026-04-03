@@ -608,9 +608,9 @@ class _CycleHistoryGraph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We'll show up to the last 6 cycles
-    final recentHistory = data.history.length > 6
-        ? data.history.sublist(data.history.length - 6)
+    // We'll show up to the last 12 cycles and make it scrollable
+    final recentHistory = data.history.length > 12
+        ? data.history.sublist(data.history.length - 12)
         : data.history;
 
     const double graphHeight = 150;
@@ -641,7 +641,7 @@ class _CycleHistoryGraph extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Last ${recentHistory.length} Cycles',
+                  'Recent Cycles',
                   style: GoogleFonts.notoSerif(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -652,15 +652,15 @@ class _CycleHistoryGraph extends StatelessWidget {
             ),
           ),
           Container(
-            height: graphHeight + 120, // increased further for safety
-            padding: const EdgeInsets.only(top: 20, right: 10, left: 10, bottom: 20),
+            height: graphHeight + 120,
+            padding: const EdgeInsets.only(top: 20, bottom: 20),
             decoration: BoxDecoration(
               color: ZunoTheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Stack(
               children: [
-                // Average line (dashed paint)
+                // Average line (dashed paint) - Stays fixed in background
                 Positioned(
                   left: 0,
                   right: 0,
@@ -670,9 +670,9 @@ class _CycleHistoryGraph extends StatelessWidget {
                     painter: _DashedLinePainter(color: ZunoTheme.primary.withOpacity(0.3)),
                   ),
                 ),
-                // Average label
+                // Average label - Stays fixed
                 Positioned(
-                  right: 0,
+                  right: 16,
                   bottom: (data.averageDays / maxDays) * graphHeight + 30,
                   child: Text(
                     'Avg: ${data.averageDays.toStringAsFixed(1)}d',
@@ -683,46 +683,54 @@ class _CycleHistoryGraph extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Bars
+                // Bars - Scrollable
                 Positioned.fill(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: recentHistory.map((h) {
-                      final double barHeight = (h.durationDays / maxDays) * graphHeight;
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${h.durationDays}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: ZunoTheme.onSurface,
-                            ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: recentHistory.map((h) {
+                        final double barHeight = (h.durationDays / maxDays) * graphHeight;
+                        return Container(
+                          width: 45, // Consistent width for each column
+                          margin: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${h.durationDays}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: ZunoTheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: 24,
+                                height: barHeight,
+                                decoration: BoxDecoration(
+                                  color: ZunoTheme.primary.withOpacity(0.8),
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                h.monthLabel,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: ZunoTheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Container(
-                            width: 24,
-                            height: barHeight,
-                            decoration: BoxDecoration(
-                              color: ZunoTheme.primary.withOpacity(0.8),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            h.monthLabel,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: ZunoTheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
               ],
