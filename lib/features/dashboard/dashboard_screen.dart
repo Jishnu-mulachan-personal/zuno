@@ -772,7 +772,10 @@ class _DynamicCardsSection extends ConsumerWidget {
                 tag: 'CYCLE TRACKER',
                 title: 'Day ${cycleData!.currentCycleDay}',
                 subtitle: cycleData!.phaseSubtitle,
+                insight: state.cycleInsight,
+                isLoadingInsight: state.isLoadingCycleInsight,
                 accentColor: ZunoTheme.tertiary,
+                showChevron: true,
               ),
             ),
           ],
@@ -798,14 +801,20 @@ class _DashboardSmartCard extends StatelessWidget {
   final String tag;
   final String title;
   final String subtitle;
+  final String? insight;
+  final bool isLoadingInsight;
   final Color accentColor;
+  final bool showChevron;
 
   const _DashboardSmartCard({
     required this.icon,
     required this.tag,
     required this.title,
     required this.subtitle,
+    this.insight,
+    this.isLoadingInsight = false,
     required this.accentColor,
+    this.showChevron = false,
   });
 
   @override
@@ -857,20 +866,47 @@ class _DashboardSmartCard extends StatelessWidget {
                     color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
                   ),
                 ),
+                if (isLoadingInsight) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: accentColor.withOpacity(0.5),
+                    ),
+                  ),
+                ] else if (insight != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    insight!,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: ZunoTheme.onSurface.withOpacity(0.8),
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 12),
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: accentColor.withOpacity(0.2), width: 3),
+          if (showChevron)
+            Icon(Icons.chevron_right_rounded,
+                color: ZunoTheme.onSurfaceVariant.withOpacity(0.3), size: 28)
+          else
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border:
+                    Border.all(color: accentColor.withOpacity(0.2), width: 3),
+              ),
+              child: Icon(Icons.auto_awesome_rounded,
+                  color: accentColor, size: 22),
             ),
-            child:
-                Icon(Icons.auto_awesome_rounded, color: accentColor, size: 22),
-          ),
         ],
       ),
     );

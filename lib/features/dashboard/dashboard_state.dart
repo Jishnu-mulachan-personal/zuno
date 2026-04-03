@@ -340,6 +340,8 @@ class DashboardState {
   final String journalNote;
   final String? dailyInsight;
   final bool isLoadingInsight;
+  final String? cycleInsight;
+  final bool isLoadingCycleInsight;
 
   const DashboardState({
     this.selectedMood,
@@ -351,6 +353,8 @@ class DashboardState {
     this.journalNote = '',
     this.dailyInsight,
     this.isLoadingInsight = false,
+    this.cycleInsight,
+    this.isLoadingCycleInsight = false,
   });
 
   DashboardState copyWith({
@@ -363,6 +367,8 @@ class DashboardState {
     String? journalNote,
     String? dailyInsight,
     bool? isLoadingInsight,
+    String? cycleInsight,
+    bool? isLoadingCycleInsight,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
@@ -374,6 +380,9 @@ class DashboardState {
       journalNote: journalNote ?? this.journalNote,
       dailyInsight: dailyInsight ?? this.dailyInsight,
       isLoadingInsight: isLoadingInsight ?? this.isLoadingInsight,
+      cycleInsight: cycleInsight ?? this.cycleInsight,
+      isLoadingCycleInsight:
+          isLoadingCycleInsight ?? this.isLoadingCycleInsight,
     );
   }
 }
@@ -381,7 +390,21 @@ class DashboardState {
 class DashboardNotifier extends StateNotifier<DashboardState> {
   final Ref ref;
   DashboardNotifier(this.ref) : super(const DashboardState()) {
+    _init();
+  }
+
+  void _init() {
     fetchDailyInsight();
+
+    // Watch profile changes and trigger cycle insight when ready
+    ref.listen<AsyncValue<UserProfile>>(userProfileProvider, (prev, next) {
+      final profile = next.value;
+      debugPrint(
+          '[DashboardNotifier] profile listener: gender=${profile?.gender}, hasCycleData=${profile?.cycleData != null}');
+      if (profile?.gender == 'Female' && profile?.cycleData != null) {
+        fetchCycleInsight();
+      }
+    }, fireImmediately: true);
   }
 
   Future<void> fetchDailyInsight() async {
@@ -404,6 +427,30 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     } catch (e) {
       debugPrint('[fetchDailyInsight] Error: $e');
       state = state.copyWith(isLoadingInsight: false);
+    }
+  }
+
+  Future<void> fetchCycleInsight() async {
+    if (state.cycleInsight != null) return;
+
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    debugPrint('[fetchCycleInsight] start for ${sbUser?.id}');
+    if (sbUser == null) return;
+
+    state = state.copyWith(isLoadingCycleInsight: true);
+    try {
+      debugPrint('[fetchCycleInsight] invoking edge function...');
+      final response = await Supabase.instance.client.functions.invoke(
+        'generate_cycle_insight',
+        body: {'userId': sbUser.id},
+      );
+      final insight = response.data['insight'] as String?;
+      debugPrint('[fetchCycleInsight] Result: $insight');
+      state = state.copyWith(
+          isLoadingCycleInsight: false, cycleInsight: insight);
+    } catch (e) {
+      debugPrint('[fetchCycleInsight] Error: $e');
+      state = state.copyWith(isLoadingCycleInsight: false);
     }
   }
 
