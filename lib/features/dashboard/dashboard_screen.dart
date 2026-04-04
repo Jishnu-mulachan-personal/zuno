@@ -56,6 +56,7 @@ class DashboardScreen extends ConsumerWidget {
           gender: profile.gender,
           streakDays: profile.streakDays,
           cycleData: profile.cycleData,
+          partnerId: profile.partnerId,
           hasPartner: profile.partnerName != null,
         ),
       ),
@@ -72,6 +73,7 @@ class DashboardScreen extends ConsumerWidget {
     String? gender,
     required int streakDays,
     CycleData? cycleData,
+    String? partnerId,
     bool hasPartner = false,
     bool isLoading = false,
     String? error,
@@ -97,6 +99,7 @@ class DashboardScreen extends ConsumerWidget {
                   _StatusGrid(
                     state: state,
                     streakDays: streakDays,
+                    partnerId: partnerId,
                     partnerName: partnerName,
                   ),
                   const SizedBox(height: 32),
@@ -558,27 +561,39 @@ class _SaveCheckInButton extends StatelessWidget {
 
 // ── Status Grid ─────────────────────────────────────────────────────────────
 
-class _StatusGrid extends StatelessWidget {
+class _StatusGrid extends ConsumerWidget {
   final DashboardState state;
   final int streakDays;
+  final String? partnerId;
   final String? partnerName;
 
   const _StatusGrid({
     required this.state,
     required this.streakDays,
+    this.partnerId,
     this.partnerName,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    String partnerStatusValue = 'Partner feels\nYet to sync';
+    if (partnerId != null) {
+      final partnerMoodAsync = ref.watch(partnerMoodProvider(partnerId!));
+      partnerMoodAsync.whenData((emoji) {
+        if (emoji != null) {
+          partnerStatusValue = '$partnerName feels\n$emoji';
+        }
+      });
+    }
+
     return Row(
       children: [
-        if (partnerName != null) ...[
+        if (partnerName != null && partnerId != null) ...[
           Expanded(
             child: _StatusCard(
               icon: Icons.favorite_rounded,
               label: 'PARTNER',
-              value: '$partnerName feels\n${state.partnerMood}',
+              value: partnerStatusValue,
             ),
           ),
           const SizedBox(width: 12),

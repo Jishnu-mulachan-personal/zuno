@@ -11,6 +11,7 @@ import '../cycle_tracker/cycle_data_model.dart';
 class UserProfile {
   final String id;
   final String displayName;
+  final String? partnerId;
   final String? partnerName;
   final int streakDays;
   final String? gender;
@@ -20,6 +21,7 @@ class UserProfile {
   const UserProfile({
     required this.id,
     required this.displayName,
+    this.partnerId,
     this.partnerName,
     this.streakDays = 0,
     this.gender,
@@ -92,6 +94,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       }
     }
 
+    String? partnerId;
     String? partnerName;
     int streakDays = 0;
 
@@ -101,14 +104,15 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       // Fetch partner (the other person in the relationship)
       final partnerRow = await supabase
           .from('users')
-          .select('display_name')
+          .select('id, display_name')
           .eq('relationship_id', relationshipId)
           .neq('id', userId)
           .limit(1) // Safety
           .maybeSingle();
 
+      partnerId = partnerRow?['id'] as String?;
       partnerName = partnerRow?['display_name'] as String?;
-      debugPrint('[userProfileProvider] Partner found: $partnerName');
+      debugPrint('[userProfileProvider] Partner found: $partnerName (ID: $partnerId)');
 
       // Streak calculation...
       final logs = await supabase
@@ -138,6 +142,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     return UserProfile(
       id: userId,
       displayName: displayName,
+      partnerId: partnerId,
       partnerName: partnerName,
       streakDays: streakDays,
       gender: gender,
@@ -152,6 +157,31 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     }
     // Re-throw so the FutureProvider enters an error state that the UI can handle
     rethrow;
+  }
+});
+
+final partnerMoodProvider =
+    FutureProvider.family<String?, String>((ref, partnerId) async {
+  debugPrint('[partnerMoodProvider] Fetching mood for partner $partnerId');
+  final supabase = Supabase.instance.client;
+  final today = DateTime.now().toIso8601String().split('T')[0];
+
+  try {
+    final response = await supabase
+        .from('daily_logs')
+        .select('mood_emoji')
+        .eq('user_id', partnerId)
+        .eq('log_date', today)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    final emoji = response?['mood_emoji'] as String?;
+    debugPrint('[partnerMoodProvider] Found emoji: $emoji');
+    return emoji;
+  } catch (e) {
+    debugPrint('[partnerMoodProvider] Error: $e');
+    return null;
   }
 });
 
