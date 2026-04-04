@@ -104,39 +104,40 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         return true;
       }
 
-      final relationshipId = userRow['relationship_id'] as String?;
+      // 2. Clear user from ANY relationship they might be part of
+      // (This is more robust than just relying on userRow['relationship_id'])
+      final activeRels = await supabase
+          .from('relationships')
+          .select('id, partner_a_id, partner_b_id')
+          .or('partner_a_id.eq.$userId,partner_b_id.eq.$userId');
 
-      // 2. If paired: clear partner_b_id / partner_a_id from relationships
-      if (relationshipId != null) {
-        final relRow = await supabase
-            .from('relationships')
-            .select('partner_a_id, partner_b_id')
-            .eq('id', relationshipId)
-            .maybeSingle();
+      for (final rel in activeRels) {
+        final relId = rel['id'] as String;
+        final partnerAId = rel['partner_a_id'] as String?;
+        final partnerBId = rel['partner_b_id'] as String?;
 
-        if (relRow != null) {
-          final partnerAId = relRow['partner_a_id'] as String?;
-          if (partnerAId == userId) {
-            // Current user is A — clear their reference and nullify partner_b
-            await supabase
-                .from('relationships')
-                .update({'partner_a_id': null, 'partner_b_id': null})
-                .eq('id', relationshipId);
-          } else {
-            // Current user is B — just clear partner_b_id
-            await supabase
-                .from('relationships')
-                .update({'partner_b_id': null}).eq('id', relationshipId);
-          }
+        if (partnerAId == userId) {
+          // Current user is A — clear their reference and nullify partner_b
+          await supabase
+              .from('relationships')
+              .update({'partner_a_id': null, 'partner_b_id': null})
+              .eq('id', relId);
 
-          // Clear the partner's relationship_id pointer
-          final partnerId = userId == partnerAId
-              ? relRow['partner_b_id'] as String?
-              : partnerAId;
-          if (partnerId != null) {
+          if (partnerBId != null) {
             await supabase
                 .from('users')
-                .update({'relationship_id': null}).eq('id', partnerId);
+                .update({'relationship_id': null}).eq('id', partnerBId);
+          }
+        } else if (partnerBId == userId) {
+          // Current user is B — just clear partner_b_id
+          await supabase
+              .from('relationships')
+              .update({'partner_b_id': null}).eq('id', relId);
+
+          if (partnerAId != null) {
+            await supabase
+                .from('users')
+                .update({'relationship_id': null}).eq('id', partnerAId);
           }
         }
       }

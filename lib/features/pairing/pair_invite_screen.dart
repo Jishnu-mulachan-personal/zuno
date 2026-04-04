@@ -11,7 +11,8 @@ import '../dashboard/dashboard_state.dart';
 import 'pair_provider.dart';
 
 class PairInviteScreen extends ConsumerStatefulWidget {
-  const PairInviteScreen({super.key});
+  final bool isOnboarding;
+  const PairInviteScreen({super.key, this.isOnboarding = false});
 
   @override
   ConsumerState<PairInviteScreen> createState() => _PairInviteScreenState();
@@ -84,8 +85,12 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
                 duration: const Duration(seconds: 3),
               ),
             );
-            // Navigate back to You screen
-            context.go('/us');
+            // Navigate to questions if onboarding, otherwise to dashboard/us
+            if (widget.isOnboarding) {
+              context.go('/onboarding/questions');
+            } else {
+              context.go('/us');
+            }
           }
         }
       } catch (e) {
@@ -113,36 +118,59 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
-      appBar: AppBar(
-        backgroundColor: ZunoTheme.surface,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: ZunoTheme.primary, size: 18),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/dashboard');
-            }
-          },
-        ),
-        title: Text(
-          'Invite Partner',
-          style: GoogleFonts.notoSerif(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: ZunoTheme.primary,
+      appBar: widget.isOnboarding 
+        ? null // Hide app bar for onboarding to show custom progress dots
+        : AppBar(
+            backgroundColor: ZunoTheme.surface,
+            elevation: 0,
+            surfaceTintColor: Colors.transparent,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: ZunoTheme.primary, size: 18),
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/dashboard');
+                }
+              },
+            ),
+            title: Text(
+              'Invite Partner',
+              style: GoogleFonts.notoSerif(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: ZunoTheme.primary,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             children: [
+              if (widget.isOnboarding) ...[
+                const SizedBox(height: 24),
+                Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        'Zuno',
+                        style: GoogleFonts.notoSerif(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w600,
+                          fontStyle: FontStyle.italic,
+                          color: ZunoTheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const _ProgressDots(active: 1),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
               const SizedBox(height: 8),
               // Headline
               Text(
@@ -189,7 +217,29 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
               ),
               const SizedBox(height: 16),
               // Scan instead
-              _ScanInsteadButton(),
+              _ScanInsteadButton(
+                onTap: () {
+                  final route = widget.isOnboarding 
+                    ? '/onboarding/questions' 
+                    : '/us';
+                  context.push('/pair/scan?successRoute=${Uri.encodeComponent(route)}');
+                },
+              ),
+              if (widget.isOnboarding) ...[
+                const SizedBox(height: 32),
+                TextButton(
+                  onPressed: () => context.go('/onboarding/goals'),
+                  child: Text(
+                    'SKIP FOR NOW',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: ZunoTheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
             ],
           ),
@@ -390,10 +440,13 @@ class _RefreshButton extends StatelessWidget {
 // ── Scan Instead ─────────────────────────────────────────────────────────────
 
 class _ScanInsteadButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ScanInsteadButton({required this.onTap});
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push('/pair/scan'),
+      onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -417,6 +470,37 @@ class _ScanInsteadButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProgressDots extends StatelessWidget {
+  final int active;
+  const _ProgressDots({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _dot(0 == active),
+        const SizedBox(width: 6),
+        _dot(1 == active),
+        const SizedBox(width: 6),
+        _dot(2 == active),
+      ],
+    );
+  }
+
+  Widget _dot(bool active) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: active ? 20 : 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: active ? ZunoTheme.primary : ZunoTheme.outlineVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(99),
       ),
     );
   }

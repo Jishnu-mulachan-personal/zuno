@@ -10,9 +10,10 @@ class UserRepository {
     required String name,
     required DateTime dateOfBirth,
     required String occupation,
-    required DateTime marriedOn,
-    required String relationshipDistance,
     required String gender,
+    required String relationshipStatus,
+    DateTime? marriedOn,
+    String? relationshipDistance,
   }) async {
     final sbUser = _supabase.auth.currentUser;
 
@@ -39,9 +40,9 @@ class UserRepository {
     final relResponse = await _supabase
         .from('relationships')
         .insert({
-          'status': 'dating', // Standard default until user updates later
-          'distance': relationshipDistance,
-          'anniversary_date': marriedOn.toIso8601String(),
+          'status': relationshipStatus, 
+          'distance': relationshipDistance ?? 'moderate',
+          if (marriedOn != null) 'anniversary_date': marriedOn.toIso8601String(),
           'partner_a_id': userId,
           'privacy_preference': 'balanced', // Default
         })
@@ -54,6 +55,17 @@ class UserRepository {
     await _supabase.from('users').update({
       'relationship_id': relId,
     }).eq('id', userId);
+  }
+
+  Future<void> updateRelationshipDetails({
+    required String relationshipId,
+    DateTime? marriedOn,
+    String? relationshipDistance,
+  }) async {
+    await _supabase.from('relationships').update({
+      if (marriedOn != null) 'anniversary_date': marriedOn.toIso8601String(),
+      if (relationshipDistance != null) 'distance': relationshipDistance,
+    }).eq('id', relationshipId);
   }
 
   /// Returns true if the currently authenticated user already has

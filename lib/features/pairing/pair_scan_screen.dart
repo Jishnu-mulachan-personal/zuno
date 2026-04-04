@@ -8,7 +8,8 @@ import '../dashboard/dashboard_state.dart';
 import 'pair_provider.dart';
 
 class PairScanScreen extends ConsumerStatefulWidget {
-  const PairScanScreen({super.key});
+  final String? successRoute;
+  const PairScanScreen({super.key, this.successRoute});
 
   @override
   ConsumerState<PairScanScreen> createState() => _PairScanScreenState();
@@ -54,8 +55,10 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
           duration: const Duration(seconds: 3),
         ),
       );
-      // Pop back to the You screen
-      if (context.mounted) context.go('/us');
+      // Navigate to the success route or default to /us
+      if (context.mounted) {
+        context.go(widget.successRoute ?? '/us');
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

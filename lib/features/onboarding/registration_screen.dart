@@ -3,145 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
-import '../auth/user_repository.dart';
-
-// ── Occupation options ────────────────────────────────────────────────────────
-
-const _kOccupations = [
-  'Student',
-  'Teacher / Educator',
-  'Engineer',
-  'Doctor / Healthcare',
-  'Lawyer',
-  'Accountant / Finance',
-  'Business Owner',
-  'Artist / Designer',
-  'Writer / Journalist',
-  'Software Developer',
-  'Homemaker',
-  'Retired',
-  'Other',
-];
-
-const _kGenders = [
-  'Male',
-  'Female',
-  'Non-binary',
-  'Prefer not to say',
-];
-
-// ── State ─────────────────────────────────────────────────────────────────────
-
-class _RegState {
-  final String name;
-  final DateTime? dateOfBirth;
-  final String occupation; // selected from list OR 'Other'
-  final String customOccupation; // typed value when occupation == 'Other'
-  final DateTime? marriedOn;
-  final String gender;
-  final String relationshipDistance;
-  final bool isLoading;
-  final String? error;
-
-  const _RegState({
-    this.name = '',
-    this.dateOfBirth,
-    this.occupation = '',
-    this.customOccupation = '',
-    this.marriedOn,
-    this.gender = '',
-    this.relationshipDistance = 'moderate',
-    this.isLoading = false,
-    this.error,
-  });
-
-  _RegState copyWith({
-    String? name,
-    DateTime? dateOfBirth,
-    String? occupation,
-    String? customOccupation,
-    DateTime? marriedOn,
-    bool? clearMarriedOn,
-    String? gender,
-    String? relationshipDistance,
-    bool? isLoading,
-    String? error,
-    bool clearError = false,
-  }) {
-    return _RegState(
-      name: name ?? this.name,
-      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
-      occupation: occupation ?? this.occupation,
-      customOccupation: customOccupation ?? this.customOccupation,
-      marriedOn:
-          (clearMarriedOn == true) ? null : (marriedOn ?? this.marriedOn),
-      gender: gender ?? this.gender,
-      relationshipDistance: relationshipDistance ?? this.relationshipDistance,
-      isLoading: isLoading ?? this.isLoading,
-      error: clearError ? null : (error ?? this.error),
-    );
-  }
-
-  String get effectiveOccupation =>
-      occupation == 'Other' ? customOccupation : occupation;
-
-  bool get isValid {
-    return name.trim().isNotEmpty &&
-        dateOfBirth != null &&
-        gender.isNotEmpty &&
-        effectiveOccupation.trim().isNotEmpty &&
-        marriedOn != null;
-  }
-}
-
-class _RegNotifier extends StateNotifier<_RegState> {
-  final UserRepository _userRepo;
-  
-  _RegNotifier(this._userRepo) : super(const _RegState());
-
-  void setName(String v) => state = state.copyWith(name: v, clearError: true);
-  void setDOB(DateTime v) =>
-      state = state.copyWith(dateOfBirth: v, clearError: true);
-  void setOccupation(String v) =>
-      state = state.copyWith(occupation: v, clearError: true);
-  void setCustomOccupation(String v) =>
-      state = state.copyWith(customOccupation: v, clearError: true);
-  void setMarriedOn(DateTime v) =>
-      state = state.copyWith(marriedOn: v, clearError: true);
-  void setGender(String v) => state = state.copyWith(gender: v, clearError: true);
-  void setRelationshipDistance(String v) =>
-      state = state.copyWith(relationshipDistance: v);
-
-  Future<void> submit() async {
-    if (!state.isValid) {
-      state = state.copyWith(
-          error: 'Please complete all fields before continuing.');
-      return;
-    }
-    state = state.copyWith(isLoading: true, clearError: true);
-    
-    try {
-      await _userRepo.createUserProfile(
-        name: state.name,
-        dateOfBirth: state.dateOfBirth!,
-        occupation: state.effectiveOccupation,
-        marriedOn: state.marriedOn!,
-        relationshipDistance: state.relationshipDistance,
-        gender: state.gender,
-      );
-      state = state.copyWith(isLoading: false);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
-    }
-  }
-}
-
-final _regProvider = StateNotifierProvider.autoDispose<_RegNotifier, _RegState>(
-  (ref) {
-    final userRepo = ref.watch(userRepositoryProvider);
-    return _RegNotifier(userRepo);
-  },
-);
+import 'onboarding_provider.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -199,24 +61,13 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
 
   Future<void> _pickDOB() async {
     final now = DateTime.now();
-    final current = ref.read(_regProvider).dateOfBirth;
+    final current = ref.read(onboardingProvider).dateOfBirth;
     final picked = await _pickDate(
       initialDate: current ?? DateTime(now.year - 25),
       firstDate: DateTime(1920),
       lastDate: DateTime(now.year - 5, now.month, now.day),
     );
-    if (picked != null) ref.read(_regProvider.notifier).setDOB(picked);
-  }
-
-  Future<void> _pickMarriedOn() async {
-    final now = DateTime.now();
-    final current = ref.read(_regProvider).marriedOn;
-    final picked = await _pickDate(
-      initialDate: current ?? DateTime(now.year - 5),
-      firstDate: DateTime(1950),
-      lastDate: now,
-    );
-    if (picked != null) ref.read(_regProvider.notifier).setMarriedOn(picked);
+    if (picked != null) ref.read(onboardingProvider.notifier).setDOB(picked);
   }
 
   void _showOccupationPicker() {
@@ -225,9 +76,9 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _OccupationSheet(
-        current: ref.read(_regProvider).occupation,
+        current: ref.read(onboardingProvider).occupation,
         onSelected: (val) {
-          ref.read(_regProvider.notifier).setOccupation(val);
+          ref.read(onboardingProvider.notifier).setOccupation(val);
           Navigator.pop(context);
         },
       ),
@@ -240,9 +91,9 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _GenderSheet(
-        current: ref.read(_regProvider).gender,
+        current: ref.read(onboardingProvider).gender,
         onSelected: (val) {
-          ref.read(_regProvider.notifier).setGender(val);
+          ref.read(onboardingProvider.notifier).setGender(val);
           Navigator.pop(context);
         },
       ),
@@ -251,31 +102,30 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
-  Future<void> _submit() async {
-    final notifier = ref.read(_regProvider.notifier);
-    await notifier.submit();
-    if (!mounted) return;
-    final err = ref.read(_regProvider).error;
-    if (err != null) {
+  void _continue() {
+    FocusScope.of(context).unfocus();
+    final s = ref.read(onboardingProvider);
+    if (!s.isPersonalInfoValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(err, style: GoogleFonts.plusJakartaSans()),
+          content: Text('Please complete all fields before continuing.',
+              style: GoogleFonts.plusJakartaSans()),
           backgroundColor: ZunoTheme.error,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
-    } else {
-      context.go('/onboarding/invite');
+      return;
     }
+    context.go('/onboarding/status');
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final s = ref.watch(_regProvider);
+    final s = ref.watch(onboardingProvider);
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
@@ -342,7 +192,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   TextField(
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
-                    onChanged: ref.read(_regProvider.notifier).setName,
+                    onChanged: ref.read(onboardingProvider.notifier).setName,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
@@ -390,7 +240,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                       controller: _customOccupationController,
                       textCapitalization: TextCapitalization.words,
                       onChanged:
-                          ref.read(_regProvider.notifier).setCustomOccupation,
+                          ref.read(onboardingProvider.notifier).setCustomOccupation,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
@@ -402,67 +252,13 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 ],
               ),
 
-              const SizedBox(height: 16),
-
-              // ── Card 2: Married On ─────────────────────────────────────
-              _SectionCard(
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.favorite_border_rounded,
-                          size: 16, color: ZunoTheme.primary),
-                      const SizedBox(width: 8),
-                      _FieldLabel('MARRIED ON'),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'When did you tie the knot?',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: ZunoTheme.onSurfaceVariant.withAlpha(153),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _DateTile(
-                    date: s.marriedOn,
-                    hint: 'Select your marriage date',
-                    onTap: _pickMarriedOn,
-                    trailingIcon: Icons.calendar_month_outlined,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Card 3: Relationship Distance ──────────────────────────
-              _SectionCard(
-                children: [
-                  _FieldLabel('HOW DISTANT IS THE RELATIONSHIP?'),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Select how closely connected you feel',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: ZunoTheme.onSurfaceVariant.withAlpha(153),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _RelationshipDistancePicker(
-                    selected: s.relationshipDistance,
-                    onChanged:
-                        ref.read(_regProvider.notifier).setRelationshipDistance,
-                  ),
-                ],
-              ),
-
               const SizedBox(height: 36),
 
               // ── CTA ────────────────────────────────────────────────────
               _GradientCta(
-                label: 'Save & Continue',
+                label: 'Continue',
                 isLoading: s.isLoading,
-                onTap: s.isLoading ? null : _submit,
+                onTap: s.isLoading ? null : _continue,
               ),
 
               const SizedBox(height: 24),
@@ -514,14 +310,14 @@ class _OccupationSheet extends StatefulWidget {
 
 class _OccupationSheetState extends State<_OccupationSheet> {
   final _searchController = TextEditingController();
-  List<String> _filtered = _kOccupations;
+  List<String> _filtered = kOccupations;
 
   void _onSearch(String q) {
     final query = q.toLowerCase().trim();
     setState(() {
       _filtered = query.isEmpty
-          ? _kOccupations
-          : _kOccupations
+          ? kOccupations
+          : kOccupations
               .where((o) => o.toLowerCase().contains(query))
               .toList();
     });
@@ -693,9 +489,9 @@ class _GenderSheet extends StatelessWidget {
           ListView.builder(
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-            itemCount: _kGenders.length,
+            itemCount: kGenders.length,
             itemBuilder: (_, i) {
-              final item = _kGenders[i];
+              final item = kGenders[i];
               final isSelected = item == current;
               return GestureDetector(
                 onTap: () => onSelected(item),
@@ -738,103 +534,6 @@ class _GenderSheet extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ── Relationship Distance ─────────────────────────────────────────────────────
-
-const _kDistances = [
-  ('close', 'Close', Icons.favorite_rounded, 'We speak often'),
-  ('moderate', 'Moderate', Icons.people_outline_rounded, 'Occasional touch'),
-  ('distant', 'Distant', Icons.explore_outlined, 'Rarely in contact'),
-];
-
-class _RelationshipDistancePicker extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onChanged;
-  const _RelationshipDistancePicker(
-      {required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: _kDistances.map((d) {
-        final (id, label, icon, desc) = d;
-        final isSelected = selected == id;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: GestureDetector(
-            onTap: () => onChanged(id),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? ZunoTheme.primaryFixed.withAlpha(153)
-                    : ZunoTheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(14),
-                border: isSelected
-                    ? Border.all(
-                        color: ZunoTheme.primary.withAlpha(76), width: 1.5)
-                    : Border.all(color: Colors.transparent, width: 1.5),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? ZunoTheme.primary.withAlpha(31)
-                          : ZunoTheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon,
-                        size: 20,
-                        color: isSelected
-                            ? ZunoTheme.primary
-                            : ZunoTheme.onSurfaceVariant.withAlpha(127)),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected
-                                ? ZunoTheme.primary
-                                : ZunoTheme.onSurface,
-                          ),
-                        ),
-                        Text(
-                          desc,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: ZunoTheme.onSurfaceVariant.withAlpha(153),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AnimatedOpacity(
-                    opacity: isSelected ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.check_circle_rounded,
-                        size: 20, color: ZunoTheme.tertiary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }
@@ -1044,14 +743,15 @@ class _GradientCta extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: onTap != null
               ? ZunoTheme.primaryGradient
-              : const LinearGradient(colors: [Colors.grey, Colors.grey]),
+              : LinearGradient(colors: [Colors.grey.shade300, Colors.grey.shade300]),
           borderRadius: BorderRadius.circular(99),
           boxShadow: [
-            BoxShadow(
-              color: ZunoTheme.primary.withAlpha(51),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
+            if (onTap != null)
+              BoxShadow(
+                color: ZunoTheme.primary.withAlpha(51),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
           ],
         ),
         child: Center(
@@ -1060,15 +760,17 @@ class _GradientCta extends StatelessWidget {
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
                 )
               : Text(
                   label.toUpperCase(),
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 2.0,
                     color: Colors.white,
-                    letterSpacing: 2.2,
                   ),
                 ),
         ),
