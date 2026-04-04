@@ -14,20 +14,22 @@ class UserProfile {
   final String? partnerId;
   final String? partnerName;
   final int streakDays;
+  final DateTime? lastLogDate;
   final String? gender;
   final CycleData? cycleData;
   final String preferredLanguage;
 
   const UserProfile({
-    required this.id,
-    required this.displayName,
+    required String id,
+    required String displayName,
     this.partnerId,
     this.partnerName,
     this.streakDays = 0,
+    this.lastLogDate,
     this.gender,
     this.cycleData,
     this.preferredLanguage = 'English',
-  });
+  }) : id = id, displayName = displayName;
 }
 
 final userProfileProvider = FutureProvider<UserProfile>((ref) async {
@@ -72,6 +74,27 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final preferredLanguage = (userRow['user_settings']
             as Map<String, dynamic>?)?['preferred_language'] as String? ??
         'English';
+    
+    // Streak data from Users table
+    int streakDays = (userRow['streak_count'] as int?) ?? 0;
+    final lastLogDateStr = userRow['last_log_date'] as String?;
+    DateTime? lastLogDate = lastLogDateStr != null ? DateTime.parse(lastLogDateStr) : null;
+
+    // Daily Reset Logic: If missed "yesterday", reset streak to 0 in DB
+    if (lastLogDate != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final lastLog = DateTime(lastLogDate.year, lastLogDate.month, lastLogDate.day);
+      final daysDiff = today.difference(lastLog).inDays;
+
+      if (daysDiff > 1) {
+        debugPrint('[userProfileProvider] Streak broken ($daysDiff days since last log). Resetting to 0.');
+        streakDays = 0;
+        await supabase.from('users').update({
+          'streak_count': 0,
+        }).eq('id', userId);
+      }
+    }
 
     CycleData? cycleData;
     if (gender == 'Female') {
@@ -96,7 +119,6 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
 
     String? partnerId;
     String? partnerName;
-    int streakDays = 0;
 
     if (relationshipId != null) {
       debugPrint(
@@ -113,38 +135,16 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       partnerId = partnerRow?['id'] as String?;
       partnerName = partnerRow?['display_name'] as String?;
       debugPrint('[userProfileProvider] Partner found: $partnerName (ID: $partnerId)');
-
-      // Streak calculation...
-      final logs = await supabase
-          .from('daily_logs')
-          .select('log_date')
-          .eq('user_id', userId)
-          .order('log_date', ascending: false)
-          .limit(60);
-
-      if (logs is List && logs.isNotEmpty) {
-        final today = DateTime.now();
-        var streak = 0;
-        for (var i = 0; i < logs.length; i++) {
-          final dt = DateTime.parse(logs[i]['log_date'] as String);
-          final diff = today.difference(dt).inDays;
-          if (diff == i) {
-            streak++;
-          } else {
-            break;
-          }
-        }
-        streakDays = streak;
-      }
     }
 
-    debugPrint('[userProfileProvider] Profile fetch complete.');
+    debugPrint('[userProfileProvider] Profile fetch complete. Streak: $streakDays');
     return UserProfile(
       id: userId,
       displayName: displayName,
       partnerId: partnerId,
       partnerName: partnerName,
       streakDays: streakDays,
+      lastLogDate: lastLogDate,
       gender: gender,
       cycleData: cycleData,
       preferredLanguage: preferredLanguage,
@@ -560,27 +560,60 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     try {
       final supabase = Supabase.instance.client;
 
-      // Insert a new log entry — multiple check-ins per day are allowed
+      // 1. Insert a new log entry
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
       await supabase.from('daily_logs').insert({
         'user_id': userId,
         'mood_emoji': state.selectedMood,
         'connection_felt': state.isConnected,
         'context_tags': state.selectedTags,
-        'log_date': DateTime.now().toIso8601String().split('T')[0],
+        'log_date': todayStr,
         if (state.journalNote.trim().isNotEmpty)
           'journal_note': EncryptionService.encrypt(state.journalNote.trim()),
       });
 
-      // Trigger partner notification via Edge Function
+      // 2. Update Streak Logic
+      final profile = ref.read(userProfileProvider).value;
+      if (profile != null) {
+        int newStreak = profile.streakDays;
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        
+        DateTime? lastLog;
+        if (profile.lastLogDate != null) {
+          lastLog = DateTime(profile.lastLogDate!.year, profile.lastLogDate!.month, profile.lastLogDate!.day);
+        }
+
+        if (lastLog == null) {
+          newStreak = 1;
+        } else if (lastLog.isBefore(today)) {
+          final diff = today.difference(lastLog).inDays;
+          if (diff == 1) {
+            newStreak += 1;
+          } else {
+            newStreak = 1;
+          }
+        }
+        // If lastLog == today, streak remains the same
+
+        await supabase.from('users').update({
+          'streak_count': newStreak,
+          'last_log_date': todayStr,
+        }).eq('id', userId);
+      }
+
+      // 3. Trigger partner notification
       supabase.functions.invoke(
         'notify_partner',
         body: {'identifier': identifier},
       ).ignore();
 
       state = state.copyWith(isSaving: false, lastSaved: DateTime.now());
+      
+      // Invalidate both logs and profile to refresh streak in UI
       ref.invalidate(userLogsProvider);
+      ref.invalidate(userProfileProvider);
 
-      // Refresh daily insight to reflect new check-in data
       fetchDailyInsight(force: true);
 
       return true;

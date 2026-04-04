@@ -602,7 +602,7 @@ class _StatusGrid extends ConsumerWidget {
           child: _StatusCard(
             icon: Icons.local_fire_department_rounded,
             label: 'STREAK',
-            value: '$streakDays-day\nconnection',
+            value: '$streakDays-day\nStreak',
           ),
         ),
       ],
