@@ -5,11 +5,23 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import '../dashboard/dashboard_state.dart';
 
-class UsScreen extends ConsumerWidget {
+class UsScreen extends ConsumerStatefulWidget {
   const UsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<UsScreen> createState() => _UsScreenState();
+}
+
+class _UsScreenState extends ConsumerState<UsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh partner status whenever the screen is opened
+    Future.microtask(() => ref.invalidate(userProfileProvider));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
@@ -54,7 +66,13 @@ class _UsAppBar extends StatelessWidget {
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded,
             color: ZunoTheme.primary, size: 18),
-        onPressed: () => context.pop(),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/dashboard');
+          }
+        },
       ),
       title: Text(
         'Us',

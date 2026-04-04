@@ -85,7 +85,7 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
               ),
             );
             // Navigate back to You screen
-            context.go('/you');
+            context.go('/us');
           }
         }
       } catch (e) {
@@ -107,7 +107,6 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
     return '$m:$s';
   }
 
-
   @override
   Widget build(BuildContext context) {
     final invite = ref.watch(inviteProvider);
@@ -121,7 +120,13 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: ZunoTheme.primary, size: 18),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
         ),
         title: Text(
           'Invite Partner',
@@ -165,8 +170,7 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
               _QrCard(invite: invite, countdownText: _countdownText),
               const SizedBox(height: 24),
               // Refresh button
-              if (!invite.isGenerating)
-                _RefreshButton(onTap: _generate),
+              if (!invite.isGenerating) _RefreshButton(onTap: _generate),
               const SizedBox(height: 16),
               // Divider
               Row(
@@ -177,8 +181,8 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
                     child: Text('or',
                         style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
-                            color: ZunoTheme.onSurfaceVariant
-                                .withOpacity(0.4))),
+                            color:
+                                ZunoTheme.onSurfaceVariant.withOpacity(0.4))),
                   ),
                   const Expanded(child: Divider()),
                 ],
@@ -273,8 +277,8 @@ class _QrCard extends StatelessWidget {
                 );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: ZunoTheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
@@ -301,7 +305,8 @@ class _QrCard extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           // Countdown
-          _CountdownBadge(countdown: countdownText, isExpired: invite.isExpired),
+          _CountdownBadge(
+              countdown: countdownText, isExpired: invite.isExpired),
         ],
       ),
     );
@@ -359,8 +364,7 @@ class _RefreshButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: ZunoTheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(99),
-          border:
-              Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.2)),
+          border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

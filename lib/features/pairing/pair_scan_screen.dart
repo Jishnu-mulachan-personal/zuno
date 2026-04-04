@@ -26,18 +26,16 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_processing) return;
-    final token = capture.barcodes
-        .map((b) => b.rawValue)
-        .firstWhere((v) => v != null && v.startsWith('zuno_inv_'),
-            orElse: () => null);
+    final token = capture.barcodes.map((b) => b.rawValue).firstWhere(
+        (v) => v != null && v.startsWith('zuno_inv_'),
+        orElse: () => null);
 
     if (token == null) return;
 
     setState(() => _processing = true);
     await _controller.stop();
 
-    final success =
-        await ref.read(claimProvider.notifier).claimToken(token);
+    final success = await ref.read(claimProvider.notifier).claimToken(token);
     final claimState = ref.read(claimProvider);
 
     if (!mounted) return;
@@ -57,7 +55,7 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
         ),
       );
       // Pop back to the You screen
-      if (context.mounted) context.go('/you');
+      if (context.mounted) context.go('/us');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -86,7 +84,13 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Colors.white, size: 18),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
         ),
         title: Text(
           'Scan Partner\'s Code',
@@ -120,12 +124,11 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
             right: 0,
             child: Container(
               padding: EdgeInsets.fromLTRB(
-                  24, 24, 24,
-                  MediaQuery.of(context).padding.bottom + 24),
+                  24, 24, 24, MediaQuery.of(context).padding.bottom + 24),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.7),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(28)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -137,8 +140,7 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
                     Text(
                       'Linking accounts…',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.8)),
+                          fontSize: 14, color: Colors.white.withOpacity(0.8)),
                     ),
                   ] else ...[
                     Text(
@@ -192,8 +194,7 @@ class _OverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = Colors.black.withOpacity(0.55);
     final center = Offset(size.width / 2, size.height / 2 - 60);
-    final rect = Rect.fromCenter(
-        center: center, width: cutout, height: cutout);
+    final rect = Rect.fromCenter(center: center, width: cutout, height: cutout);
 
     // Draw dark overlay excluding the cutout rect
     final path = Path()

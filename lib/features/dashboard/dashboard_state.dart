@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -66,8 +67,9 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final relationshipId = userRow['relationship_id'];
     final gender = userRow['gender'] as String?;
     final userId = userRow['id'];
-    final preferredLanguage =
-        (userRow['user_settings'] as Map<String, dynamic>?)?['preferred_language'] as String? ?? 'English';
+    final preferredLanguage = (userRow['user_settings']
+            as Map<String, dynamic>?)?['preferred_language'] as String? ??
+        'English';
 
     CycleData? cycleData;
     if (gender == 'Female') {
@@ -203,7 +205,8 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
           .order('start_date', ascending: false)
           .limit(10); // Start with ~10 months
 
-      final dates = (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
+      final dates =
+          (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
       state = state.copyWith(
         historicalPeriods: dates,
         isLoading: false,
@@ -217,8 +220,9 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
 
   Future<void> loadMore() async {
     if (state.isLoading || state.earliestLoaded == null) return;
-    
-    debugPrint('[CycleHistoryNotifier] Loading more before ${state.earliestLoaded}');
+
+    debugPrint(
+        '[CycleHistoryNotifier] Loading more before ${state.earliestLoaded}');
     state = state.copyWith(isLoading: true);
     try {
       final supabase = Supabase.instance.client;
@@ -226,11 +230,13 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
           .from('cycle_periods')
           .select('start_date')
           .eq('user_id', userId)
-          .lt('start_date', state.earliestLoaded!.toIso8601String().split('T')[0])
+          .lt('start_date',
+              state.earliestLoaded!.toIso8601String().split('T')[0])
           .order('start_date', ascending: false)
           .limit(6);
 
-      final dates = (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
+      final dates =
+          (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
       if (dates.isEmpty) {
         state = state.copyWith(isLoading: false);
         return;
@@ -248,7 +254,8 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
   }
 }
 
-final cycleHistoryNotifierProvider = StateNotifierProvider.family<CycleHistoryNotifier, CycleHistoryState, String>((ref, userId) {
+final cycleHistoryNotifierProvider = StateNotifierProvider.family<
+    CycleHistoryNotifier, CycleHistoryState, String>((ref, userId) {
   return CycleHistoryNotifier(userId);
 });
 
@@ -257,24 +264,27 @@ final cycleHistoryNotifierProvider = StateNotifierProvider.family<CycleHistoryNo
 final cycleHistoryProvider = FutureProvider<HistoryData>((ref) async {
   final supabase = Supabase.instance.client;
   final user = supabase.auth.currentUser;
-  
+
   if (user == null) {
     debugPrint('[cycleHistoryProvider] No user found in Supabase Auth');
     return HistoryData(history: [], averageDays: 0);
   }
 
   try {
-    debugPrint('[cycleHistoryProvider] Querying cycle_periods for userId: ${user.id}');
+    debugPrint(
+        '[cycleHistoryProvider] Querying cycle_periods for userId: ${user.id}');
     final rows = await supabase
         .from('cycle_periods')
         .select('start_date')
         .eq('user_id', user.id)
         .order('start_date', ascending: true);
 
-    debugPrint('[cycleHistoryProvider] Found ${rows.length} records in cycle_periods');
-    
+    debugPrint(
+        '[cycleHistoryProvider] Found ${rows.length} records in cycle_periods');
+
     if (rows.isEmpty || rows.length < 2) {
-      debugPrint('[cycleHistoryProvider] Not enough records for history (need at least 2)');
+      debugPrint(
+          '[cycleHistoryProvider] Not enough records for history (need at least 2)');
       return HistoryData(history: [], averageDays: 0);
     }
 
@@ -284,8 +294,9 @@ final cycleHistoryProvider = FutureProvider<HistoryData>((ref) async {
     for (int i = 0; i < rows.length - 1; i++) {
       final startStr = rows[i]['start_date'];
       final nextStr = rows[i + 1]['start_date'];
-      debugPrint('[cycleHistoryProvider] Processing interval: $startStr to $nextStr');
-      
+      debugPrint(
+          '[cycleHistoryProvider] Processing interval: $startStr to $nextStr');
+
       final start = DateTime.parse(startStr);
       final next = DateTime.parse(nextStr);
       final duration = next.difference(start).inDays;
@@ -300,8 +311,9 @@ final cycleHistoryProvider = FutureProvider<HistoryData>((ref) async {
     }
 
     final avg = totalDays / history.length;
-    debugPrint('[cycleHistoryProvider] Successfully processed ${history.length} cycles. Avg: $avg');
-    
+    debugPrint(
+        '[cycleHistoryProvider] Successfully processed ${history.length} cycles. Avg: $avg');
+
     return HistoryData(
       history: history,
       averageDays: avg,
@@ -309,7 +321,8 @@ final cycleHistoryProvider = FutureProvider<HistoryData>((ref) async {
   } catch (e) {
     debugPrint('[cycleHistoryProvider] ERROR: $e');
     if (e is PostgrestException) {
-      debugPrint('[cycleHistoryProvider] PostgrestException DETAILS: ${e.message}, ${e.details}, ${e.hint}');
+      debugPrint(
+          '[cycleHistoryProvider] PostgrestException DETAILS: ${e.message}, ${e.details}, ${e.hint}');
     }
     return HistoryData(history: [], averageDays: 0);
   }
@@ -394,6 +407,7 @@ class DashboardState {
 
 class DashboardNotifier extends StateNotifier<DashboardState> {
   final Ref ref;
+
   DashboardNotifier(this.ref) : super(const DashboardState()) {
     _init();
   }
@@ -410,6 +424,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         fetchCycleInsight();
       }
     }, fireImmediately: true);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   Future<void> fetchDailyInsight({bool force = false}) async {
@@ -455,8 +474,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       );
       final insight = response.data['insight'] as String?;
       debugPrint('[fetchCycleInsight] Result: $insight');
-      state = state.copyWith(
-          isLoadingCycleInsight: false, cycleInsight: insight);
+      state =
+          state.copyWith(isLoadingCycleInsight: false, cycleInsight: insight);
     } catch (e) {
       debugPrint('[fetchCycleInsight] Error: $e');
       state = state.copyWith(isLoadingCycleInsight: false);
@@ -530,10 +549,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
       state = state.copyWith(isSaving: false, lastSaved: DateTime.now());
       ref.invalidate(userLogsProvider);
-      
+
       // Refresh daily insight to reflect new check-in data
       fetchDailyInsight(force: true);
-      
+
       return true;
     } catch (e) {
       debugPrint('[saveLog] Error: $e');

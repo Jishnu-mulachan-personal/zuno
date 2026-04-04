@@ -53,7 +53,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       // Pass the Auth ID to the Edge Function — it should handle it as a direct UUID identifier
       final response = await supabase.functions.invoke(
         'unpair_partner',
-        body: {'id': sbUser.id},
+        body: {'userId': sbUser.id},
       );
 
       if (response.status != 200) {

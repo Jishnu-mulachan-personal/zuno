@@ -100,7 +100,13 @@ class _YouAppBar extends StatelessWidget {
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded,
             color: ZunoTheme.primary, size: 18),
-        onPressed: () => context.pop(),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/dashboard');
+          }
+        },
       ),
       title: Text(
         'You',

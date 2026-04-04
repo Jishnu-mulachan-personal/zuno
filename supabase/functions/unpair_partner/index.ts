@@ -12,10 +12,12 @@ serve(async (req) => {
   }
 
   try {
-    const { identifier } = await req.json();
-    if (!identifier) throw new Error("Missing identifier");
+    const { userId, id, identifier } = await req.json();
+    const targetUserId = userId || id;
 
-    console.log(`[unpair_partner] Request received for identifier: ${identifier}`);
+    if (!targetUserId && !identifier) throw new Error("Missing identifier or userId");
+
+    console.log(`[unpair_partner] Request received for: ${targetUserId || identifier}`);
 
     // Initialize Supabase with Service Role Key to bypass RLS
     const supabaseClient = createClient(
@@ -23,14 +25,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const column = String(identifier).includes('@') ? 'email' : 'phone';
-
     // 1. Find the user and their relationship
-    const { data: user, error: userError } = await supabaseClient
-      .from('users')
-      .select('id, relationship_id')
-      .eq(column, identifier)
-      .single();
+    let query = supabaseClient.from('users').select('id, relationship_id');
+
+    if (targetUserId) {
+      query = query.eq('id', targetUserId);
+    } else {
+      const column = String(identifier).includes('@') ? 'email' : 'phone';
+      query = query.eq(column, identifier);
+    }
+
+    const { data: user, error: userError } = await query.single();
 
     if (userError || !user) throw new Error("User not found");
     if (!user.relationship_id) throw new Error("No relationship found");

@@ -104,7 +104,13 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                       leading: IconButton(
                         icon: const Icon(Icons.arrow_back,
                             color: ZunoTheme.primary),
-                        onPressed: () => context.pop(),
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/dashboard');
+                          }
+                        },
                       ),
                     ),
                     if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
