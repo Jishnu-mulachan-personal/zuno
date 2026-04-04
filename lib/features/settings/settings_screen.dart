@@ -53,7 +53,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _InfoTile(
             icon: Icons.translate_rounded,
-            label: 'Language',
+            label: 'Zuno AI Language',
             value: profile?.preferredLanguage ?? 'English',
             iconBg: ZunoTheme.secondaryContainer,
             iconColor: ZunoTheme.secondary,
@@ -512,7 +512,7 @@ class _LanguageSelectorSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(userProfileProvider).value;
     final current = profile?.preferredLanguage ?? 'English';
-    final languages = ['English', 'Malayalam', 'Kannada'];
+    final languages = ['English', 'Hindi', 'Malayalam', 'Kannada'];
 
     return Padding(
       padding: EdgeInsets.fromLTRB(

@@ -11,8 +11,8 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { userId } = await req.json();
-    console.log(`[generate_cycle_insight] Starting for userId: ${userId}`);
+    const { userId, force } = await req.json();
+    console.log(`[generate_cycle_insight] Starting for userId: ${userId}, force: ${force}`);
     if (!userId) throw new Error("Missing userId");
 
     const supabaseClient = createClient(
@@ -20,21 +20,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 1. Check if we already generated an insight for today
     const today = new Date().toISOString().split('T')[0];
-    const { data: existingInsight } = await supabaseClient
-      .from('daily_cycle_insights')
-      .select('insight_text')
-      .eq('user_id', userId)
-      .eq('last_generated_at', today)
-      .maybeSingle();
 
-    console.log(`[generate_cycle_insight] Existing insight for today: ${existingInsight ? 'FOUND' : 'NOT FOUND'}`);
+    // 1. Check if we already generated an insight for today (skip if forced)
+    if (!force) {
+      const { data: existingInsight } = await supabaseClient
+        .from('daily_cycle_insights')
+        .select('insight_text')
+        .eq('user_id', userId)
+        .eq('last_generated_at', today)
+        .maybeSingle();
 
-    if (existingInsight) {
-      return new Response(JSON.stringify({ insight: existingInsight.insight_text }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.log(`[generate_cycle_insight] Existing insight for today: ${existingInsight ? 'FOUND' : 'NOT FOUND'}`);
+
+      if (existingInsight) {
+        return new Response(JSON.stringify({ insight: existingInsight.insight_text }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // 2. Fetch User & Cycle Data

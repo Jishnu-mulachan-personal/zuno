@@ -176,6 +176,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       });
 
       _ref.invalidate(userProfileProvider);
+      // Wait a tiny bit for the invalidation to propagate if needed, 
+      // but calling refreshInsights immediately should be fine too.
+      _ref.read(dashboardProvider.notifier).refreshInsights();
+      
       _setSuccess('Language updated to $lang');
       return true;
     } catch (e) {

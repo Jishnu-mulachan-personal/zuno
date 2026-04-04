@@ -12,7 +12,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { identifier } = await req.json();
+    const { identifier, force } = await req.json();
     if (!identifier) throw new Error("Missing identifier");
     
     const fernetKey = Deno.env.get('FERNET_KEY');
@@ -30,6 +30,23 @@ serve(async (req) => {
       .eq(column, identifier)
       .single();
     if (!userData) throw new Error("User not found");
+
+    // 2. Refresh Cache? 
+    if (!force) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existingInsight } = await supabaseClient
+        .from('daily_insights')
+        .select('insight_text')
+        .eq('user_id', userData.id)
+        .eq('last_generated_at', today)
+        .maybeSingle();
+
+      if (existingInsight) {
+        return new Response(JSON.stringify({ insight: existingInsight.insight_text }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     const language = (userData?.user_settings as any)?.preferred_language || 'English';
 
@@ -158,13 +175,15 @@ serve(async (req) => {
     `;
 
     const insightResult = await model.generateContent(insightPrompt);
-    const insightText = insightResult.response.text();
+    const insightText = insightResult.response.text().trim().replace(/^"/, "").replace(/"$/, "");
 
-    // 🔥 FIX: Remove the synchronous memory updating from here. 
-    // Return the response to the user INSTANTLY so the app feels fast.
-    
-    // (Optional Future Step): You can trigger a background edge function here to update memory, 
-    // or just rely on a weekly database cron job to generate the `ai_summary_user_session`.
+    // Persist for "one per day" caching
+    const today = new Date().toISOString().split('T')[0];
+    await supabaseClient.from('daily_insights').upsert({
+      user_id: userData.id,
+      insight_text: insightText,
+      last_generated_at: today
+    });
 
     return new Response(JSON.stringify({ insight: insightText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

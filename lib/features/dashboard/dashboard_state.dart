@@ -412,8 +412,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     }, fireImmediately: true);
   }
 
-  Future<void> fetchDailyInsight() async {
-    if (state.dailyInsight != null) return;
+  Future<void> fetchDailyInsight({bool force = false}) async {
+    if (!force && state.dailyInsight != null) return;
 
     final sbUser = Supabase.instance.client.auth.currentUser;
     final identifier = sbUser?.email;
@@ -425,6 +425,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         'generate_daily_insight',
         body: {
           'identifier': identifier,
+          'force': force,
         },
       );
       final insight = response.data['insight'] as String?;
@@ -435,8 +436,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     }
   }
 
-  Future<void> fetchCycleInsight() async {
-    if (state.cycleInsight != null) return;
+  Future<void> fetchCycleInsight({bool force = false}) async {
+    if (!force && state.cycleInsight != null) return;
 
     final sbUser = Supabase.instance.client.auth.currentUser;
     debugPrint('[fetchCycleInsight] start for ${sbUser?.id}');
@@ -447,7 +448,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       debugPrint('[fetchCycleInsight] invoking edge function...');
       final response = await Supabase.instance.client.functions.invoke(
         'generate_cycle_insight',
-        body: {'userId': sbUser.id},
+        body: {
+          'userId': sbUser.id,
+          'force': force,
+        },
       );
       final insight = response.data['insight'] as String?;
       debugPrint('[fetchCycleInsight] Result: $insight');
@@ -457,6 +461,22 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       debugPrint('[fetchCycleInsight] Error: $e');
       state = state.copyWith(isLoadingCycleInsight: false);
     }
+  }
+
+  Future<void> refreshInsights() async {
+    // Clear and set loading so UI reflects it immediately
+    state = state.copyWith(
+      dailyInsight: null,
+      cycleInsight: null,
+      isLoadingInsight: true,
+      isLoadingCycleInsight: true,
+    );
+
+    // Call both concurrently to speed up refresh
+    await Future.wait([
+      fetchDailyInsight(force: true),
+      fetchCycleInsight(force: true),
+    ]);
   }
 
   void setMood(String mood) => state = state.copyWith(selectedMood: mood);
@@ -510,6 +530,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
       state = state.copyWith(isSaving: false, lastSaved: DateTime.now());
       ref.invalidate(userLogsProvider);
+      
+      // Refresh daily insight to reflect new check-in data
+      fetchDailyInsight(force: true);
+      
       return true;
     } catch (e) {
       debugPrint('[saveLog] Error: $e');
