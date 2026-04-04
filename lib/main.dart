@@ -25,7 +25,12 @@ void main() async {
 
   EncryptionService.init();
   await NotificationService().init();
-
+  
+  // Register the background handler early in the main() lifecycle
+  // but after Firebase.initializeApp().
+  // Actually, NotificationService.init() already calls this, 
+  // but doing it explicitly here or ensuring it's done before runApp is key.
+  
   runApp(const ProviderScope(child: ZunoApp()));
 }
 

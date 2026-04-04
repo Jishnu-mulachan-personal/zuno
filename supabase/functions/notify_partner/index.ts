@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendFCMNotification } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,6 +60,7 @@ serve(async (req) => {
     const message = template?.message || "Your partner just checked in! 💖";
 
     // 4. Insert notification into user_notifications for realtime
+    // 4. Insert notification into user_notifications for realtime
     const { error: insertError } = await supabaseClient
       .from('user_notifications')
       .insert({
@@ -68,6 +70,25 @@ serve(async (req) => {
       });
 
     if (insertError) throw insertError;
+    console.log(`[notify_partner] Inserted notification for user ${partner.id}`);
+
+    // 5. Send FCM Notification for terminated app state
+    if (partner.fcm_token) {
+      try {
+        await sendFCMNotification(
+          partner.fcm_token,
+          "Check-in Alert",
+          message,
+          { type: 'partner_checkin', relationship_id: relationshipId }
+        );
+        console.log(`[notify_partner] Sent FCM notification to partner ${partner.id}`);
+      } catch (fcmError: any) {
+        console.error(`[notify_partner] FCM Error: ${fcmError.message}`);
+        // Continuing as database notification was successful
+      }
+    } else {
+      console.log(`[notify_partner] No FCM token for partner ${partner.id}`);
+    }
 
     return new Response(
       JSON.stringify({ success: true, message: "Partner notified" }),

@@ -3,9 +3,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Handle background messages
   debugPrint("Handling a background message: ${message.messageId}");
+  // If we send data-only messages, we'd need to show a local notification here.
+  // But for now, we'll rely on the OS to show 'notification' messages.
 }
 
 class NotificationService {
