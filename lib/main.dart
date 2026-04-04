@@ -26,23 +26,20 @@ void main() async {
   EncryptionService.init();
   await NotificationService().init();
   
-  // Register the background handler early in the main() lifecycle
-  // but after Firebase.initializeApp().
-  // Actually, NotificationService.init() already calls this, 
-  // but doing it explicitly here or ensuring it's done before runApp is key.
-  
   runApp(const ProviderScope(child: ZunoApp()));
 }
 
-class ZunoApp extends StatelessWidget {
+class ZunoApp extends ConsumerWidget {
   const ZunoApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
+
     return MaterialApp.router(
       title: 'Zuno',
       theme: ZunoTheme.light,
-      routerConfig: appRouter,
+      routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
   }

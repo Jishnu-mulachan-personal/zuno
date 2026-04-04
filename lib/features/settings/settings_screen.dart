@@ -19,8 +19,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Refresh partner status whenever settings are opened
-    Future.microtask(() => ref.invalidate(userProfileProvider));
   }
 
   @override

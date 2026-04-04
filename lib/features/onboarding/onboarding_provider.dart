@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/user_repository.dart';
+import '../../core/profile_existence_provider.dart';
 
 const kOccupations = [
   'Student',
@@ -91,8 +92,9 @@ class OnboardingState {
 
 class OnboardingNotifier extends StateNotifier<OnboardingState> {
   final UserRepository _userRepo;
+  final Ref _ref;
   
-  OnboardingNotifier(this._userRepo) : super(const OnboardingState());
+  OnboardingNotifier(this._userRepo, this._ref) : super(const OnboardingState());
 
   void setName(String v) => state = state.copyWith(name: v, clearError: true);
   void setDOB(DateTime v) =>
@@ -125,6 +127,10 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
           relationshipDistance: state.relationshipDistance,
         );
       }
+      
+      // Notify the cache that we now have a profile
+      _ref.read(profileExistenceProvider).setHasProfile(true);
+      
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -136,6 +142,6 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 final onboardingProvider = StateNotifierProvider<OnboardingNotifier, OnboardingState>(
   (ref) {
     final userRepo = ref.watch(userRepositoryProvider);
-    return OnboardingNotifier(userRepo);
+    return OnboardingNotifier(userRepo, ref);
   },
 );

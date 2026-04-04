@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../core/profile_existence_provider.dart';
 import '../dashboard/dashboard_state.dart';
 
 // ── Settings actions state ────────────────────────────────────────────────────
@@ -94,7 +95,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       // 1. Check if profile exists
       final userRow = await supabase
           .from('users')
-          .select('id, relationship_id')
+          .select('id')
           .eq('id', userId)
           .maybeSingle();
 
@@ -104,46 +105,15 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         return true;
       }
 
-      // 2. Clear user from ANY relationship they might be part of
-      // (This is more robust than just relying on userRow['relationship_id'])
-      final activeRels = await supabase
-          .from('relationships')
-          .select('id, partner_a_id, partner_b_id')
-          .or('partner_a_id.eq.$userId,partner_b_id.eq.$userId');
-
-      for (final rel in activeRels) {
-        final relId = rel['id'] as String;
-        final partnerAId = rel['partner_a_id'] as String?;
-        final partnerBId = rel['partner_b_id'] as String?;
-
-        if (partnerAId == userId) {
-          // Current user is A — clear their reference and nullify partner_b
-          await supabase
-              .from('relationships')
-              .update({'partner_a_id': null, 'partner_b_id': null})
-              .eq('id', relId);
-
-          if (partnerBId != null) {
-            await supabase
-                .from('users')
-                .update({'relationship_id': null}).eq('id', partnerBId);
-          }
-        } else if (partnerBId == userId) {
-          // Current user is B — just clear partner_b_id
-          await supabase
-              .from('relationships')
-              .update({'partner_b_id': null}).eq('id', relId);
-
-          if (partnerAId != null) {
-            await supabase
-                .from('users')
-                .update({'relationship_id': null}).eq('id', partnerAId);
-          }
-        }
-      }
-
-      // 3. Delete the user row (ON DELETE CASCADE handles daily_logs, etc.)
+      // 2. Delete the user row
+      // (The DB migration 20260404_fix_delete_cascade.sql handles:
+      //  - SET NULL on relationships.partner_a_id/partner_b_id
+      //  - SET NULL on users.relationship_id
+      //  - CASCADE on daily_logs, cycle_data, etc.)
       await supabase.from('users').delete().eq('id', userId);
+
+      // 3. Clear the profile existence cache
+      _ref.read(profileExistenceProvider).setHasProfile(false);
 
       // 4. Sign out completely
       await supabase.auth.signOut();

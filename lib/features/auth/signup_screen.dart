@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import 'auth_service.dart';
-import 'user_repository.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -51,13 +49,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       if (state.needsVerification) {
         // The UI will update based on auth.needsVerification
       } else {
-        final isRegistered = await ref.read(userRepositoryProvider).isUserRegistered();
-        if (!mounted) return;
-        if (isRegistered) {
-          context.go('/dashboard');
-        } else {
-          context.go('/onboarding/register');
-        }
+        // Redirection is handled by router based on auth state & profile existence
       }
     } else {
       if (state.error != null) {
@@ -82,13 +74,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     if (!mounted) return;
 
     if (success) {
-      final isRegistered = await ref.read(userRepositoryProvider).isUserRegistered();
-      if (!mounted) return;
-      if (isRegistered) {
-        context.go('/dashboard');
-      } else {
-        context.go('/onboarding/register');
-      }
+      // Redirection is handled by router based on auth state & profile existence
     } else {
       final err = ref.read(authProvider).error;
       if (err != null) {

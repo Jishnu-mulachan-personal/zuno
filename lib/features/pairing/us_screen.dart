@@ -16,8 +16,6 @@ class _UsScreenState extends ConsumerState<UsScreen> {
   @override
   void initState() {
     super.initState();
-    // Refresh partner status whenever the screen is opened
-    Future.microtask(() => ref.invalidate(userProfileProvider));
   }
 
   @override
