@@ -549,7 +549,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     final sbUser = Supabase.instance.client.auth.currentUser;
     final identifier = sbUser?.email;
 
-    if (identifier == null || state.selectedMood == null) return false;
+    if (identifier == null || (state.selectedMood == null && state.journalNote.trim().isEmpty)) {
+      return false;
+    }
 
     state = state.copyWith(isSaving: true);
 
@@ -608,7 +610,13 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         body: {'identifier': identifier},
       ).ignore();
 
-      state = state.copyWith(isSaving: false, lastSaved: DateTime.now());
+      state = state.copyWith(
+        isSaving: false,
+        lastSaved: DateTime.now(),
+        selectedMood: null,
+        journalNote: '',
+        selectedTags: const [],
+      );
       
       // Invalidate both logs and profile to refresh streak in UI
       ref.invalidate(userLogsProvider);

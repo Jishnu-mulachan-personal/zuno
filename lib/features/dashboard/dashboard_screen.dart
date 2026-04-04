@@ -92,7 +92,6 @@ class DashboardScreen extends ConsumerWidget {
                 delegate: SliverChildListDelegate([
                   _DailyCheckInSection(
                     state: state,
-                    ref: ref,
                     partnerName: partnerName,
                   ),
                   const SizedBox(height: 32),
@@ -208,19 +207,47 @@ final _moods = [
 
 // ── Daily Check-In ──────────────────────────────────────────────────────────
 
-class _DailyCheckInSection extends StatelessWidget {
+class _DailyCheckInSection extends ConsumerStatefulWidget {
   final DashboardState state;
-  final WidgetRef ref;
   final String? partnerName;
 
   const _DailyCheckInSection({
     required this.state,
-    required this.ref,
     this.partnerName,
+    super.key,
   });
 
   @override
+  ConsumerState<_DailyCheckInSection> createState() => _DailyCheckInSectionState();
+}
+
+class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
+  late TextEditingController _journalController;
+
+  @override
+  void initState() {
+    super.initState();
+    _journalController = TextEditingController(text: widget.state.journalNote);
+  }
+
+  @override
+  void dispose() {
+    _journalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Listen for state resets to clear the text controller
+    ref.listen<DashboardState>(dashboardProvider, (prev, next) {
+      if (next.journalNote.isEmpty && _journalController.text.isNotEmpty) {
+        _journalController.clear();
+      }
+    });
+
+    final state = widget.state;
+    final partnerName = widget.partnerName;
+
     final tags = [
       'Work',
       'Partner',
@@ -410,6 +437,7 @@ class _DailyCheckInSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
+                controller: _journalController,
                 onChanged: (v) =>
                     ref.read(dashboardProvider.notifier).setJournalNote(v),
                 maxLines: 3,
@@ -447,9 +475,9 @@ class _DailyCheckInSection extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               _SaveCheckInButton(
-                enabled: state.selectedMood != null,
+                enabled: state.selectedMood != null || state.journalNote.trim().isNotEmpty,
                 isSaving: state.isSaving,
-                onTap: state.selectedMood == null || state.isSaving
+                onTap: (state.selectedMood == null && state.journalNote.trim().isEmpty) || state.isSaving
                     ? null
                     : () async {
                         final success = await ref
