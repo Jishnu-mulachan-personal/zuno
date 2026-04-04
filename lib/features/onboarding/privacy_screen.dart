@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
+import '../../core/profile_existence_provider.dart';
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -196,7 +197,10 @@ class PrivacyScreen extends ConsumerWidget {
                         ),
                       );
                       Future.delayed(const Duration(seconds: 1), () {
-                        if (context.mounted) context.go('/dashboard');
+                        if (context.mounted) {
+                          ref.read(profileExistenceProvider).setHasProfile(true);
+                          context.go('/dashboard');
+                        }
                       });
                     },
                     child: Container(

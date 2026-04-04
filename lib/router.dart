@@ -7,6 +7,7 @@ import 'features/auth/loading_screen.dart';
 import 'features/onboarding/registration_screen.dart';
 import 'features/onboarding/status_screen.dart';
 import 'features/onboarding/onboarding_pairing_screen.dart';
+import 'features/onboarding/pairing_choice_screen.dart';
 import 'features/onboarding/relationship_questions_screen.dart';
 import 'features/onboarding/goals_screen.dart';
 import 'features/onboarding/privacy_screen.dart';
@@ -28,10 +29,13 @@ const _authRoutes = ['/', '/signup'];
 const _onboardingRoutes = [
   '/onboarding/register',
   '/onboarding/status',
+  '/onboarding/pair-choice',
   '/onboarding/invite',
   '/onboarding/questions',
   '/onboarding/goals',
   '/onboarding/privacy',
+  '/pair/invite',
+  '/pair/scan',
 ];
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -89,6 +93,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/onboarding/status',
           builder: (ctx, _) => const StatusScreen()),
+      GoRoute(
+          path: '/onboarding/pair-choice',
+          builder: (ctx, _) => const OnboardingPairChoiceScreen()),
       GoRoute(
           path: '/onboarding/invite',
           builder: (ctx, _) => const OnboardingPairingScreen()),

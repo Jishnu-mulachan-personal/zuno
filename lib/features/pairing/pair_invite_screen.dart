@@ -228,7 +228,7 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
               if (widget.isOnboarding) ...[
                 const SizedBox(height: 32),
                 TextButton(
-                  onPressed: () => context.go('/onboarding/goals'),
+                  onPressed: () => context.go('/onboarding/questions'),
                   child: Text(
                     'SKIP FOR NOW',
                     style: GoogleFonts.plusJakartaSans(

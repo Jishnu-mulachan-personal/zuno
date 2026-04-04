@@ -33,13 +33,14 @@ class StatusScreen extends ConsumerWidget {
       }
 
       try {
+        final currentStatus = ref.read(onboardingProvider).relationshipStatus;
         await ref.read(onboardingProvider.notifier).submitProfile();
         
         if (context.mounted) {
-          if (selected == 'single') {
+          if (currentStatus == 'single') {
             context.go('/onboarding/goals');
           } else {
-            context.go('/onboarding/invite');
+            context.go('/onboarding/pair-choice');
           }
         }
       } catch (e) {

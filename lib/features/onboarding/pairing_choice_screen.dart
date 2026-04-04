@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 
-class OnboardingPairingScreen extends ConsumerWidget {
-  const OnboardingPairingScreen({super.key});
+class OnboardingPairChoiceScreen extends ConsumerWidget {
+  const OnboardingPairChoiceScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,7 +55,7 @@ class OnboardingPairingScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 54),
                   Text(
-                    'Connect Your Partner',
+                    'Ready to connect\nwith your partner?',
                     style: GoogleFonts.notoSerif(
                       fontSize: 36,
                       fontWeight: FontWeight.w600,
@@ -65,7 +65,7 @@ class OnboardingPairingScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Zuno is built for two. Choose how you\'d like to link your accounts.',
+                    'Zuno works best when shared. You can pair now to see each other\'s moods and insights, or skip and do it later.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       color: ZunoTheme.onSurfaceVariant,
@@ -75,9 +75,9 @@ class OnboardingPairingScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 48),
 
-                  // Option 1: Generate (Invite)
+                  // Option 1: Connect Now
                   GestureDetector(
-                    onTap: () => context.push('/pair/invite?isOnboarding=true'),
+                    onTap: () => context.push('/onboarding/invite'),
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -100,8 +100,8 @@ class OnboardingPairingScreen extends ConsumerWidget {
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(Icons.qr_code_2_rounded,
-                                color: Colors.white, size: 30),
+                            child: const Icon(Icons.favorite_rounded,
+                                color: Colors.white, size: 28),
                           ),
                           const SizedBox(width: 18),
                           Expanded(
@@ -109,16 +109,17 @@ class OnboardingPairingScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Pair with Partner',
-                                  style: GoogleFonts.notoSerif(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
+                                  'YES, CONNECT NOW',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
                                     color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Generate a code and let your partner scan to connect.',
+                                  'Link your profiles to stay in sync.',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     color: Colors.white.withOpacity(0.8),
@@ -137,10 +138,9 @@ class OnboardingPairingScreen extends ConsumerWidget {
 
                   const SizedBox(height: 20),
 
-                  // Option 2: Scan
+                  // Option 2: Maybe Later
                   GestureDetector(
-                    onTap: () => context.push(
-                        '/pair/scan?successRoute=${Uri.encodeComponent('/onboarding/questions')}'),
+                    onTap: () => context.go('/onboarding/questions'),
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -158,7 +158,7 @@ class OnboardingPairingScreen extends ConsumerWidget {
                               color: ZunoTheme.primaryFixed,
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(Icons.qr_code_scanner_rounded,
+                            child: const Icon(Icons.access_time_rounded,
                                 color: ZunoTheme.primary, size: 28),
                           ),
                           const SizedBox(width: 18),
@@ -167,16 +167,17 @@ class OnboardingPairingScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Scan Partner Code',
+                                  'MAYBE LATER',
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
                                     color: ZunoTheme.onSurface,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Already have a code? Point your camera here.',
+                                  'Finish setup first, pair anytime later.',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     color: ZunoTheme.onSurfaceVariant.withOpacity(0.7),
@@ -192,23 +193,7 @@ class OnboardingPairingScreen extends ConsumerWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => context.go('/onboarding/questions'),
-                      child: Text(
-                        'SKIP FOR NOW',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                          color: ZunoTheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
                   
                   // Info Tip
                   Container(
@@ -220,11 +205,11 @@ class OnboardingPairingScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.auto_awesome_rounded, size: 20, color: ZunoTheme.tertiary),
+                        const Icon(Icons.info_outline_rounded, size: 20, color: ZunoTheme.tertiary),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Text(
-                            'One of you generates the code, and the other one scans it. Simple as that!',
+                            'Pairing allows you to share moods, cycle phases, and get AI insights about your relationship dynamics.',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               color: ZunoTheme.onSurfaceVariant.withOpacity(0.8),
