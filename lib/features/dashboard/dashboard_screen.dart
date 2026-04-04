@@ -6,11 +6,16 @@ import '../../app_theme.dart';
 import '../cycle_tracker/cycle_data_model.dart';
 import 'dashboard_state.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(dashboardProvider);
     final profileAsync = ref.watch(userProfileProvider);
 
@@ -91,6 +96,7 @@ class DashboardScreen extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _DailyCheckInSection(
+                    key: const ValueKey('daily_check_in_section'),
                     state: state,
                     partnerName: partnerName,
                   ),
@@ -212,9 +218,9 @@ class _DailyCheckInSection extends ConsumerStatefulWidget {
   final String? partnerName;
 
   const _DailyCheckInSection({
+    super.key,
     required this.state,
     this.partnerName,
-    super.key,
   });
 
   @override
@@ -223,16 +229,37 @@ class _DailyCheckInSection extends ConsumerStatefulWidget {
 
 class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
   late TextEditingController _journalController;
+  late FocusNode _journalFocusNode;
+  final GlobalKey _saveButtonKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _journalController = TextEditingController(text: widget.state.journalNote);
+    _journalFocusNode = FocusNode();
+    _journalFocusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (_journalFocusNode.hasFocus) {
+      // Small delay to allow the keyboard to show up
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _saveButtonKey.currentContext != null) {
+          Scrollable.ensureVisible(
+            _saveButtonKey.currentContext!,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
     _journalController.dispose();
+    _journalFocusNode.removeListener(_onFocusChange);
+    _journalFocusNode.dispose();
     super.dispose();
   }
 
@@ -438,6 +465,8 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
               const SizedBox(height: 8),
               TextField(
                 controller: _journalController,
+                focusNode: _journalFocusNode,
+                autofocus: false,
                 onChanged: (v) =>
                     ref.read(dashboardProvider.notifier).setJournalNote(v),
                 maxLines: 3,
@@ -475,6 +504,7 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
               ),
               const SizedBox(height: 24),
               _SaveCheckInButton(
+                key: _saveButtonKey,
                 enabled: state.selectedMood != null || state.journalNote.trim().isNotEmpty,
                 isSaving: state.isSaving,
                 onTap: (state.selectedMood == null && state.journalNote.trim().isEmpty) || state.isSaving
@@ -537,8 +567,12 @@ class _SaveCheckInButton extends StatelessWidget {
   final bool isSaving;
   final VoidCallback? onTap;
 
-  const _SaveCheckInButton(
-      {required this.enabled, required this.isSaving, this.onTap});
+  const _SaveCheckInButton({
+    super.key,
+    required this.enabled,
+    required this.isSaving,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
