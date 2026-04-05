@@ -508,6 +508,31 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
                   contentPadding: const EdgeInsets.all(14),
                 ),
               ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: ZunoTheme.tertiary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline_rounded,
+                        size: 12, color: ZunoTheme.tertiary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'PRIVATE & END-TO-END ENCRYPTED',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: ZunoTheme.tertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
               _SaveCheckInButton(
                 key: _saveButtonKey,
