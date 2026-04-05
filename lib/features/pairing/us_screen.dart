@@ -45,6 +45,8 @@ class _UsScreenState extends ConsumerState<UsScreen> {
                         _CoupledCard(partnerName: profile.partnerName!)
                       else
                         const _PairCard(),
+                      const SizedBox(height: 48),
+                      const _ComingSoonSection(),
                       const SizedBox(height: 120),
                     ]),
                   ),
@@ -308,3 +310,146 @@ class _CoupledCard extends StatelessWidget {
     );
   }
 }
+
+class _ComingSoonSection extends StatelessWidget {
+  const _ComingSoonSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'COMING SOON',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 2.2,
+                color: ZunoTheme.primary.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Divider(
+                color: ZunoTheme.primary.withOpacity(0.1),
+                thickness: 1,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const _ComingSoonCard(
+          title: 'Shared Journal',
+          description:
+              'Co-write memories, feelings, and daily reflections together in a private space.',
+          icon: Icons.auto_stories_rounded,
+          color: ZunoTheme.primary,
+        ),
+        const SizedBox(height: 16),
+        const _ComingSoonCard(
+          title: 'Couple Insights',
+          description:
+              'AI-powered analysis of your relationship dynamics and shared emotional growth.',
+          icon: Icons.insights_rounded,
+          color: ZunoTheme.tertiary,
+        ),
+        const SizedBox(height: 16),
+        const _ComingSoonCard(
+          title: 'Mood Harmony',
+          description:
+              'Visualize your emotional connection and stay in sync with your partner\'s vibe.',
+          icon: Icons.wb_sunny_rounded,
+          color: Color(0xFFE6A23C),
+        ),
+      ],
+    );
+  }
+}
+
+class _ComingSoonCard extends StatelessWidget {
+  final String title;
+  final String description;
+  final IconData icon;
+  final Color color;
+
+  const _ComingSoonCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: ZunoTheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: ZunoTheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'NEW',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: ZunoTheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.7),
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
