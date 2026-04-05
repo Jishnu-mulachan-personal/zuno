@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import '../dashboard/dashboard_state.dart';
+import '../../shared/widgets/bottom_nav_bar.dart';
 
 class UsScreen extends ConsumerStatefulWidget {
   const UsScreen({super.key});
@@ -28,22 +29,31 @@ class _UsScreenState extends ConsumerState<UsScreen> {
         loading: () => const Center(
             child: CircularProgressIndicator(color: ZunoTheme.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (profile) => CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            _UsAppBar(),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 16),
-                  if (profile.partnerName != null)
-                    _CoupledCard(partnerName: profile.partnerName!)
-                  else
-                    const _PairCard(),
-                  const SizedBox(height: 120),
-                ]),
-              ),
+        data: (profile) => Stack(
+          children: [
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _UsAppBar(),
+                SliverPadding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      const SizedBox(height: 16),
+                      if (profile.partnerName != null)
+                        _CoupledCard(partnerName: profile.partnerName!)
+                      else
+                        const _PairCard(),
+                      const SizedBox(height: 120),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+            ZunoBottomNavBar(
+              activeTab: ZunoTab.us,
+              relationshipStatus: profile.relationshipStatus,
             ),
           ],
         ),

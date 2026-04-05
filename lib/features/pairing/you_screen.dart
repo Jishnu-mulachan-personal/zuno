@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import '../dashboard/dashboard_state.dart';
 import 'you_state.dart';
+import '../../shared/widgets/bottom_nav_bar.dart';
 
 class YouScreen extends ConsumerWidget {
   const YouScreen({super.key});
@@ -20,63 +21,78 @@ class YouScreen extends ConsumerWidget {
         loading: () => const Center(
             child: CircularProgressIndicator(color: ZunoTheme.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (profile) => CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            _YouAppBar(displayName: profile.displayName),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _ProfileHero(profile: profile),
-                  const SizedBox(height: 32),
-                  Text(
-                    'YOUR TIMELINE',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2.2,
-                      color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...logsAsync.when(
-                    data: (logs) {
-                      if (logs.isEmpty) {
-                        return [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: Text(
-                                'No journal entries yet. Check in today!',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+        data: (profile) => Stack(
+          children: [
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _YouAppBar(displayName: profile.displayName),
+                SliverPadding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _ProfileHero(profile: profile),
+                      const SizedBox(height: 32),
+                      Text(
+                        'YOUR TIMELINE',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.2,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...logsAsync.when(
+                        data: (logs) {
+                          if (logs.isEmpty) {
+                            return [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 32),
+                                child: Center(
+                                  child: Text(
+                                    'No journal entries yet. Check in today!',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14,
+                                      color: ZunoTheme.onSurfaceVariant
+                                          .withOpacity(0.6),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              )
+                            ];
+                          }
+                          return logs
+                              .map((log) => _TimelineCard(log: log))
+                              .toList();
+                        },
+                        loading: () => [
+                          const Center(
+                            child: CircularProgressIndicator(
+                                color: ZunoTheme.primary),
+                          )
+                        ],
+                        error: (e, _) => [
+                          Center(
+                            child: Text(
+                              'Error loading timeline: $e',
+                              style: GoogleFonts.plusJakartaSans(
+                                  color: ZunoTheme.error),
                             ),
                           )
-                        ];
-                      }
-                      return logs.map((log) => _TimelineCard(log: log)).toList();
-                    },
-                    loading: () => [
-                      const Center(
-                        child: CircularProgressIndicator(color: ZunoTheme.primary),
-                      )
-                    ],
-                    error: (e, _) => [
-                      Center(
-                        child: Text(
-                          'Error loading timeline: $e',
-                          style: GoogleFonts.plusJakartaSans(color: ZunoTheme.error),
-                        ),
-                      )
-                    ],
+                        ],
+                      ),
+                      const SizedBox(height: 120),
+                    ]),
                   ),
-                  const SizedBox(height: 100),
-                ]),
-              ),
+                ),
+              ],
+            ),
+            ZunoBottomNavBar(
+              activeTab: ZunoTab.you,
+              relationshipStatus: profile.relationshipStatus,
             ),
           ],
         ),

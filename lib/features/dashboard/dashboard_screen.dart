@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import '../cycle_tracker/cycle_data_model.dart';
 import 'dashboard_state.dart';
+import '../../shared/widgets/bottom_nav_bar.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -134,8 +135,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
-        _BottomNavBar(
-          hasParter: hasPartner,
+        ZunoBottomNavBar(
+          activeTab: ZunoTab.today,
           relationshipStatus: relationshipStatus,
         ),
       ],
@@ -1341,107 +1342,3 @@ class _ToggleItem extends StatelessWidget {
   }
 }
 
-// ── Bottom Nav Bar ──────────────────────────────────────────────────────────
-
-class _BottomNavBar extends StatelessWidget {
-  final bool hasParter;
-  final String relationshipStatus;
-  const _BottomNavBar({required this.hasParter, required this.relationshipStatus});
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(
-            24, 12, 24, MediaQuery.of(context).padding.bottom + 12),
-        decoration: BoxDecoration(
-          color: ZunoTheme.surface.withOpacity(0.92),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: ZunoTheme.onSurface.withOpacity(0.04),
-              blurRadius: 40,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            const _NavTab(
-                icon: Icons.calendar_today_rounded,
-                label: 'Today',
-                active: true),
-            const _NavTab(icon: Icons.analytics_outlined, label: 'Insights'),
-            if (relationshipStatus != 'single')
-              _NavTab(
-                icon: Icons.favorite_outline_rounded,
-                label: 'Us',
-                onTap: () => context.push('/us'),
-              ),
-            _NavTab(
-              icon: Icons.person_outline_rounded,
-              label: 'You',
-              onTap: () => context.push('/you'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavTab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback? onTap;
-
-  const _NavTab(
-      {required this.icon,
-      required this.label,
-      this.active = false,
-      this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? ZunoTheme.surfaceContainerHigh : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: active
-                  ? ZunoTheme.primary
-                  : ZunoTheme.onSurface.withOpacity(0.4),
-              size: 22,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label.toUpperCase(),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-                color: active
-                    ? ZunoTheme.primary
-                    : ZunoTheme.onSurface.withOpacity(0.4),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
