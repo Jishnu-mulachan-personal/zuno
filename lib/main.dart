@@ -8,6 +8,8 @@ import 'core/encryption_service.dart';
 import 'core/notification_service.dart';
 import 'app_theme.dart';
 import 'router.dart';
+import 'core/version_service.dart';
+import 'shared/widgets/update_dialog.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -29,11 +31,16 @@ void main() async {
   runApp(const ProviderScope(child: ZunoApp()));
 }
 
-class ZunoApp extends ConsumerWidget {
+class ZunoApp extends ConsumerStatefulWidget {
   const ZunoApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ZunoApp> createState() => _ZunoAppState();
+}
+
+class _ZunoAppState extends ConsumerState<ZunoApp> {
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
@@ -41,6 +48,61 @@ class ZunoApp extends ConsumerWidget {
       theme: ZunoTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return _UpdateChecker(child: child ?? const SizedBox.shrink());
+      },
     );
+  }
+}
+
+class _UpdateChecker extends ConsumerStatefulWidget {
+  final Widget child;
+  const _UpdateChecker({required this.child});
+
+  @override
+  ConsumerState<_UpdateChecker> createState() => _UpdateCheckerState();
+}
+
+class _UpdateCheckerState extends ConsumerState<_UpdateChecker> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdates());
+  }
+
+  Future<void> _checkForUpdates() async {
+    final versionService = VersionService();
+    
+    final currentVersion = await versionService.getCurrentVersion();
+    final latestInfo = await versionService.getLatestVersionInfo();
+
+    if (latestInfo == null) return;
+
+    final hasUpdate = versionService.isUpdateAvailable(currentVersion, latestInfo.latestVersion);
+    
+    if (hasUpdate) {
+      final shouldPrompt = await versionService.shouldShowReminder();
+      
+      if (shouldPrompt && mounted) {
+        final navContext = rootNavigatorKey.currentContext;
+        if (navContext != null && navContext.mounted) {
+          showDialog(
+            context: navContext,
+            barrierDismissible: false,
+            builder: (context) => UpdateDialog(
+              latestVersion: latestInfo.latestVersion,
+              updateUrl: latestInfo.updateUrl,
+              releaseNotes: latestInfo.releaseNotes ?? "New features and improvements await!",
+              onRemindLater: () => versionService.markRemindLater(),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
