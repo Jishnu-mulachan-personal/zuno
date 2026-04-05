@@ -833,11 +833,12 @@ class _DynamicCardsSection extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () => context.push('/ai_chat'),
+                  onTap: () =>
+                      ref.read(dashboardProvider.notifier).refreshInsights(),
                   child: Row(
                     children: [
                       Text(
-                        'EXPLORE AI SUGGESTIONS',
+                        'REGENERATE INSIGHT',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -845,8 +846,8 @@ class _DynamicCardsSection extends ConsumerWidget {
                           letterSpacing: 1.2,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward_rounded,
+                      const SizedBox(width: 6),
+                      const Icon(Icons.refresh_rounded,
                           color: Colors.white, size: 14),
                     ],
                   ),
@@ -894,10 +895,25 @@ class _DynamicCardsSection extends ConsumerWidget {
             child: _LoadingSmartCard(),
           ),
         const SizedBox(height: 16),
-        const _PromoCard(
-          icon: Icons.child_care_rounded,
-          title: 'Pregnancy Planning',
-          subtitle: 'Unlock personalized guidance for your journey.',
+        GestureDetector(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Coming Soon! 🚀',
+                    style: GoogleFonts.plusJakartaSans()),
+                backgroundColor: ZunoTheme.primary,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+          child: const _PromoCard(
+            icon: Icons.child_care_rounded,
+            title: 'Pregnancy Planning',
+            subtitle: 'Unlock personalized guidance for your journey.',
+          ),
         ),
       ],
     );

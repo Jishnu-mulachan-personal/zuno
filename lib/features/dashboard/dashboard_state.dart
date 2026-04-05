@@ -15,7 +15,7 @@ class UserProfile {
   final String? partnerId;
   final String? partnerName;
   final int streakDays;
-  final DateTime? lastLogDate;
+  final DateTime? lastLoginAt;
   final String? gender;
   final CycleData? cycleData;
   final String preferredLanguage;
@@ -28,7 +28,7 @@ class UserProfile {
     this.partnerId,
     this.partnerName,
     this.streakDays = 0,
-    this.lastLogDate,
+    this.lastLoginAt,
     this.gender,
     this.cycleData,
     this.preferredLanguage = 'English',
@@ -94,15 +94,15 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     
     // Streak data from Users table
     int streakDays = (userRow['streak_count'] as int?) ?? 0;
-    final lastLogDateStr = userRow['last_log_date'] as String?;
-    DateTime? lastLogDate = lastLogDateStr != null ? DateTime.parse(lastLogDateStr) : null;
+    final lastLoginAtStr = userRow['last_login_at'] as String?;
+    DateTime? lastLoginAt = lastLoginAtStr != null ? DateTime.parse(lastLoginAtStr) : null;
 
     // Daily Reset Logic: If missed "yesterday", reset streak to 0 in DB
-    if (lastLogDate != null) {
+    if (lastLoginAt != null) {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final lastLog = DateTime(lastLogDate.year, lastLogDate.month, lastLogDate.day);
-      final daysDiff = today.difference(lastLog).inDays;
+      final lastLogDate = DateTime(lastLoginAt.year, lastLoginAt.month, lastLoginAt.day);
+      final daysDiff = today.difference(lastLogDate).inDays;
 
       if (daysDiff > 1) {
         debugPrint('[userProfileProvider] Streak broken ($daysDiff days since last log). Resetting to 0.');
@@ -162,7 +162,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       partnerId: partnerId,
       partnerName: partnerName,
       streakDays: streakDays,
-      lastLogDate: lastLogDate,
+      lastLoginAt: lastLoginAt,
       gender: gender,
       cycleData: cycleData,
       preferredLanguage: preferredLanguage,
@@ -607,8 +607,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         final today = DateTime(now.year, now.month, now.day);
         
         DateTime? lastLog;
-        if (profile.lastLogDate != null) {
-          lastLog = DateTime(profile.lastLogDate!.year, profile.lastLogDate!.month, profile.lastLogDate!.day);
+        if (profile.lastLoginAt != null) {
+          lastLog = DateTime(profile.lastLoginAt!.year, profile.lastLoginAt!.month, profile.lastLoginAt!.day);
         }
 
         if (lastLog == null) {
@@ -625,7 +625,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
         await supabase.from('users').update({
           'streak_count': newStreak,
-          'last_log_date': todayStr,
+          'last_login_at': now.toIso8601String(),
         }).eq('id', userId);
       }
 
