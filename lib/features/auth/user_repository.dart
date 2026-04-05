@@ -64,10 +64,12 @@ class UserRepository {
 
   Future<void> updateRelationshipDetails({
     required String relationshipId,
+    String? status,
     DateTime? marriedOn,
     String? relationshipDistance,
   }) async {
     await _supabase.from('relationships').update({
+      if (status != null) 'status': status,
       if (marriedOn != null) 'anniversary_date': marriedOn.toIso8601String(),
       if (relationshipDistance != null) 'distance': relationshipDistance,
     }).eq('id', relationshipId);

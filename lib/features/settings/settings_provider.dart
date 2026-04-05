@@ -186,6 +186,26 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       return false;
     }
   }
+
+  Future<bool> updateRelationshipStatus(String status) async {
+    final profile = _ref.read(userProfileProvider).value;
+    if (profile == null || profile.relationshipId == null) return false;
+
+    _setLoading();
+    try {
+      final userRepo = _ref.read(userRepositoryProvider);
+      await userRepo.updateRelationshipDetails(
+        relationshipId: profile.relationshipId!,
+        status: status,
+      );
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Relationship status updated to $status');
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
 }
 
 final settingsProvider =

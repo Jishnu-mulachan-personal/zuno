@@ -75,6 +75,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             iconColor: ZunoTheme.secondary,
             onTap: () => _showLanguageSelector(context, ref),
           ),
+          const SizedBox(height: 12),
+          _InfoTile(
+            icon: Icons.favorite_border_rounded,
+            label: 'Relationship Status',
+            value: _capitalize(profile?.relationshipStatus ?? 'single'),
+            iconBg: ZunoTheme.tertiaryFixed,
+            iconColor: ZunoTheme.tertiary,
+            onTap: () => _showStatusSelector(context, ref),
+          ),
           const SizedBox(height: 32),
 
           // ── Partner ───────────────────────────────────────────────────────
@@ -211,6 +220,9 @@ void _snack(BuildContext context, bool ok,
   ));
 }
 
+String _capitalize(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
 void _confirmAction({
   required BuildContext context,
   required IconData icon,
@@ -249,6 +261,17 @@ void _showLanguageSelector(BuildContext context, WidgetRef ref) {
     shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     builder: (ctx) => const _LanguageSelectorSheet(),
+  );
+}
+
+void _showStatusSelector(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: ZunoTheme.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (ctx) => const _StatusSelectorSheet(),
   );
 }
 
@@ -585,6 +608,99 @@ class _LanguageSelectorSheet extends ConsumerWidget {
                 child: Row(
                   children: [
                     Text(lang,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? ZunoTheme.primary
+                                : ZunoTheme.onSurface)),
+                    const Spacer(),
+                    if (isSelected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: ZunoTheme.primary, size: 20),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusSelectorSheet extends ConsumerWidget {
+  const _StatusSelectorSheet({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider).value;
+    final current = profile?.relationshipStatus ?? 'single';
+    final statuses = ['single', 'committed', 'engaged', 'married'];
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 20, 24, MediaQuery.of(context).padding.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+                color: ZunoTheme.outlineVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(99)),
+          ),
+          Text('Relationship Status',
+              style: GoogleFonts.notoSerif(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: ZunoTheme.onSurface)),
+          const SizedBox(height: 8),
+          Text('Change your relationship status.',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.7))),
+          const SizedBox(height: 24),
+          ...statuses.map((status) {
+            final isSelected = current == status;
+            final label = status[0].toUpperCase() + status.substring(1);
+            return GestureDetector(
+              onTap: () async {
+                Navigator.pop(context);
+                if (isSelected) return;
+                final ok = await ref
+                    .read(settingsProvider.notifier)
+                    .updateRelationshipStatus(status);
+                if (context.mounted) {
+                  _snack(
+                    context, 
+                    ok,
+                    success: 'Status updated to $label',
+                    failure: ref.read(settingsProvider).message ?? 'Error',
+                  );
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? ZunoTheme.primary.withOpacity(0.08)
+                      : ZunoTheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected
+                        ? ZunoTheme.primary.withOpacity(0.3)
+                        : ZunoTheme.outlineVariant.withOpacity(0.12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(label,
                         style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight:

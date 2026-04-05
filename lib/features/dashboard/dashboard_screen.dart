@@ -63,6 +63,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           cycleData: profile.cycleData,
           partnerId: profile.partnerId,
           hasPartner: profile.partnerName != null,
+          relationshipStatus: profile.relationshipStatus,
         ),
       ),
     );
@@ -80,6 +81,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     CycleData? cycleData,
     String? partnerId,
     bool hasPartner = false,
+    String relationshipStatus = 'single',
     bool isLoading = false,
     String? error,
   }) {
@@ -132,7 +134,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
-        _BottomNavBar(hasParter: hasPartner),
+        _BottomNavBar(
+          hasParter: hasPartner,
+          relationshipStatus: relationshipStatus,
+        ),
       ],
     );
   }
@@ -1340,7 +1345,8 @@ class _ToggleItem extends StatelessWidget {
 
 class _BottomNavBar extends StatelessWidget {
   final bool hasParter;
-  const _BottomNavBar({required this.hasParter});
+  final String relationshipStatus;
+  const _BottomNavBar({required this.hasParter, required this.relationshipStatus});
 
   @override
   Widget build(BuildContext context) {
@@ -1371,11 +1377,12 @@ class _BottomNavBar extends StatelessWidget {
                 label: 'Today',
                 active: true),
             const _NavTab(icon: Icons.analytics_outlined, label: 'Insights'),
-            _NavTab(
-              icon: Icons.favorite_outline_rounded,
-              label: 'Us',
-              onTap: () => context.push('/us'),
-            ),
+            if (relationshipStatus != 'single')
+              _NavTab(
+                icon: Icons.favorite_outline_rounded,
+                label: 'Us',
+                onTap: () => context.push('/us'),
+              ),
             _NavTab(
               icon: Icons.person_outline_rounded,
               label: 'You',

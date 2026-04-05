@@ -11,6 +11,7 @@ import '../cycle_tracker/cycle_data_model.dart';
 class UserProfile {
   final String id;
   final String displayName;
+  final String? relationshipId;
   final String? partnerId;
   final String? partnerName;
   final int streakDays;
@@ -18,10 +19,12 @@ class UserProfile {
   final String? gender;
   final CycleData? cycleData;
   final String preferredLanguage;
+  final String relationshipStatus;
 
   const UserProfile({
-    required String id,
-    required String displayName,
+    required this.id,
+    required this.displayName,
+    this.relationshipId,
     this.partnerId,
     this.partnerName,
     this.streakDays = 0,
@@ -29,9 +32,10 @@ class UserProfile {
     this.gender,
     this.cycleData,
     this.preferredLanguage = 'English',
+    this.relationshipStatus = 'single',
     this.privacyPreference = 'balanced',
     this.goals = const [],
-  }) : id = id, displayName = displayName;
+  });
   
   final String privacyPreference;
   final List<String> goals;
@@ -60,7 +64,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     // Fetch current user + their relationship + settings
     final userRow = await supabase
         .from('users')
-        .select('*, user_settings(preferred_language, privacy_preference, goals)')
+        .select('*, user_settings(preferred_language, privacy_preference, goals), current_relationship:relationships!users_relationship_id_fkey(status)')
         .eq('id', sbUser.id)
         .maybeSingle();
 
@@ -80,6 +84,10 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final preferredLanguage = userSettings?['preferred_language'] as String? ?? 'English';
     final privacyPreference = userSettings?['privacy_preference'] as String? ?? 'balanced';
     final goals = List<String>.from(userSettings?['goals'] ?? []);
+    
+    // Relationship status from joined table (using the alias)
+    final relationshipData = userRow['current_relationship'] as Map<String, dynamic>?;
+    final relationshipStatus = relationshipData?['status'] as String? ?? 'single';
     
     // Streak data from Users table
     int streakDays = (userRow['streak_count'] as int?) ?? 0;
@@ -147,6 +155,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     return UserProfile(
       id: userId,
       displayName: displayName,
+      relationshipId: relationshipId,
       partnerId: partnerId,
       partnerName: partnerName,
       streakDays: streakDays,
@@ -154,6 +163,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       gender: gender,
       cycleData: cycleData,
       preferredLanguage: preferredLanguage,
+      relationshipStatus: relationshipStatus,
       privacyPreference: privacyPreference,
       goals: goals,
     );
