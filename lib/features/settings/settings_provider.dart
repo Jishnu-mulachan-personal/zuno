@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/profile_existence_provider.dart';
+import '../auth/user_repository.dart';
 import '../dashboard/dashboard_state.dart';
 
 // ── Settings actions state ────────────────────────────────────────────────────
@@ -147,14 +148,40 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       });
 
       _ref.invalidate(userProfileProvider);
-      // Wait a tiny bit for the invalidation to propagate if needed, 
-      // but calling refreshInsights immediately should be fine too.
       _ref.read(dashboardProvider.notifier).refreshInsights();
       
       _setSuccess('Language updated to $lang');
       return true;
     } catch (e) {
       debugPrint('[updateLanguage] $e');
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> updatePrivacyPreference(String level) async {
+    _setLoading();
+    try {
+      final userRepo = _ref.read(userRepositoryProvider);
+      await userRepo.updateUserSettings(privacyPreference: level);
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Privacy preference updated');
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> updateGoals(List<String> goals) async {
+    _setLoading();
+    try {
+      final userRepo = _ref.read(userRepositoryProvider);
+      await userRepo.updateUserSettings(goals: goals);
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Goals updated');
+      return true;
+    } catch (e) {
       _setError(e.toString());
       return false;
     }

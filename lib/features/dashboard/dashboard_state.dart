@@ -29,7 +29,12 @@ class UserProfile {
     this.gender,
     this.cycleData,
     this.preferredLanguage = 'English',
+    this.privacyPreference = 'balanced',
+    this.goals = const [],
   }) : id = id, displayName = displayName;
+  
+  final String privacyPreference;
+  final List<String> goals;
 }
 
 final userProfileProvider = FutureProvider<UserProfile>((ref) async {
@@ -55,7 +60,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     // Fetch current user + their relationship + settings
     final userRow = await supabase
         .from('users')
-        .select('*, user_settings(preferred_language)')
+        .select('*, user_settings(preferred_language, privacy_preference, goals)')
         .eq('id', sbUser.id)
         .maybeSingle();
 
@@ -71,9 +76,10 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final relationshipId = userRow['relationship_id'];
     final gender = userRow['gender'] as String?;
     final userId = userRow['id'];
-    final preferredLanguage = (userRow['user_settings']
-            as Map<String, dynamic>?)?['preferred_language'] as String? ??
-        'English';
+    final userSettings = userRow['user_settings'] as Map<String, dynamic>?;
+    final preferredLanguage = userSettings?['preferred_language'] as String? ?? 'English';
+    final privacyPreference = userSettings?['privacy_preference'] as String? ?? 'balanced';
+    final goals = List<String>.from(userSettings?['goals'] ?? []);
     
     // Streak data from Users table
     int streakDays = (userRow['streak_count'] as int?) ?? 0;
@@ -148,6 +154,8 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       gender: gender,
       cycleData: cycleData,
       preferredLanguage: preferredLanguage,
+      privacyPreference: privacyPreference,
+      goals: goals,
     );
   } catch (e) {
     debugPrint('[userProfileProvider] ERROR: $e');

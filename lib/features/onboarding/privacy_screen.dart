@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import '../../core/profile_existence_provider.dart';
+import '../auth/user_repository.dart';
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -174,34 +175,52 @@ class PrivacyScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(Icons.check_circle,
-                                  color: ZunoTheme.tertiaryFixed),
-                              const SizedBox(width: 10),
-                              Text(
-                                "You're all set! Let's begin ✨",
-                                style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: ZunoTheme.onSurface,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                      Future.delayed(const Duration(seconds: 1), () {
+                    onTap: () async {
+                      try {
+                        final userRepo = ref.read(userRepositoryProvider);
+                        final level = ref.read(privacyProvider);
+                        
+                        await userRepo.updateUserSettings(
+                            privacyPreference: level.name);
+
                         if (context.mounted) {
-                          ref.read(profileExistenceProvider).setHasProfile(true);
-                          context.go('/dashboard');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle,
+                                      color: ZunoTheme.tertiaryFixed),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    "You're all set! Let's begin ✨",
+                                    style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: ZunoTheme.onSurface,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                          Future.delayed(const Duration(seconds: 1), () {
+                            if (context.mounted) {
+                              ref
+                                  .read(profileExistenceProvider)
+                                  .setHasProfile(true);
+                              context.go('/dashboard');
+                            }
+                          });
                         }
-                      });
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString())),
+                          );
+                        }
+                      }
                     },
                     child: Container(
                       width: double.infinity,

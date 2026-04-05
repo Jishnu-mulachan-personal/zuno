@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
+import '../auth/user_repository.dart';
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -178,7 +179,27 @@ class GoalsScreen extends ConsumerWidget {
                     opacity: canContinue ? 1.0 : 0.4,
                     duration: const Duration(milliseconds: 200),
                     child: GestureDetector(
-                      onTap: canContinue ? () => context.go('/onboarding/privacy') : null,
+                      onTap: canContinue
+                          ? () async {
+                              try {
+                                final userRepo =
+                                    ref.read(userRepositoryProvider);
+                                final selectedGoals =
+                                    ref.read(goalsProvider).toList();
+                                await userRepo.updateUserSettings(
+                                    goals: selectedGoals);
+                                if (context.mounted) {
+                                  context.go('/onboarding/privacy');
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString())),
+                                  );
+                                }
+                              }
+                            }
+                          : null,
                       child: Container(
                         width: double.infinity,
                         height: 56,

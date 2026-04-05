@@ -44,7 +44,6 @@ class UserRepository {
           'distance': relationshipDistance ?? 'moderate',
           if (marriedOn != null) 'anniversary_date': marriedOn.toIso8601String(),
           'partner_a_id': userId,
-          'privacy_preference': 'balanced', // Default
         })
         .select('id')
         .single();
@@ -55,6 +54,12 @@ class UserRepository {
     await _supabase.from('users').update({
       'relationship_id': relId,
     }).eq('id', userId);
+
+    // 4. Initialize user_settings with default privacy_preference
+    await _supabase.from('user_settings').upsert({
+      'user_id': userId,
+      'privacy_preference': 'balanced',
+    });
   }
 
   Future<void> updateRelationshipDetails({
@@ -66,6 +71,20 @@ class UserRepository {
       if (marriedOn != null) 'anniversary_date': marriedOn.toIso8601String(),
       if (relationshipDistance != null) 'distance': relationshipDistance,
     }).eq('id', relationshipId);
+  }
+
+  Future<void> updateUserSettings({
+    String? privacyPreference,
+    List<String>? goals,
+  }) async {
+    final sbUser = _supabase.auth.currentUser;
+    if (sbUser == null) throw Exception('Not authenticated');
+
+    await _supabase.from('user_settings').upsert({
+      'user_id': sbUser.id,
+      if (privacyPreference != null) 'privacy_preference': privacyPreference,
+      if (goals != null) 'goals': goals,
+    });
   }
 
   /// Returns true if the currently authenticated user already has
