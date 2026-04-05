@@ -183,6 +183,79 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Google Sign-In (Recommended)
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: _HighlightedGoogleCta(
+                      label: 'Continue with Google',
+                      isLoading: auth.isLoading,
+                      onTap: auth.isLoading ? null : _signInWithGoogle,
+                    ),
+                  ),
+                  Positioned(
+                    top: -10,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: ZunoTheme.tertiary,
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: ZunoTheme.tertiary.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'RECOMMENDED',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  'Fastest and most secure way to join Zuno.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              
+              Row(
+                children: [
+                  Expanded(child: Divider(color: ZunoTheme.outlineVariant.withOpacity(0.5))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'OR',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: ZunoTheme.outlineVariant.withOpacity(0.5))),
+                ],
+              ),
+              const SizedBox(height: 32),
+
               // Email Field
               Text(
                 'EMAIL ADDRESS',
@@ -274,16 +347,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       color: ZunoTheme.primary,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Divider(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: _OutlinedCta(
-                  label: 'Continue with Google',
-                  isLoading: auth.isLoading,
-                  onTap: auth.isLoading ? null : _signInWithGoogle,
                 ),
               ),
             ],
@@ -397,23 +460,30 @@ class _GradientCta extends StatelessWidget {
   }
 }
 
-class _OutlinedCta extends StatelessWidget {
+class _HighlightedGoogleCta extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   final bool isLoading;
 
-  const _OutlinedCta({required this.label, this.onTap, this.isLoading = false});
+  const _HighlightedGoogleCta({required this.label, this.onTap, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 56,
+        height: 58,
         decoration: BoxDecoration(
-          color: Colors.transparent,
-          border: Border.all(color: ZunoTheme.outlineVariant, width: 1.5),
-          borderRadius: BorderRadius.circular(99),
+          color: Colors.white,
+          border: Border.all(color: ZunoTheme.primary.withOpacity(0.3), width: 2),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: ZunoTheme.primary.withOpacity(0.12),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Center(
           child: isLoading
@@ -432,12 +502,12 @@ class _OutlinedCta extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      label.toUpperCase(),
+                      label,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: ZunoTheme.onSurface,
-                        letterSpacing: 2.2,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ],
