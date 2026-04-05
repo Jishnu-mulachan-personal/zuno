@@ -84,6 +84,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             iconColor: ZunoTheme.tertiary,
             onTap: () => _showStatusSelector(context, ref),
           ),
+          const SizedBox(height: 12),
+          _InfoTile(
+            icon: Icons.security_rounded,
+            label: 'Privacy Preference',
+            value: _capitalize(profile?.privacyPreference ?? 'balanced'),
+            iconBg: ZunoTheme.secondaryContainer,
+            iconColor: ZunoTheme.secondary,
+            onTap: () => _showPrivacySelector(context, ref),
+          ),
           const SizedBox(height: 32),
 
           // ── Partner ───────────────────────────────────────────────────────
@@ -272,6 +281,17 @@ void _showStatusSelector(BuildContext context, WidgetRef ref) {
     shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     builder: (ctx) => const _StatusSelectorSheet(),
+  );
+}
+
+void _showPrivacySelector(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: ZunoTheme.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (ctx) => const _PrivacySelectorSheet(),
   );
 }
 
@@ -709,6 +729,123 @@ class _StatusSelectorSheet extends ConsumerWidget {
                                 ? ZunoTheme.primary
                                 : ZunoTheme.onSurface)),
                     const Spacer(),
+                    if (isSelected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: ZunoTheme.primary, size: 20),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrivacySelectorSheet extends ConsumerWidget {
+  const _PrivacySelectorSheet({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider).value;
+    final current = profile?.privacyPreference ?? 'balanced';
+    final options = [
+      {
+        'id': 'private',
+        'title': 'Mostly private',
+        'sub': 'Keep almost everything to myself'
+      },
+      {
+        'id': 'balanced',
+        'title': 'Balanced',
+        'sub': 'Share essential moods and trends'
+      },
+      {
+        'id': 'shared',
+        'title': 'Mostly shared',
+        'sub': 'Open transparency with partner'
+      },
+    ];
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 20, 24, MediaQuery.of(context).padding.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+                color: ZunoTheme.outlineVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(99)),
+          ),
+          Text('Privacy Preference',
+              style: GoogleFonts.notoSerif(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: ZunoTheme.onSurface)),
+          const SizedBox(height: 8),
+          Text('Choose how much you share with your partner.',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.7))),
+          const SizedBox(height: 24),
+          ...options.map((opt) {
+            final isSelected = current == opt['id'];
+            return GestureDetector(
+              onTap: () async {
+                Navigator.pop(context);
+                if (isSelected) return;
+                final ok = await ref
+                    .read(settingsProvider.notifier)
+                    .updatePrivacyPreference(opt['id']!);
+                if (context.mounted) {
+                  _snack(context, ok,
+                      success: 'Privacy updated to ${opt['title']}',
+                      failure: ref.read(settingsProvider).message ?? 'Error');
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? ZunoTheme.primary.withOpacity(0.08)
+                      : ZunoTheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected
+                        ? ZunoTheme.primary.withOpacity(0.3)
+                        : ZunoTheme.outlineVariant.withOpacity(0.12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(opt['title']!,
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? ZunoTheme.primary
+                                      : ZunoTheme.onSurface)),
+                          Text(opt['sub']!,
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: ZunoTheme.onSurfaceVariant
+                                      .withOpacity(0.6))),
+                        ],
+                      ),
+                    ),
                     if (isSelected)
                       const Icon(Icons.check_circle_rounded,
                           color: ZunoTheme.primary, size: 20),
