@@ -160,11 +160,33 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     }
   }
 
+  Future<bool> updateJournalNotePrivate(bool val) async {
+    _setLoading();
+    try {
+      final userRepo = _ref.read(userRepositoryProvider);
+      await userRepo.updateUserSettings(journalNotePrivate: val);
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Journal privacy updated');
+      return true;
+    } catch (e) {
+      debugPrint('[updateJournalNotePrivate] $e');
+      _setError(e.toString());
+      return false;
+    }
+  }
+
   Future<bool> updatePrivacyPreference(String level) async {
     _setLoading();
     try {
       final userRepo = _ref.read(userRepositoryProvider);
-      await userRepo.updateUserSettings(privacyPreference: level);
+      // Logic: if level is 'private' (Mostly Private), auto-toggle journal privacy to true
+      final bool autoPrivate = level == 'private';
+      
+      await userRepo.updateUserSettings(
+        privacyPreference: level,
+        journalNotePrivate: autoPrivate ? true : null,
+      );
+      
       _ref.invalidate(userProfileProvider);
       _setSuccess('Privacy preference updated');
       return true;

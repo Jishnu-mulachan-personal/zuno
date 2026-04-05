@@ -93,6 +93,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             iconColor: ZunoTheme.secondary,
             onTap: () => _showPrivacySelector(context, ref),
           ),
+          const SizedBox(height: 12),
+          _JournalPrivacyTile(profile: profile),
           const SizedBox(height: 32),
 
           if (profile?.relationshipStatus != 'single') ...[
@@ -439,6 +441,110 @@ class _ActionTile extends StatelessWidget {
             Icon(Icons.arrow_forward_ios_rounded, color: tileColor, size: 14),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Journal Privacy Tile ─────────────────────────────────────────────────────
+
+class _JournalPrivacyTile extends ConsumerWidget {
+  final UserProfile? profile;
+  const _JournalPrivacyTile({required this.profile});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPrivate = profile?.journalNotePrivate ?? false;
+    // If privacy preference is 'private' (Mostly Private), this is auto-managed
+    final isMostlyPrivate = profile?.privacyPreference == 'private';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isPrivate
+              ? ZunoTheme.primary.withOpacity(0.25)
+              : ZunoTheme.outlineVariant.withOpacity(0.12),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isPrivate
+                  ? ZunoTheme.primary.withOpacity(0.12)
+                  : ZunoTheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              isPrivate ? Icons.lock_rounded : Icons.lock_open_rounded,
+              color: isPrivate
+                  ? ZunoTheme.primary
+                  : ZunoTheme.onSurfaceVariant,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Private Journal Notes',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isMostlyPrivate
+                      ? 'Auto-enabled for a more private experience'
+                      : 'Your notes will not be used when generating AI insights for your partner. Keeping this disabled is recommended for a better app experience.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: isMostlyPrivate
+                        ? ZunoTheme.primary.withOpacity(0.7)
+                        : ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: isPrivate,
+            onChanged: isMostlyPrivate
+                ? null // auto-managed, disable interaction
+                : (val) async {
+                    final ok = await ref
+                        .read(settingsProvider.notifier)
+                        .updateJournalNotePrivate(val);
+                    if (context.mounted) {
+                      _snack(
+                        context,
+                        ok,
+                        success: val
+                            ? 'Journal notes set to private 🔒'
+                            : 'Journal notes set to shared',
+                        failure: ref.read(settingsProvider).message ?? 'Error',
+                      );
+                    }
+                  },
+            activeThumbColor: ZunoTheme.primary,
+            inactiveTrackColor: ZunoTheme.surfaceContainerHigh,
+            thumbColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return Colors.white;
+              }
+              return Colors.white;
+            }),
+          ),
+        ],
       ),
     );
   }

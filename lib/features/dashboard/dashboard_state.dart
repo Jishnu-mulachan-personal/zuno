@@ -34,10 +34,12 @@ class UserProfile {
     this.preferredLanguage = 'English',
     this.relationshipStatus = 'single',
     this.privacyPreference = 'balanced',
+    this.journalNotePrivate = false,
     this.goals = const [],
   });
   
   final String privacyPreference;
+  final bool journalNotePrivate;
   final List<String> goals;
 }
 
@@ -64,7 +66,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     // Fetch current user + their relationship + settings
     final userRow = await supabase
         .from('users')
-        .select('*, user_settings(preferred_language, privacy_preference, goals), current_relationship:relationships!users_relationship_id_fkey(status)')
+        .select('*, user_settings(preferred_language, privacy_preference, journal_note_private, goals), current_relationship:relationships!users_relationship_id_fkey(status)')
         .eq('id', sbUser.id)
         .maybeSingle();
 
@@ -83,6 +85,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final userSettings = userRow['user_settings'] as Map<String, dynamic>?;
     final preferredLanguage = userSettings?['preferred_language'] as String? ?? 'English';
     final privacyPreference = userSettings?['privacy_preference'] as String? ?? 'balanced';
+    final journalNotePrivate = userSettings?['journal_note_private'] as bool? ?? false;
     final goals = List<String>.from(userSettings?['goals'] ?? []);
     
     // Relationship status from joined table (using the alias)
@@ -165,6 +168,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       preferredLanguage: preferredLanguage,
       relationshipStatus: relationshipStatus,
       privacyPreference: privacyPreference,
+      journalNotePrivate: journalNotePrivate,
       goals: goals,
     );
   } catch (e) {
@@ -582,18 +586,21 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
       // 1. Insert a new log entry
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      final profile = ref.read(userProfileProvider).value;
+      final isNotePrivate = profile?.journalNotePrivate ?? false;
+
       await supabase.from('daily_logs').insert({
         'user_id': userId,
         'mood_emoji': state.selectedMood,
         'connection_felt': state.isConnected,
         'context_tags': state.selectedTags,
         'log_date': todayStr,
+        'is_note_private': isNotePrivate,
         if (state.journalNote.trim().isNotEmpty)
           'journal_note': EncryptionService.encrypt(state.journalNote.trim()),
       });
 
       // 2. Update Streak Logic
-      final profile = ref.read(userProfileProvider).value;
       if (profile != null) {
         int newStreak = profile.streakDays;
         final now = DateTime.now();

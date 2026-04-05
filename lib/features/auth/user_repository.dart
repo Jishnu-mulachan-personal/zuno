@@ -77,6 +77,7 @@ class UserRepository {
 
   Future<void> updateUserSettings({
     String? privacyPreference,
+    bool? journalNotePrivate,
     List<String>? goals,
   }) async {
     final sbUser = _supabase.auth.currentUser;
@@ -85,6 +86,7 @@ class UserRepository {
     await _supabase.from('user_settings').upsert({
       'user_id': sbUser.id,
       if (privacyPreference != null) 'privacy_preference': privacyPreference,
+      if (journalNotePrivate != null) 'journal_note_private': journalNotePrivate,
       if (goals != null) 'goals': goals,
     });
   }
