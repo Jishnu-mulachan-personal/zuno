@@ -25,24 +25,24 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
     super.dispose();
   }
 
-  Future<void> _onDetect(BarcodeCapture capture) async {
+  Future<void> _handleClaim(String token) async {
     if (_processing) return;
-    final token = capture.barcodes.map((b) => b.rawValue).firstWhere(
-        (v) => v != null && v.startsWith('zuno_inv_'),
-        orElse: () => null);
-
-    if (token == null) return;
+    
+    // Normalize token (if user entered just the suffix)
+    String normalizedToken = token.trim();
+    if (!normalizedToken.startsWith('zuno_inv_')) {
+      normalizedToken = 'zuno_inv_$normalizedToken';
+    }
 
     setState(() => _processing = true);
     await _controller.stop();
 
-    final success = await ref.read(claimProvider.notifier).claimToken(token);
+    final success = await ref.read(claimProvider.notifier).claimToken(normalizedToken);
     final claimState = ref.read(claimProvider);
 
     if (!mounted) return;
 
     if (success) {
-      // Invalidate profile so dashboard refreshes with partner name
       ref.invalidate(userProfileProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -50,12 +50,10 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
               style: GoogleFonts.plusJakartaSans()),
           backgroundColor: ZunoTheme.tertiary,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           duration: const Duration(seconds: 3),
         ),
       );
-      // Navigate to the success route or default to /us
       if (context.mounted) {
         context.go(widget.successRoute ?? '/us');
       }
@@ -66,15 +64,39 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
               style: GoogleFonts.plusJakartaSans()),
           backgroundColor: ZunoTheme.error,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           duration: const Duration(seconds: 3),
         ),
       );
-      // Allow another scan attempt
       setState(() => _processing = false);
       await _controller.start();
     }
+  }
+
+  Future<void> _onDetect(BarcodeCapture capture) async {
+    final token = capture.barcodes.map((b) => b.rawValue).firstWhere(
+        (v) => v != null && v.startsWith('zuno_inv_'),
+        orElse: () => null);
+
+    if (token == null) return;
+    await _handleClaim(token);
+  }
+
+  void _showManualEntry() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: ZunoTheme.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => _ManualEntrySheet(
+        onClaim: (code) {
+          Navigator.pop(ctx);
+          _handleClaim(code);
+        },
+      ),
+    );
   }
 
   @override
@@ -96,7 +118,7 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
           },
         ),
         title: Text(
-          'Scan Partner\'s Code',
+          'Connect Partner',
           style: GoogleFonts.notoSerif(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -113,14 +135,11 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
       ),
       body: Stack(
         children: [
-          // Camera feed
           MobileScanner(
             controller: _controller,
             onDetect: _onDetect,
           ),
-          // Overlay with cutout
           _ScannerOverlay(),
-          // Bottom instruction card
           Positioned(
             bottom: 0,
             left: 0,
@@ -129,7 +148,7 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
               padding: EdgeInsets.fromLTRB(
                   24, 24, 24, MediaQuery.of(context).padding.bottom + 24),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withOpacity(0.85),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(28)),
               ),
@@ -147,7 +166,7 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
                     ),
                   ] else ...[
                     Text(
-                      'Point your camera at\nyour partner\'s QR code',
+                      'Scan your partner\'s QR code',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
@@ -156,17 +175,146 @@ class _PairScanScreenState extends ConsumerState<PairScanScreen> {
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 24),
+                    // Manual Entry Button
+                    GestureDetector(
+                      onTap: _showManualEntry,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.keyboard_outlined, color: Colors.white, size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Enter code manually',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Text(
-                      'The code is valid for 10 minutes and one use only.',
+                      'Recieved a code via WhatsApp or Mail?\nTap above to enter it.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         color: Colors.white.withOpacity(0.5),
+                        height: 1.5,
                       ),
                     ),
                   ],
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManualEntrySheet extends StatefulWidget {
+  final Function(String) onClaim;
+  const _ManualEntrySheet({required this.onClaim});
+
+  @override
+  State<_ManualEntrySheet> createState() => _ManualEntrySheetState();
+}
+
+class _ManualEntrySheetState extends State<_ManualEntrySheet> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ZunoTheme.outlineVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Enter Invite Code',
+            style: GoogleFonts.notoSerif(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: ZunoTheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Paste the code you received from your partner.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: ZunoTheme.onSurfaceVariant.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ZunoTheme.onSurface,
+            ),
+            decoration: InputDecoration(
+              hintText: 'e.g. zuno_inv_abc... or just abc...',
+              hintStyle: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+              ),
+              filled: true,
+              fillColor: ZunoTheme.surfaceContainerLowest,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              if (_controller.text.trim().isNotEmpty) {
+                widget.onClaim(_controller.text.trim());
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ZunoTheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+            child: Text(
+              'CONNECT',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
               ),
             ),
           ),

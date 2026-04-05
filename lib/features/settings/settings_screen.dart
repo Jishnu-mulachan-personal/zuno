@@ -95,59 +95,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 32),
 
-          // ── Partner ───────────────────────────────────────────────────────
-          const _SectionHeader(label: 'PARTNER'),
-          const SizedBox(height: 10),
-          if (hasParter) ...[
-            _InfoTile(
-              icon: Icons.favorite_rounded,
-              label: 'Paired with',
-              value: profile!.partnerName!,
-              iconBg: ZunoTheme.primaryFixed,
-              iconColor: ZunoTheme.primary,
-            ),
-            const SizedBox(height: 12),
-            _ActionTile(
-              icon: Icons.link_off_rounded,
-              label: 'Unpair Partner',
-              subtitle: 'Disconnect your partner',
-              tileColor: const Color(0xFFE65100),
-              onTap: () => _confirmAction(
-                context: context,
-                icon: Icons.link_off_rounded,
-                iconColor: const Color(0xFFE65100),
-                title: 'Unpair Partner?',
-                body:
-                    'This will disconnect you and your partner. You can re-pair at any time.',
-                confirmLabel: 'Unpair',
-                confirmColor: const Color(0xFFE65100),
-                onConfirm: () async {
-                  final ok =
-                      await ref.read(settingsProvider.notifier).unpairPartner();
-                  if (context.mounted) {
-                    if (ok) {
-                      context.go('/dashboard');
-                      _snack(context, true, success: 'Partner unpaired 👋');
-                    } else {
-                      _snack(context, false,
-                          failure:
-                              ref.read(settingsProvider).message ?? 'Error');
-                    }
-                  }
-                },
+          if (profile?.relationshipStatus != 'single') ...[
+            // ── Partner ───────────────────────────────────────────────────────
+            const _SectionHeader(label: 'PARTNER'),
+            const SizedBox(height: 10),
+            if (hasParter) ...[
+              _InfoTile(
+                icon: Icons.favorite_rounded,
+                label: 'Paired with',
+                value: profile!.partnerName!,
+                iconBg: ZunoTheme.primaryFixed,
+                iconColor: ZunoTheme.primary,
               ),
-            ),
-          ] else ...[
-            _InfoTile(
-              icon: Icons.person_search_rounded,
-              label: 'No partner connected',
-              value: 'Tap to pair',
-              iconBg: ZunoTheme.surfaceContainerHigh,
-              iconColor: ZunoTheme.onSurfaceVariant,
-              onTap: () => context.push('/us'),
-            ),
+              const SizedBox(height: 12),
+              _ActionTile(
+                icon: Icons.link_off_rounded,
+                label: 'Unpair Partner',
+                subtitle: 'Disconnect your partner',
+                tileColor: const Color(0xFFE65100),
+                onTap: () => _confirmAction(
+                  context: context,
+                  icon: Icons.link_off_rounded,
+                  iconColor: const Color(0xFFE65100),
+                  title: 'Unpair Partner?',
+                  body:
+                      'This will disconnect you and your partner. You can re-pair at any time.',
+                  confirmLabel: 'Unpair',
+                  confirmColor: const Color(0xFFE65100),
+                  onConfirm: () async {
+                    final ok = await ref
+                        .read(settingsProvider.notifier)
+                        .unpairPartner();
+                    if (context.mounted) {
+                      if (ok) {
+                        context.go('/dashboard');
+                        _snack(context, true, success: 'Partner unpaired 👋');
+                      } else {
+                        _snack(context, false,
+                            failure:
+                                ref.read(settingsProvider).message ?? 'Error');
+                      }
+                    }
+                  },
+                ),
+              ),
+            ] else ...[
+              _InfoTile(
+                icon: Icons.person_search_rounded,
+                label: 'No partner connected',
+                value: 'Tap to pair',
+                iconBg: ZunoTheme.surfaceContainerHigh,
+                iconColor: ZunoTheme.onSurfaceVariant,
+                onTap: () => context.push('/us'),
+              ),
+            ],
+            const SizedBox(height: 32),
           ],
-          const SizedBox(height: 32),
 
           // ── Session ───────────────────────────────────────────────────────
           const _SectionHeader(label: 'SESSION'),

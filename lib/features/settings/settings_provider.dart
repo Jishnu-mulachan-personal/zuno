@@ -40,19 +40,24 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// User A keeps the relationship row (for their history), but it becomes
   /// unpaired — partner_b_id = NULL.
   Future<bool> unpairPartner() async {
-    final sbUser = Supabase.instance.client.auth.currentUser;
+    _setLoading();
+    final ok = await _internalUnpair();
+    if (ok) {
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Partner unpaired');
+    }
+    return ok;
+  }
 
+  Future<bool> _internalUnpair() async {
+    final sbUser = Supabase.instance.client.auth.currentUser;
     if (sbUser == null) {
       _setError('Not authenticated');
       return false;
     }
 
-    _setLoading();
-
     try {
       final supabase = Supabase.instance.client;
-
-      // Pass the Auth ID to the Edge Function — it should handle it as a direct UUID identifier
       final response = await supabase.functions.invoke(
         'unpair_partner',
         body: {'userId': sbUser.id},
@@ -63,13 +68,9 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         _setError(errorMsg);
         return false;
       }
-
-      // Invalidate & force a fresh re-fetch so UI reflects the change
-      _ref.invalidate(userProfileProvider);
-      _setSuccess('Partner unpaired');
       return true;
     } catch (e) {
-      debugPrint('[unpairPartner] $e');
+      debugPrint('[_internalUnpair] $e');
       _setError(e.toString());
       return false;
     }
@@ -189,19 +190,54 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
   Future<bool> updateRelationshipStatus(String status) async {
     final profile = _ref.read(userProfileProvider).value;
-    if (profile == null || profile.relationshipId == null) return false;
+    if (profile == null) return false;
 
     _setLoading();
     try {
-      final userRepo = _ref.read(userRepositoryProvider);
-      await userRepo.updateRelationshipDetails(
-        relationshipId: profile.relationshipId!,
-        status: status,
-      );
+      final supabase = Supabase.instance.client;
+      final userId = profile.id;
+      String? relId = profile.relationshipId;
+
+      // 1. If user doesn't have a relationship_id, create one first
+      if (relId == null) {
+        debugPrint('[updateRelationshipStatus] No relationshipId found, creating one...');
+        final relResponse = await supabase
+            .from('relationships')
+            .insert({
+              'status': status,
+              'partner_a_id': userId,
+              'distance': 'moderate',
+            })
+            .select('id')
+            .single();
+        
+        relId = relResponse['id'] as String;
+
+        // Link it to the user
+        await supabase.from('users').update({
+          'relationship_id': relId,
+        }).eq('id', userId);
+        
+        debugPrint('[updateRelationshipStatus] Created and linked relationshipId: $relId');
+      } else {
+        // 2. Update the status in the existing database row
+        final userRepo = _ref.read(userRepositoryProvider);
+        await userRepo.updateRelationshipDetails(
+          relationshipId: relId,
+          status: status,
+        );
+      }
+
+      // 3. If new status is 'single', also unpair the partner
+      if (status == 'single' && profile.partnerId != null) {
+        await _internalUnpair();
+      }
+
       _ref.invalidate(userProfileProvider);
       _setSuccess('Relationship status updated to $status');
       return true;
     } catch (e) {
+      debugPrint('[updateRelationshipStatus] Error: $e');
       _setError(e.toString());
       return false;
     }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../app_theme.dart';
 import '../dashboard/dashboard_state.dart';
@@ -197,6 +198,15 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
               // QR Code card
               _QrCard(invite: invite, countdownText: _countdownText),
               const SizedBox(height: 24),
+              if (invite.token != null) ...[
+                _ShareInviteButton(
+                  onTap: () {
+                    final msg = invite.token!;
+                    Share.share(msg);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
               // Refresh button
               if (!invite.isGenerating) _RefreshButton(onTap: _generate),
               const SizedBox(height: 16),
@@ -394,6 +404,49 @@ class _CountdownBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ShareInviteButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ShareInviteButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          gradient: ZunoTheme.primaryGradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: ZunoTheme.primary.withOpacity(0.25),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.share_rounded, size: 20, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(
+              'SHARE INVITE CODE',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
