@@ -370,18 +370,30 @@ class _SharedFeed extends ConsumerWidget {
           return SliverToBoxAdapter(child: _EmptyState());
         }
 
+        // Group posts by Month/Year
+        final Map<String, List<SharedPost>> groups = {};
+        for (final p in posts) {
+          final groupKey = _formatMonthYear(p.createdAt);
+          groups.putIfAbsent(groupKey, () => []).add(p);
+        }
+
+        final groupKeys = groups.keys.toList();
+
         return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 0),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
-              (ctx, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _PostCard(
-                  post: posts[i],
-                  isOwn: posts[i].userId == currentUserId,
-                ),
-              ),
-              childCount: posts.length,
+              (ctx, i) {
+                final key = groupKeys[i];
+                return _TimelineMonthGroup(
+                  title: key,
+                  posts: groups[key]!,
+                  currentUserId: currentUserId,
+                  isInitiallyExpanded: i == 0,
+                  isLastGroup: i == groupKeys.length - 1,
+                );
+              },
+              childCount: groupKeys.length,
             ),
           ),
         );
@@ -1324,6 +1336,190 @@ class _SkeletonCardState extends State<_SkeletonCard>
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Timeline Feed Utilities / Widgets ───────────────────────────────────────
+
+String _formatMonthYear(DateTime dt) {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  return '${months[dt.month - 1]} ${dt.year}';
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+
+  _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    const dashHeight = 5.0;
+    const dashSpace = 4.0;
+    double startY = 0;
+
+    while (startY < size.height) {
+      canvas.drawLine(
+        Offset(0, startY),
+        Offset(0, startY + dashHeight),
+        paint,
+      );
+      startY += dashHeight + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
+class _TimelineMonthGroup extends StatefulWidget {
+  final String title;
+  final List<SharedPost> posts;
+  final String currentUserId;
+  final bool isInitiallyExpanded;
+  final bool isLastGroup;
+
+  const _TimelineMonthGroup({
+    required this.title,
+    required this.posts,
+    required this.currentUserId,
+    this.isInitiallyExpanded = false,
+    this.isLastGroup = false,
+  });
+
+  @override
+  State<_TimelineMonthGroup> createState() => _TimelineMonthGroupState();
+}
+
+class _TimelineMonthGroupState extends State<_TimelineMonthGroup> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.isInitiallyExpanded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Month Header ──
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _expanded = !_expanded;
+            });
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              children: [
+                Text(
+                  widget.title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  color: ZunoTheme.outlineVariant,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    height: 1,
+                    color: ZunoTheme.outlineVariant.withValues(alpha: 0.1),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Posts (Timeline Axis) ──
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Stack(
+              children: [
+                // Dashed line
+                Positioned(
+                  left: 16, // Center of the 32px marker area
+                  top: 0,
+                  bottom: widget.isLastGroup ? 30 : 0, // Cut off nicely at end
+                  child: CustomPaint(
+                    painter: _DashedLinePainter(
+                      color: ZunoTheme.outlineVariant.withValues(alpha: 0.3),
+                    ),
+                  ),
+                ),
+
+                // Post Content
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: widget.posts.map((post) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Dot Marker (Aligned with card avatar center)
+                          // Avatar gets 14 top padding + 38 height = center is 33
+                          // Dot size is 10px, so top padding = 33 - 5 = 28
+                          Padding(
+                            padding: const EdgeInsets.only(top: 28),
+                            child: SizedBox(
+                              width: 32, // Matches `left: 16` center line above
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: ZunoTheme.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: ZunoTheme.surface,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Post Card
+                          Expanded(
+                            child: _PostCard(
+                              post: post,
+                              isOwn: post.userId == widget.currentUserId,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
