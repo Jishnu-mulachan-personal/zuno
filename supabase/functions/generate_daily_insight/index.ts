@@ -169,8 +169,17 @@ serve(async (req) => {
       Recent Journal Context:
       ${journalContext.join('\n')}
 
-      Task: Write a highly personalized, warm 2-sentence daily insight for ${userData.display_name}.
-      Instruction: If cycle data is present, consider how the current phase might influence their needs. Be supportive, not robotic.
+      Guidelines:
+        1. If the partner is feeling low → encourage empathy and support.
+        2. If the user is low → suggest self-care and communication.
+        3. If both are fine → suggest bonding or appreciation.
+        4. If cycle data exists → gently incorporate it (DO NOT dominate the insight).
+
+      Task: Write a warm, natural, 2-sentence insight that balances:
+      - Self-awareness
+      - Partner-awareness
+      - Relationship care
+
       CRITICAL: The output MUST be written in ${language}.
     `;
 
