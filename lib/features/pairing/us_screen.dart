@@ -28,11 +28,12 @@ class _UsScreenState extends ConsumerState<UsScreen> {
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
       body: profileAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator(color: ZunoTheme.primary)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: ZunoTheme.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (profile) {
-          final isPaired = profile.partnerName != null && profile.relationshipId != null;
+          final isPaired =
+              profile.partnerName != null && profile.relationshipId != null;
 
           return Stack(
             children: [
@@ -41,8 +42,8 @@ class _UsScreenState extends ConsumerState<UsScreen> {
                 slivers: [
                   _UsAppBar(),
                   SliverPadding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 20),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         if (isPaired) ...[
@@ -62,7 +63,8 @@ class _UsScreenState extends ConsumerState<UsScreen> {
                       relationshipId: profile.relationshipId!,
                       currentUserId: profile.id,
                     ),
-                  if (isPaired) const SliverToBoxAdapter(child: SizedBox(height: 160)),
+                  if (isPaired)
+                    const SliverToBoxAdapter(child: SizedBox(height: 160)),
                 ],
               ),
               ZunoBottomNavBar(
@@ -136,7 +138,8 @@ class _PairedHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.favorite_rounded, color: ZunoTheme.primary, size: 20),
+          const Icon(Icons.favorite_rounded,
+              color: ZunoTheme.primary, size: 20),
           const SizedBox(width: 10),
           Text(
             'Sharing moments with $partnerName',
@@ -165,7 +168,8 @@ class _UnpairedTimelineNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ZunoTheme.outlineVariant.withValues(alpha: 0.1)),
+        border:
+            Border.all(color: ZunoTheme.outlineVariant.withValues(alpha: 0.1)),
       ),
       child: Column(
         children: [
@@ -305,7 +309,8 @@ class _PairCard extends StatelessWidget {
                         'Already have a code? Scan it here.',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
-                          color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          color:
+                              ZunoTheme.onSurfaceVariant.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -351,13 +356,11 @@ class _SharedFeed extends ConsumerWidget {
       error: (e, _) => SliverToBoxAdapter(
         child: Center(
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Text(
               'Could not load posts:\n$e',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: ZunoTheme.error),
+                  fontSize: 13, color: ZunoTheme.error),
             ),
           ),
         ),
@@ -419,8 +422,7 @@ class _PostCard extends ConsumerWidget {
           children: [
             // ── Author row ──────────────────────────────────────────────────
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   // Avatar
@@ -461,7 +463,8 @@ class _PostCard extends ConsumerWidget {
                           relativeTime(post.createdAt),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
-                            color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.5),
+                            color: ZunoTheme.onSurfaceVariant
+                                .withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -471,7 +474,8 @@ class _PostCard extends ConsumerWidget {
                     GestureDetector(
                       onTap: () => _showPostOptions(context, ref),
                       child: Icon(Icons.more_horiz_rounded,
-                          color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.4),
+                          color:
+                              ZunoTheme.onSurfaceVariant.withValues(alpha: 0.4),
                           size: 20),
                     ),
                 ],
@@ -485,9 +489,19 @@ class _PostCard extends ConsumerWidget {
                   bottomLeft: Radius.circular(22),
                   bottomRight: Radius.circular(22),
                 ),
-                child: _AuthenticatedImage(
-                  url: post.imageUrl!,
-                  height: null,
+                // Constrain max height so portrait photos don't require too much scrolling,
+                // while landscape images can be their natural shorter height.
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxHeight: 300,
+                    minHeight: 200,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: _AuthenticatedImage(
+                      url: post.imageUrl!,
+                    ),
+                  ),
                 ),
               ),
 
@@ -510,8 +524,7 @@ class _PostCard extends ConsumerWidget {
             // ── Context tags ────────────────────────────────────────────────
             if (post.contextTags.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(
-                    left: 16, right: 16, bottom: 14),
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 6,
@@ -541,12 +554,12 @@ class _PostCard extends ConsumerWidget {
 // ─── Authenticated Image ──────────────────────────────────────────────────────
 // Uses a Supabase signed URL so images load from private Storage buckets.
 // Accepts both plain storage paths and legacy full public URLs.
+// Size is controlled by the parent SizedBox; this widget always fills it.
 
 class _AuthenticatedImage extends StatelessWidget {
   final String url;
-  final double? height;
 
-  const _AuthenticatedImage({required this.url, this.height});
+  const _AuthenticatedImage({required this.url});
 
   @override
   Widget build(BuildContext context) {
@@ -555,7 +568,8 @@ class _AuthenticatedImage extends StatelessWidget {
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return Container(
-            height: height ?? 220,
+            width: double.infinity,
+            height: 300,
             color: ZunoTheme.surfaceContainerHigh,
             child: const Center(
               child: CircularProgressIndicator(
@@ -565,13 +579,15 @@ class _AuthenticatedImage extends StatelessWidget {
         }
 
         if (snap.hasError || !snap.hasData) {
-          debugPrint('[_AuthenticatedImage] Signed URL error for $url: ${snap.error}');
+          debugPrint(
+              '[_AuthenticatedImage] Signed URL error for $url: ${snap.error}');
           return Container(
-            height: height ?? 160,
+            width: double.infinity,
+            height: 300,
             color: ZunoTheme.surfaceContainerHigh,
             child: const Center(
-              child:
-                  Icon(Icons.broken_image_outlined, color: ZunoTheme.outlineVariant),
+              child: Icon(Icons.broken_image_outlined,
+                  color: ZunoTheme.outlineVariant),
             ),
           );
         }
@@ -579,12 +595,12 @@ class _AuthenticatedImage extends StatelessWidget {
         return Image.network(
           snap.data!,
           width: double.infinity,
-          height: height,
-          fit: BoxFit.cover,
+          fit: BoxFit.cover, // crops to fill only if constrained by max height
           loadingBuilder: (ctx, child, progress) {
             if (progress == null) return child;
             return Container(
-              height: height ?? 220,
+              width: double.infinity,
+              height: 300,
               color: ZunoTheme.surfaceContainerHigh,
               child: const Center(
                 child: CircularProgressIndicator(
@@ -595,7 +611,8 @@ class _AuthenticatedImage extends StatelessWidget {
           errorBuilder: (ctx, error, __) {
             debugPrint('[_AuthenticatedImage] Network load error: $error');
             return Container(
-              height: height ?? 160,
+              width: double.infinity,
+              height: 300,
               color: ZunoTheme.surfaceContainerHigh,
               child: const Center(
                 child: Icon(Icons.broken_image_outlined,
@@ -610,7 +627,6 @@ class _AuthenticatedImage extends StatelessWidget {
 }
 
 // ─── Post options sheet (edit / delete) ──────────────────────────────────────
-
 
 class _PostOptionsSheet extends ConsumerWidget {
   final SharedPost post;
@@ -678,8 +694,7 @@ class _PostOptionsSheet extends ConsumerWidget {
                   content: Text(
                     'This moment will be removed for both of you.',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        color: ZunoTheme.onSurfaceVariant),
+                        fontSize: 14, color: ZunoTheme.onSurfaceVariant),
                   ),
                   actions: [
                     TextButton(
@@ -775,9 +790,8 @@ class _EditPostSheetState extends ConsumerState<_EditPostSheet> {
     super.initState();
     // Rebuild the raw text from caption + tags
     final tagsText = widget.post.contextTags.join(' ');
-    final raw = [widget.post.caption, tagsText]
-        .where((s) => s.isNotEmpty)
-        .join(' ');
+    final raw =
+        [widget.post.caption, tagsText].where((s) => s.isNotEmpty).join(' ');
     _ctrl = TextEditingController(text: raw);
     _tags = List<String>.from(widget.post.contextTags);
     _ctrl.addListener(_onChanged);
@@ -878,7 +892,8 @@ class _EditPostSheetState extends ConsumerState<_EditPostSheet> {
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(
-                          color: ZunoTheme.outlineVariant.withValues(alpha: 0.3)),
+                          color:
+                              ZunoTheme.outlineVariant.withValues(alpha: 0.3)),
                       shape: const StadiumBorder(),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
@@ -988,8 +1003,7 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(usPostNotifierProvider);
-    final hasContent =
-        _ctrl.text.trim().isNotEmpty || _pickedImage != null;
+    final hasContent = _ctrl.text.trim().isNotEmpty || _pickedImage != null;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -997,7 +1011,8 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
       decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: ZunoTheme.outlineVariant.withValues(alpha: 0.12)),
+        border:
+            Border.all(color: ZunoTheme.outlineVariant.withValues(alpha: 0.12)),
         boxShadow: [
           BoxShadow(
             color: ZunoTheme.onSurface.withValues(alpha: 0.06),
@@ -1033,7 +1048,8 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
                         color: Colors.black54,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close, size: 14, color: Colors.white),
+                      child: const Icon(Icons.close,
+                          size: 14, color: Colors.white),
                     ),
                   ),
                 ),
@@ -1081,7 +1097,8 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
                     hintText: 'Share a moment… #tag to add context',
                     hintStyle: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
-                        color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.35)),
+                        color:
+                            ZunoTheme.onSurfaceVariant.withValues(alpha: 0.35)),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     filled: false,
@@ -1123,7 +1140,8 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
             Wrap(
               spacing: 6,
               runSpacing: 4,
-              children: _tags.map((t) => _TagChip(label: t, small: true)).toList(),
+              children:
+                  _tags.map((t) => _TagChip(label: t, small: true)).toList(),
             ),
           ],
         ],
@@ -1176,7 +1194,8 @@ class _EmptyState extends StatelessWidget {
         decoration: BoxDecoration(
           color: ZunoTheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: ZunoTheme.outlineVariant.withValues(alpha: 0.08)),
+          border: Border.all(
+              color: ZunoTheme.outlineVariant.withValues(alpha: 0.08)),
         ),
         child: Column(
           children: [
@@ -1225,8 +1244,8 @@ class _SkeletonCardState extends State<_SkeletonCard>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900))
       ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 0.9).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.4, end: 0.9)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
