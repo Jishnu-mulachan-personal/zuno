@@ -969,6 +969,7 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
   final _ctrl = TextEditingController();
   File? _pickedImage;
   List<String> _tags = [];
+  bool _isExpanded = false;
 
   @override
   void initState() {
@@ -1008,27 +1009,45 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
       setState(() {
         _pickedImage = null;
         _tags = [];
+        _isExpanded = false;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isExpanded) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 24, bottom: 24),
+          child: FloatingActionButton(
+            heroTag: 'us_compose_fab',
+            onPressed: () => setState(() => _isExpanded = true),
+            backgroundColor: ZunoTheme.primary,
+            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+          ),
+        ),
+      );
+    }
+
     final state = ref.watch(usPostNotifierProvider);
     final hasContent = _ctrl.text.trim().isNotEmpty || _pickedImage != null;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(22),
-        border:
-            Border.all(color: ZunoTheme.outlineVariant.withValues(alpha: 0.12)),
+        border: Border.all(
+            color: ZunoTheme.primary.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: ZunoTheme.onSurface.withValues(alpha: 0.06),
-            blurRadius: 24,
+            color: ZunoTheme.primary.withValues(alpha: 0.1),
+            blurRadius: 30,
             offset: const Offset(0, -4),
           ),
         ],
@@ -1036,6 +1055,37 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // ── Header Row ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'New Post',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: ZunoTheme.primary,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  _ctrl.clear();
+                  setState(() {
+                    _pickedImage = null;
+                    _tags = [];
+                    _isExpanded = false;
+                  });
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Icon(Icons.close_rounded, size: 20, color: ZunoTheme.outlineVariant),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
           // Image preview
           if (_pickedImage != null)
             Stack(
@@ -1344,8 +1394,18 @@ class _SkeletonCardState extends State<_SkeletonCard>
 
 String _formatMonthYear(DateTime dt) {
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
   ];
   return '${months[dt.month - 1]} ${dt.year}';
 }
@@ -1437,7 +1497,9 @@ class _TimelineMonthGroupState extends State<_TimelineMonthGroup> {
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  _expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
                   color: ZunoTheme.outlineVariant,
                 ),
                 const SizedBox(width: 12),
