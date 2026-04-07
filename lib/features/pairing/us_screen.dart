@@ -1032,9 +1032,66 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _showImagePicker(BuildContext context) async {
+    final state = ref.read(usPostNotifierProvider);
+    if (state.isSubmitting) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: ZunoTheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ZunoTheme.outlineVariant.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _OptionTile(
+              icon: Icons.camera_alt_outlined,
+              label: 'Take Photo',
+              color: ZunoTheme.primary,
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            Divider(
+              height: 1,
+              color: ZunoTheme.outlineVariant.withValues(alpha: 0.15),
+              indent: 56,
+              endIndent: 16,
+            ),
+            _OptionTile(
+              icon: Icons.image_outlined,
+              label: 'Choose from Gallery',
+              color: ZunoTheme.primary,
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final xFile = await picker.pickImage(source: ImageSource.gallery);
+    final xFile = await picker.pickImage(source: source);
     if (xFile != null) {
       setState(() => _pickedImage = File(xFile.path));
     }
@@ -1171,9 +1228,9 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Image attach button
+              // Photo picker button (Unified)
               GestureDetector(
-                onTap: state.isSubmitting ? null : _pickImage,
+                onTap: state.isSubmitting ? null : () => _showImagePicker(context),
                 child: Container(
                   width: 38,
                   height: 38,
@@ -1182,7 +1239,7 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    Icons.image_outlined,
+                    Icons.add_a_photo_outlined,
                     size: 18,
                     color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
