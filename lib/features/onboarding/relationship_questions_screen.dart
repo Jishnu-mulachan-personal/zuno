@@ -36,7 +36,7 @@ class _RelationshipQuestionsScreenState
       lastDate: now,
       builder: (ctx, child) => Theme(
         data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: ZunoTheme.primary,
           ),
         ),
@@ -153,7 +153,7 @@ class _RelationshipQuestionsScreenState
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today_outlined, size: 20, color: ZunoTheme.primary),
+                        Icon(Icons.calendar_today_outlined, size: 20, color: ZunoTheme.primary),
                         const SizedBox(width: 16),
                         Text(
                           _marriedOn == null
@@ -234,7 +234,7 @@ class _RelationshipQuestionsScreenState
                             ),
                           ),
                           if (isSel)
-                            const Icon(Icons.check_circle, color: ZunoTheme.tertiary, size: 20),
+                            Icon(Icons.check_circle, color: ZunoTheme.tertiary, size: 20),
                         ],
                       ),
                     ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../app_theme.dart';
@@ -54,7 +54,7 @@ class UpdateDialog extends StatelessWidget {
                 color: ZunoTheme.primary.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.system_update_rounded,
                 color: ZunoTheme.primary,
                 size: 36,
@@ -177,3 +177,4 @@ class UpdateDialog extends StatelessWidget {
     );
   }
 }
+

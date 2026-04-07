@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,7 +49,7 @@ class _UsScreenState extends ConsumerState<UsScreen> {
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
       body: profileAsync.when(
-        loading: () => const Center(
+        loading: () => Center(
             child: CircularProgressIndicator(color: ZunoTheme.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (profile) {
@@ -128,7 +128,7 @@ class _UsAppBar extends StatelessWidget {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+        icon: Icon(Icons.arrow_back_ios_new_rounded,
             color: ZunoTheme.primary, size: 18),
         onPressed: () {
           if (context.canPop()) {
@@ -166,7 +166,7 @@ class _PairedHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.favorite_rounded,
+          Icon(Icons.favorite_rounded,
               color: ZunoTheme.primary, size: 20),
           const SizedBox(width: 10),
           Text(
@@ -317,7 +317,7 @@ class _PairCard extends StatelessWidget {
                     color: ZunoTheme.primaryFixed,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.qr_code_scanner_rounded,
+                  child: Icon(Icons.qr_code_scanner_rounded,
                       color: ZunoTheme.primary, size: 22),
                 ),
                 const SizedBox(width: 16),
@@ -344,7 +344,7 @@ class _PairCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios_rounded,
+                Icon(Icons.arrow_forward_ios_rounded,
                     color: ZunoTheme.outlineVariant, size: 14),
               ],
             ),
@@ -432,7 +432,7 @@ class _SharedFeed extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
-              child: const Center(
+              child: Center(
                 child: SizedBox(
                   width: 20,
                   height: 20,
@@ -488,7 +488,7 @@ class _PostCard extends ConsumerWidget {
                   Container(
                     width: 38,
                     height: 38,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: ZunoTheme.primaryGradient,
                       shape: BoxShape.circle,
                     ),
@@ -630,7 +630,7 @@ class _AuthenticatedImage extends StatelessWidget {
             width: double.infinity,
             height: 300,
             color: ZunoTheme.surfaceContainerHigh,
-            child: const Center(
+            child: Center(
               child: CircularProgressIndicator(
                   color: ZunoTheme.primary, strokeWidth: 2),
             ),
@@ -644,7 +644,7 @@ class _AuthenticatedImage extends StatelessWidget {
             width: double.infinity,
             height: 300,
             color: ZunoTheme.surfaceContainerHigh,
-            child: const Center(
+            child: Center(
               child: Icon(Icons.broken_image_outlined,
                   color: ZunoTheme.outlineVariant),
             ),
@@ -661,7 +661,7 @@ class _AuthenticatedImage extends StatelessWidget {
               width: double.infinity,
               height: 300,
               color: ZunoTheme.surfaceContainerHigh,
-              child: const Center(
+              child: Center(
                 child: CircularProgressIndicator(
                     color: ZunoTheme.primary, strokeWidth: 2),
               ),
@@ -673,7 +673,7 @@ class _AuthenticatedImage extends StatelessWidget {
               width: double.infinity,
               height: 300,
               color: ZunoTheme.surfaceContainerHigh,
-              child: const Center(
+              child: Center(
                 child: Icon(Icons.broken_image_outlined,
                     color: ZunoTheme.outlineVariant),
               ),
@@ -1282,7 +1282,7 @@ class _ComposeBarState extends ConsumerState<_ComposeBar> {
                   child: Container(
                     width: 38,
                     height: 38,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: ZunoTheme.primaryGradient,
                       shape: BoxShape.circle,
                     ),
@@ -1441,7 +1441,7 @@ class _SkeletonCardState extends State<_SkeletonCard>
                   Container(
                     width: 38,
                     height: 38,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: ZunoTheme.surfaceContainerHighest,
                       shape: BoxShape.circle,
                     ),
@@ -1689,3 +1689,4 @@ class _TimelineMonthGroupState extends State<_TimelineMonthGroup> {
     );
   }
 }
+

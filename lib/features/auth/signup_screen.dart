@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -118,7 +118,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.lock, size: 14, color: ZunoTheme.tertiary),
+                  Icon(Icons.lock, size: 14, color: ZunoTheme.tertiary),
                   const SizedBox(width: 6),
                   Text(
                     'END-TO-END ENCRYPTED DATA',
@@ -372,7 +372,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               color: ZunoTheme.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.mark_email_read, size: 40, color: ZunoTheme.primary),
+            child: Icon(Icons.mark_email_read, size: 40, color: ZunoTheme.primary),
           ),
           const SizedBox(height: 24),
           Text(
@@ -487,7 +487,7 @@ class _HighlightedGoogleCta extends StatelessWidget {
         ),
         child: Center(
           child: isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -517,3 +517,4 @@ class _HighlightedGoogleCta extends StatelessWidget {
     );
   }
 }
+

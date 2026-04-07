@@ -40,7 +40,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
       lastDate: now,
       builder: (ctx, child) => Theme(
         data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: ZunoTheme.primary,
             onPrimary: Colors.white,
             surface: ZunoTheme.surfaceContainerLowest,
@@ -102,7 +102,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                       backgroundColor: ZunoTheme.onPrimary,
                       elevation: 0,
                       leading: IconButton(
-                        icon: const Icon(Icons.arrow_back,
+                        icon: Icon(Icons.arrow_back,
                             color: ZunoTheme.primary),
                         onPressed: () {
                           if (context.canPop()) {
@@ -192,7 +192,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                   ],
                 ),
                 if (historyState.isLoading)
-                  const Positioned(
+                  Positioned(
                     top: 0,
                     left: 0,
                     right: 0,
@@ -223,9 +223,9 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           },
           loading: () {
             debugPrint('[_buildHistoryGraph] Loading history...');
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(32.0),
+                padding: const EdgeInsets.all(32.0),
                 child: CircularProgressIndicator(color: ZunoTheme.primary),
               ),
             );
@@ -591,7 +591,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   BoxDecoration? _getBoxDecoration(DateTime day, CycleData cycle,
       {bool isSelected = false, bool isToday = false}) {
     if (isSelected) {
-      return const BoxDecoration(
+      return BoxDecoration(
         color: ZunoTheme.primary,
         shape: BoxShape.circle,
       );
@@ -811,4 +811,5 @@ class _DashedLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
+
 

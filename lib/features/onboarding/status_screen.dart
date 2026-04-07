@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,7 +66,7 @@ class StatusScreen extends ConsumerWidget {
             children: [
               const SizedBox(height: 24),
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: ZunoTheme.primary),
+                icon: Icon(Icons.arrow_back, color: ZunoTheme.primary),
                 onPressed: () => context.go('/onboarding/register'),
               ),
               const SizedBox(height: 32),
@@ -143,7 +143,7 @@ class StatusScreen extends ConsumerWidget {
                               ),
                             ),
                             if (isSelected)
-                              const Icon(Icons.check_circle_rounded,
+                              Icon(Icons.check_circle_rounded,
                                   color: ZunoTheme.tertiary, size: 24),
                           ],
                         ),
@@ -210,3 +210,4 @@ class _GradientCta extends StatelessWidget {
     );
   }
 }
+

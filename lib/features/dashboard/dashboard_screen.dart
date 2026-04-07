@@ -169,7 +169,7 @@ class _DashboardAppBar extends StatelessWidget {
               border:
                   Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.2)),
             ),
-            child: const Icon(Icons.person, color: ZunoTheme.primary, size: 20),
+            child: Icon(Icons.person, color: ZunoTheme.primary, size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -190,7 +190,7 @@ class _DashboardAppBar extends StatelessWidget {
       actions: [
         IconButton(
           onPressed: () => context.push('/settings'),
-          icon: const Icon(Icons.settings_outlined, color: ZunoTheme.primary),
+          icon: Icon(Icons.settings_outlined, color: ZunoTheme.primary),
         ),
         const SizedBox(width: 4),
       ],
@@ -782,8 +782,8 @@ class _DynamicCardsSection extends ConsumerWidget {
     return Column(
       children: [
         if (state.isLoadingInsight)
-          const Padding(
-            padding: EdgeInsets.all(24.0),
+          Padding(
+            padding: const EdgeInsets.all(24.0),
             child: Center(
               child: CircularProgressIndicator(color: ZunoTheme.primary),
             ),
@@ -1058,7 +1058,7 @@ class _CycleConfirmationCard extends ConsumerWidget {
       lastDate: now,
       builder: (ctx, child) => Theme(
         data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: ZunoTheme.primary,
             onPrimary: Colors.white,
             surface: ZunoTheme.surfaceContainerLowest,
@@ -1304,7 +1304,7 @@ class _PromoCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded,
+          Icon(Icons.chevron_right_rounded,
               color: ZunoTheme.outlineVariant),
         ],
       ),
@@ -1382,4 +1382,5 @@ class _ToggleItem extends StatelessWidget {
     );
   }
 }
+
 

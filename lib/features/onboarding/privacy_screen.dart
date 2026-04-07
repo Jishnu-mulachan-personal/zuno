@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -188,7 +188,7 @@ class PrivacyScreen extends ConsumerWidget {
                             SnackBar(
                               content: Row(
                                 children: [
-                                  const Icon(Icons.check_circle,
+                                  Icon(Icons.check_circle,
                                       color: ZunoTheme.tertiaryFixed),
                                   const SizedBox(width: 10),
                                   Text(
@@ -306,7 +306,7 @@ class _GlassHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: ZunoTheme.primary),
+            icon: Icon(Icons.arrow_back, color: ZunoTheme.primary),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           const Spacer(),
@@ -487,3 +487,4 @@ class _PrivacyCard extends ConsumerWidget {
     );
   }
 }
+

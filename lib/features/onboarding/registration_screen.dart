@@ -39,7 +39,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       lastDate: lastDate,
       builder: (ctx, child) => Theme(
         data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: ZunoTheme.primary,
             onPrimary: Colors.white,
             surface: ZunoTheme.surfaceContainerLowest,
@@ -50,7 +50,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
               foregroundColor: ZunoTheme.primary,
             ),
           ),
-          dialogTheme: const DialogThemeData(
+          dialogTheme: DialogThemeData(
             backgroundColor: ZunoTheme.surfaceContainerLowest,
           ),
         ),
@@ -142,7 +142,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 children: [
                   IconButton(
                     icon:
-                        const Icon(Icons.arrow_back, color: ZunoTheme.primary),
+                        Icon(Icons.arrow_back, color: ZunoTheme.primary),
                     onPressed: () => context.go('/signup'),
                   ),
                   const Spacer(),
@@ -265,7 +265,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.lock_outline,
+                  Icon(Icons.lock_outline,
                       size: 13, color: ZunoTheme.tertiary),
                   const SizedBox(width: 6),
                   Text(
@@ -334,7 +334,7 @@ class _OccupationSheetState extends State<_OccupationSheet> {
     return Container(
       constraints:
           BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLowest,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -377,7 +377,7 @@ class _OccupationSheetState extends State<_OccupationSheet> {
                     hintText: 'Search…',
                     hintStyle: GoogleFonts.plusJakartaSans(
                         color: ZunoTheme.onSurfaceVariant.withAlpha(102)),
-                    prefixIcon: const Icon(Icons.search,
+                    prefixIcon: Icon(Icons.search,
                         size: 18, color: ZunoTheme.onSurfaceVariant),
                   ),
                 ),
@@ -427,7 +427,7 @@ class _OccupationSheetState extends State<_OccupationSheet> {
                           ),
                         ),
                         if (isSelected)
-                          const Icon(Icons.check_circle_rounded,
+                          Icon(Icons.check_circle_rounded,
                               size: 18, color: ZunoTheme.tertiary),
                       ],
                     ),
@@ -452,7 +452,7 @@ class _GenderSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLowest,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -524,7 +524,7 @@ class _GenderSheet extends StatelessWidget {
                       ),
                       const Spacer(),
                       if (isSelected)
-                        const Icon(Icons.check_circle_rounded,
+                        Icon(Icons.check_circle_rounded,
                             size: 20, color: ZunoTheme.tertiary),
                     ],
                   ),
@@ -778,3 +778,4 @@ class _GradientCta extends StatelessWidget {
     );
   }
 }
+

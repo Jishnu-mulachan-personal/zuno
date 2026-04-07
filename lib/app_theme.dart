@@ -1,88 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'core/app_theme_data.dart';
 
 class ZunoTheme {
-  // ─── Brand Colors (Digital Hearth) ───────────────────────────────────────
-  static const primary = Color(0xFF944931);
-  static const primaryContainer = Color(0xFFD67D61);
-  static const primaryFixed = Color(0xFFFFDBD0);
-  static const primaryFixedDim = Color(0xFFFFB59E);
+  // ─── Active Palette ───────────────────────────────────────────────────────
+  static ZunoThemePalette _palette = ZunoThemePalette.hearth;
 
-  static const secondary = Color(0xFF7D5548);
-  static const secondaryContainer = Color(0xFFFEC8B8);
+  static void applyPalette(ZunoThemePalette palette) {
+    _palette = palette;
+  }
 
-  static const tertiary = Color(0xFF006A6A);
-  static const tertiaryFixed = Color(0xFF93F2F2);
-  static const tertiaryFixedDim = Color(0xFF76D6D5);
-  static const tertiaryContainer = Color(0xFF3FA3A3);
-  static const onTertiaryFixedVariant = Color(0xFF004F4F);
+  static ZunoThemePalette get currentPalette => _palette;
 
-  static const surface = Color(0xFFFCF9F6);
-  static const surfaceBright = Color(0xFFFCF9F6);
-  static const surfaceDim = Color(0xFFDCDAD7);
-  static const surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const surfaceContainerLow = Color(0xFFF6F3F0);
-  static const surfaceContainer = Color(0xFFF0EDEA);
-  static const surfaceContainerHigh = Color(0xFFEAE8E5);
-  static const surfaceContainerHighest = Color(0xFFE5E2DF);
+  // ─── Brand Colors (delegated to active palette) ───────────────────────────
+  static Color get primary => _palette.primary;
+  static Color get primaryContainer => _palette.primaryContainer;
+  static Color get primaryFixed => _palette.primaryFixed;
+  static Color get primaryFixedDim => _palette.primaryFixedDim;
 
-  static const onSurface = Color(0xFF1C1C1A);
-  static const onSurfaceVariant = Color(0xFF54433E);
-  static const onPrimary = Color(0xFFFFFFFF);
-  static const onSecondary = Color(0xFFFFFFFF);
-  static const onTertiary = Color(0xFFFFFFFF);
+  static Color get secondary => _palette.secondary;
+  static Color get secondaryContainer => _palette.secondaryContainer;
 
-  static const outline = Color(0xFF87736D);
-  static const outlineVariant = Color(0xFFDAC1BA);
+  static Color get tertiary => _palette.tertiary;
+  static Color get tertiaryFixed => _palette.tertiaryFixed;
+  static Color get tertiaryFixedDim => _palette.tertiaryFixedDim;
+  static Color get tertiaryContainer => _palette.tertiaryContainer;
+  static Color get onTertiaryFixedVariant => _palette.onTertiaryFixedVariant;
 
-  static const error = Color(0xFFBA1A1A);
+  // ─── Surface Colors ───────────────────────────────────────────────────────
+  static Color get surface => _palette.surface;
+  static Color get surfaceBright => _palette.surfaceBright;
+  static Color get surfaceDim => _palette.surfaceDim;
+  static Color get surfaceContainerLowest => _palette.surfaceContainerLowest;
+  static Color get surfaceContainerLow => _palette.surfaceContainerLow;
+  static Color get surfaceContainer => _palette.surfaceContainer;
+  static Color get surfaceContainerHigh => _palette.surfaceContainerHigh;
+  static Color get surfaceContainerHighest => _palette.surfaceContainerHighest;
+
+  // ─── On-Surface ───────────────────────────────────────────────────────────
+  static Color get onSurface => _palette.onSurface;
+  static Color get onSurfaceVariant => _palette.onSurfaceVariant;
+  static Color get onPrimary => _palette.onPrimary;
+  static Color get onSecondary => _palette.onSecondary;
+  static Color get onTertiary => _palette.onTertiary;
+
+  // ─── Outline ──────────────────────────────────────────────────────────────
+  static Color get outline => _palette.outline;
+  static Color get outlineVariant => _palette.outlineVariant;
+
+  // ─── Error ────────────────────────────────────────────────────────────────
+  static Color get error => _palette.error;
 
   // ─── Gradients ───────────────────────────────────────────────────────────
-  static const primaryGradient = LinearGradient(
+  static LinearGradient get primaryGradient => LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [primary, primaryContainer],
   );
 
   // ─── ThemeData ────────────────────────────────────────────────────────────
-  static ThemeData get light {
+  static ThemeData buildTheme() {
+    final p = _palette;
     final base = ThemeData(
       useMaterial3: true,
-      colorScheme: const ColorScheme(
-        brightness: Brightness.light,
-        primary: primary,
-        onPrimary: onPrimary,
-        primaryContainer: primaryFixed,
-        onPrimaryContainer: Color(0xFF551905),
-        secondary: secondary,
-        onSecondary: onSecondary,
-        secondaryContainer: secondaryContainer,
-        onSecondaryContainer: Color(0xFF7A5245),
-        tertiary: tertiary,
-        onTertiary: onTertiary,
-        tertiaryContainer: tertiaryContainer,
-        onTertiaryContainer: Color(0xFF003434),
-        error: error,
-        onError: Color(0xFFFFFFFF),
-        errorContainer: Color(0xFFFFDAD6),
-        onErrorContainer: Color(0xFF93000A),
-        surface: surface,
-        onSurface: onSurface,
-        onSurfaceVariant: onSurfaceVariant,
-        outline: outline,
-        outlineVariant: outlineVariant,
-        shadow: Color(0xFF000000),
-        scrim: Color(0xFF000000),
-        inverseSurface: Color(0xFF31302F),
-        onInverseSurface: Color(0xFFF3F0ED),
-        inversePrimary: Color(0xFFFFB59E),
+      brightness: p.brightness,
+      colorScheme: ColorScheme(
+        brightness: p.brightness,
+        primary: p.primary,
+        onPrimary: p.onPrimary,
+        primaryContainer: p.primaryFixed,
+        onPrimaryContainer: p.brightness == Brightness.dark
+            ? p.primaryFixed
+            : const Color(0xFF551905),
+        secondary: p.secondary,
+        onSecondary: p.onSecondary,
+        secondaryContainer: p.secondaryContainer,
+        onSecondaryContainer: p.onSurfaceVariant,
+        tertiary: p.tertiary,
+        onTertiary: p.onTertiary,
+        tertiaryContainer: p.tertiaryContainer,
+        onTertiaryContainer: p.onTertiaryFixedVariant,
+        error: p.error,
+        onError: p.brightness == Brightness.dark ? p.onSurface : const Color(0xFFFFFFFF),
+        errorContainer: p.brightness == Brightness.dark
+            ? const Color(0xFF8B0000)
+            : const Color(0xFFFFDAD6),
+        onErrorContainer: p.brightness == Brightness.dark
+            ? const Color(0xFFFFB4AB)
+            : const Color(0xFF93000A),
+        surface: p.surface,
+        onSurface: p.onSurface,
+        onSurfaceVariant: p.onSurfaceVariant,
+        outline: p.outline,
+        outlineVariant: p.outlineVariant,
+        shadow: const Color(0xFF000000),
+        scrim: const Color(0xFF000000),
+        inverseSurface: p.onSurface,
+        onInverseSurface: p.surface,
+        inversePrimary: p.primaryFixedDim,
       ),
-      scaffoldBackgroundColor: surface,
-      textTheme: _buildTextTheme(),
+      scaffoldBackgroundColor: p.surface,
+      textTheme: _buildTextTheme(p),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: onPrimary,
+          backgroundColor: p.primary,
+          foregroundColor: p.onPrimary,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(vertical: 18),
           textStyle: GoogleFonts.plusJakartaSans(
@@ -94,76 +116,79 @@ class ZunoTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceContainerHighest,
+        fillColor: p.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryContainer, width: 2),
+          borderSide: BorderSide(color: p.primaryContainer, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         labelStyle: GoogleFonts.plusJakartaSans(
           fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.5,
-          color: onSurfaceVariant,
+          color: p.onSurfaceVariant,
         ),
       ),
     );
     return base;
   }
 
-  static TextTheme _buildTextTheme() {
+  // Keep a `light` getter for backward compatibility
+  static ThemeData get light => buildTheme();
+
+  static TextTheme _buildTextTheme(ZunoThemePalette p) {
     return TextTheme(
       displayLarge: GoogleFonts.notoSerif(
-        fontSize: 57, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 57, fontWeight: FontWeight.w600, color: p.onSurface,
         fontStyle: FontStyle.italic,
       ),
       displayMedium: GoogleFonts.notoSerif(
-        fontSize: 45, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 45, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       displaySmall: GoogleFonts.notoSerif(
-        fontSize: 36, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 36, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       headlineLarge: GoogleFonts.notoSerif(
-        fontSize: 32, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 32, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       headlineMedium: GoogleFonts.notoSerif(
-        fontSize: 28, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 28, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       headlineSmall: GoogleFonts.notoSerif(
-        fontSize: 24, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 24, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       titleLarge: GoogleFonts.plusJakartaSans(
-        fontSize: 22, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 22, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       titleMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 16, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 16, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       titleSmall: GoogleFonts.plusJakartaSans(
-        fontSize: 14, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 14, fontWeight: FontWeight.w600, color: p.onSurface,
       ),
       bodyLarge: GoogleFonts.plusJakartaSans(
-        fontSize: 16, fontWeight: FontWeight.w400, color: onSurface,
+        fontSize: 16, fontWeight: FontWeight.w400, color: p.onSurface,
       ),
       bodyMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 14, fontWeight: FontWeight.w400, color: onSurface,
+        fontSize: 14, fontWeight: FontWeight.w400, color: p.onSurface,
       ),
       bodySmall: GoogleFonts.plusJakartaSans(
-        fontSize: 12, fontWeight: FontWeight.w400, color: onSurfaceVariant,
+        fontSize: 12, fontWeight: FontWeight.w400, color: p.onSurfaceVariant,
       ),
       labelLarge: GoogleFonts.plusJakartaSans(
-        fontSize: 14, fontWeight: FontWeight.w700, color: onSurface,
+        fontSize: 14, fontWeight: FontWeight.w700, color: p.onSurface,
         letterSpacing: 1.5,
       ),
       labelMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 12, fontWeight: FontWeight.w600, color: onSurface,
+        fontSize: 12, fontWeight: FontWeight.w600, color: p.onSurface,
         letterSpacing: 1.5,
       ),
       labelSmall: GoogleFonts.plusJakartaSans(
-        fontSize: 11, fontWeight: FontWeight.w600, color: onSurfaceVariant,
+        fontSize: 11, fontWeight: FontWeight.w600, color: p.onSurfaceVariant,
         letterSpacing: 1.5,
       ),
     );

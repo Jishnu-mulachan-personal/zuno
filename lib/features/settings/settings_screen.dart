@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../app_theme.dart';
+import '../../core/theme_provider.dart';
+import '../../core/app_theme_data.dart';
 import '../dashboard/dashboard_state.dart';
 import 'settings_provider.dart';
 
@@ -34,7 +36,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ZunoTheme.primary, size: 18),
           onPressed: () {
             if (context.canPop()) {
@@ -95,6 +97,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 12),
           _JournalPrivacyTile(profile: profile),
+          const SizedBox(height: 32),
+
+          // ── Appearance ────────────────────────────────────────────────────
+          const _SectionHeader(label: 'APPEARANCE'),
+          const SizedBox(height: 10),
+          _ThemePickerTile(
+            onTap: () => _showThemeSelector(context, ref),
+          ),
           const SizedBox(height: 32),
 
           if (profile?.relationshipStatus != 'single') ...[
@@ -289,6 +299,17 @@ void _showStatusSelector(BuildContext context, WidgetRef ref) {
   );
 }
 
+void _showThemeSelector(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: ZunoTheme.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (ctx) => const _ThemeSelectorSheet(),
+  );
+}
+
 void _showPrivacySelector(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
@@ -377,7 +398,7 @@ class _InfoTile extends StatelessWidget {
               ),
             ),
             if (onTap != null)
-              const Icon(Icons.arrow_forward_ios_rounded,
+              Icon(Icons.arrow_forward_ios_rounded,
                   color: ZunoTheme.outlineVariant, size: 14),
           ],
         ),
@@ -746,7 +767,7 @@ class _LanguageSelectorSheet extends ConsumerWidget {
                                 : ZunoTheme.onSurface)),
                     const Spacer(),
                     if (isSelected)
-                      const Icon(Icons.check_circle_rounded,
+                      Icon(Icons.check_circle_rounded,
                           color: ZunoTheme.primary, size: 20),
                   ],
                 ),
@@ -839,7 +860,7 @@ class _StatusSelectorSheet extends ConsumerWidget {
                                 : ZunoTheme.onSurface)),
                     const Spacer(),
                     if (isSelected)
-                      const Icon(Icons.check_circle_rounded,
+                      Icon(Icons.check_circle_rounded,
                           color: ZunoTheme.primary, size: 20),
                   ],
                 ),
@@ -956,7 +977,7 @@ class _PrivacySelectorSheet extends ConsumerWidget {
                       ),
                     ),
                     if (isSelected)
-                      const Icon(Icons.check_circle_rounded,
+                      Icon(Icons.check_circle_rounded,
                           color: ZunoTheme.primary, size: 20),
                   ],
                 ),
@@ -968,3 +989,214 @@ class _PrivacySelectorSheet extends ConsumerWidget {
     );
   }
 }
+class _ThemePickerTile extends ConsumerWidget {
+  final VoidCallback onTap;
+  const _ThemePickerTile({required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(themeProvider);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: ZunoTheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ZunoTheme.primary.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ZunoTheme.primaryFixed,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.palette_outlined, color: ZunoTheme.primary, size: 18),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('App Theme',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurface)),
+                  Text('${current.emoji} ${current.displayName}',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.7))),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded,
+                color: ZunoTheme.outlineVariant, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSelectorSheet extends ConsumerWidget {
+  const _ThemeSelectorSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(themeProvider);
+
+    final themes = [
+      (AppThemeOption.hearth,   'Hearth',   '🔥', 'Warm & cozy',    const Color(0xFF944931), const Color(0xFFFCF9F6)),
+      (AppThemeOption.midnight, 'Midnight', '🌙', 'Dark & calm',    const Color(0xFF818CF8), const Color(0xFF0F172A)),
+      (AppThemeOption.forest,   'Forest',   '🌿', 'Natural & fresh', const Color(0xFF2D6A4F), const Color(0xFFF8FAF8)),
+      (AppThemeOption.ocean,    'Ocean',    '🌊', 'Cool & serene',  const Color(0xFF1A6F9A), const Color(0xFFF5F9FC)),
+      (AppThemeOption.blush,    'Blush',    '🌸', 'Soft & romantic', const Color(0xFFC2677B), const Color(0xFFFDF7F9)),
+    ];
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 20, 24, MediaQuery.of(context).padding.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+                color: ZunoTheme.outlineVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(99)),
+          ),
+          Text('Choose Theme',
+              style: GoogleFonts.notoSerif(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: ZunoTheme.onSurface)),
+          const SizedBox(height: 6),
+          Text('Personalise the look and feel of Zuno.',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.7))),
+          const SizedBox(height: 28),
+          ...themes.map((t) {
+            final (option, name, emoji, tagline, primaryColor, surfaceColor) = t;
+            final isSelected = current == option;
+            return GestureDetector(
+              onTap: () async {
+                Navigator.pop(context);
+                await ref.read(themeProvider.notifier).selectTheme(option);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? primaryColor.withOpacity(0.08)
+                      : ZunoTheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: isSelected
+                        ? primaryColor.withOpacity(0.5)
+                        : ZunoTheme.outlineVariant.withOpacity(0.2),
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Mini preview swatch
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: primaryColor.withOpacity(0.2), width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(emoji,
+                            style: const TextStyle(fontSize: 22)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name,
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  color: isSelected
+                                      ? primaryColor
+                                      : ZunoTheme.onSurface)),
+                          Text(tagline,
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color:
+                                      ZunoTheme.onSurfaceVariant.withOpacity(0.6))),
+                        ],
+                      ),
+                    ),
+                    // Color dot strip
+                    Row(
+                      children: [
+                        _ColorDot(color: primaryColor),
+                        const SizedBox(width: 4),
+                        _ColorDot(color: surfaceColor,
+                            border: ZunoTheme.outlineVariant.withOpacity(0.3)),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    if (isSelected)
+                      Icon(Icons.check_circle_rounded,
+                          color: primaryColor, size: 22)
+                    else
+                      Icon(Icons.radio_button_unchecked_rounded,
+                          color: ZunoTheme.outlineVariant, size: 22),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _ColorDot extends StatelessWidget {
+  final Color color;
+  final Color? border;
+  const _ColorDot({required this.color, this.border});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: border != null
+            ? Border.all(color: border!, width: 1)
+            : null,
+      ),
+    );
+  }
+}
+

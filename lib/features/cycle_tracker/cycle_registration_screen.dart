@@ -122,7 +122,7 @@ class _CycleRegistrationScreenState
       lastDate: now,
       builder: (ctx, child) => Theme(
         data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: ZunoTheme.primary,
             onPrimary: Colors.white,
             surface: ZunoTheme.surfaceContainerLowest,
@@ -179,7 +179,7 @@ class _CycleRegistrationScreenState
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: ZunoTheme.primary),
+          icon: Icon(Icons.arrow_back, color: ZunoTheme.primary),
           onPressed: () => context.pop(),
         ),
       ),
@@ -236,7 +236,7 @@ class _CycleRegistrationScreenState
                         ),
                       ),
                       const Spacer(),
-                      const Icon(Icons.calendar_month,
+                      Icon(Icons.calendar_month,
                           color: ZunoTheme.primary, size: 20),
                     ],
                   ),
@@ -354,3 +354,4 @@ class _Label extends StatelessWidget {
     );
   }
 }
+

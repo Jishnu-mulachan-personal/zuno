@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/encryption_service.dart';
 import 'core/notification_service.dart';
+import 'core/theme_provider.dart';
 import 'app_theme.dart';
 import 'router.dart';
 import 'core/version_service.dart';
@@ -28,6 +29,10 @@ void main() async {
   EncryptionService.init();
 
   final container = ProviderContainer();
+
+  // Load saved theme early (before runApp) so first paint uses correct colors
+  await container.read(themeProvider.notifier).init();
+
   await NotificationService().init(container);
   
   runApp(UncontrolledProviderScope(
@@ -47,10 +52,12 @@ class _ZunoAppState extends ConsumerState<ZunoApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    // Watch the theme so MaterialApp rebuilds when theme changes
+    ref.watch(themeProvider);
 
     return MaterialApp.router(
       title: 'Zuno',
-      theme: ZunoTheme.light,
+      theme: ZunoTheme.buildTheme(),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {

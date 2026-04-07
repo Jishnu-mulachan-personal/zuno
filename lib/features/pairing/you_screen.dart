@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,7 +18,7 @@ class YouScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
       body: profileAsync.when(
-        loading: () => const Center(
+        loading: () => Center(
             child: CircularProgressIndicator(color: ZunoTheme.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (profile) => Stack(
@@ -69,7 +69,7 @@ class YouScreen extends ConsumerWidget {
                               .toList();
                         },
                         loading: () => [
-                          const Center(
+                          Center(
                             child: CircularProgressIndicator(
                                 color: ZunoTheme.primary),
                           )
@@ -114,7 +114,7 @@ class _YouAppBar extends StatelessWidget {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+        icon: Icon(Icons.arrow_back_ios_new_rounded,
             color: ZunoTheme.primary, size: 18),
         onPressed: () {
           if (context.canPop()) {
@@ -297,3 +297,4 @@ class _TimelineCard extends StatelessWidget {
     );
   }
 }
+

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -126,7 +126,7 @@ class _PairInviteScreenState extends ConsumerState<PairInviteScreen> {
             elevation: 0,
             surfaceTintColor: Colors.transparent,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
                   color: ZunoTheme.primary, size: 18),
               onPressed: () {
                 if (context.canPop()) {
@@ -285,7 +285,7 @@ class _QrCard extends StatelessWidget {
       child: Column(
         children: [
           if (invite.isGenerating || invite.token == null)
-            const SizedBox(
+            SizedBox(
               width: 200,
               height: 200,
               child: Center(
@@ -309,11 +309,11 @@ class _QrCard extends StatelessWidget {
               data: invite.token!,
               version: QrVersions.auto,
               size: 200,
-              eyeStyle: const QrEyeStyle(
+              eyeStyle: QrEyeStyle(
                 eyeShape: QrEyeShape.square,
                 color: ZunoTheme.onSurface,
               ),
-              dataModuleStyle: const QrDataModuleStyle(
+              dataModuleStyle: QrDataModuleStyle(
                 dataModuleShape: QrDataModuleShape.square,
                 color: ZunoTheme.onSurface,
               ),
@@ -356,7 +356,7 @@ class _QrCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.copy_rounded,
+                    Icon(Icons.copy_rounded,
                         size: 14, color: ZunoTheme.outline),
                   ],
                 ),
@@ -472,7 +472,7 @@ class _RefreshButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.refresh_rounded,
+            Icon(Icons.refresh_rounded,
                 size: 16, color: ZunoTheme.primary),
             const SizedBox(width: 8),
             Text(
@@ -510,7 +510,7 @@ class _ScanInsteadButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.qr_code_scanner_rounded,
+            Icon(Icons.qr_code_scanner_rounded,
                 size: 18, color: ZunoTheme.primary),
             const SizedBox(width: 10),
             Text(
@@ -558,3 +558,4 @@ class _ProgressDots extends StatelessWidget {
     );
   }
 }
+

@@ -116,10 +116,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               itemCount: _messages.length + (_isLoading ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == _messages.length) {
-                  return const Align(
+                  return Align(
                     alignment: Alignment.centerLeft,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       child: SizedBox(
                         width: 20,
                         height: 20,
@@ -217,7 +217,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   child: Container(
                     width: 54,
                     height: 54,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: ZunoTheme.primaryGradient,
                       shape: BoxShape.circle,
                     ),
@@ -232,3 +232,4 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 }
+

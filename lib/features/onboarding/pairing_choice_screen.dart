@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -158,7 +158,7 @@ class OnboardingPairChoiceScreen extends ConsumerWidget {
                               color: ZunoTheme.primaryFixed,
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(Icons.access_time_rounded,
+                            child: Icon(Icons.access_time_rounded,
                                 color: ZunoTheme.primary, size: 28),
                           ),
                           const SizedBox(width: 18),
@@ -186,7 +186,7 @@ class OnboardingPairChoiceScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios_rounded,
+                          Icon(Icons.arrow_forward_ios_rounded,
                               color: ZunoTheme.outlineVariant, size: 14),
                         ],
                       ),
@@ -205,7 +205,7 @@ class OnboardingPairChoiceScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline_rounded, size: 20, color: ZunoTheme.tertiary),
+                        Icon(Icons.info_outline_rounded, size: 20, color: ZunoTheme.tertiary),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Text(
@@ -261,3 +261,4 @@ class _ProgressDots extends StatelessWidget {
     );
   }
 }
+
