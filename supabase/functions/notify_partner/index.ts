@@ -13,10 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    const { identifier } = await req.json();
+    const { identifier, type = 'partner_checkin', displayName } = await req.json();
     if (!identifier) throw new Error("Missing identifier");
 
-    console.log(`[notify_partner] Request received for identifier: ${identifier}`);
+    console.log(`[notify_partner] Request received for identifier: ${identifier}, type: ${type}`);
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -28,7 +28,7 @@ serve(async (req) => {
     // 1. Find the user and their relationship
     const { data: user, error: userError } = await supabaseClient
       .from('users')
-      .select('id, relationship_id')
+      .select('id, relationship_id, display_name')
       .eq(column, identifier)
       .single();
 
@@ -36,6 +36,7 @@ serve(async (req) => {
     if (!user.relationship_id) throw new Error("No relationship found");
 
     const relationshipId = user.relationship_id;
+    const authorName = displayName || user.display_name || "Your partner";
 
     // 2. Find partner
     const { data: partner, error: partnerError } = await supabaseClient
@@ -53,19 +54,24 @@ serve(async (req) => {
     // 3. Fetch template
     const { data: template, error: templateError } = await supabaseClient
       .from('notification_templates')
-      .select('message')
-      .eq('type', 'partner_checkin')
+      .select('title, message')
+      .eq('type', type)
       .single();
 
-    const message = template?.message || "Your partner just checked in! 💖";
+    let message = template?.message || "Something new shared with you! 💖";
+    const title = template?.title || "Update from Zuno";
 
-    // 4. Insert notification into user_notifications for realtime
+    // Personalize message if it contains placeholders or just prepend/replace
+    if (message.includes('Your partner')) {
+      message = message.replace('Your partner', authorName);
+    }
+
     // 4. Insert notification into user_notifications for realtime
     const { error: insertError } = await supabaseClient
       .from('user_notifications')
       .insert({
         user_id: partner.id,
-        title: "Check-in Alert",
+        title: title,
         body: message,
       });
 
@@ -77,9 +83,9 @@ serve(async (req) => {
       try {
         await sendFCMNotification(
           partner.fcm_token,
-          "Check-in Alert",
+          title,
           message,
-          { type: 'partner_checkin', relationship_id: relationshipId }
+          { type: type, relationship_id: relationshipId }
         );
         console.log(`[notify_partner] Sent FCM notification to partner ${partner.id}`);
       } catch (fcmError: any) {

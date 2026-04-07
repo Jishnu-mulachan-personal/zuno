@@ -194,6 +194,19 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
         'context_tags': contextTags,
       });
 
+      // Trigger partner notification
+      final sbUser = supabase.auth.currentUser;
+      final identifier = sbUser?.email;
+      if (identifier != null) {
+        supabase.functions.invoke(
+          'notify_partner',
+          body: {
+            'identifier': identifier,
+            'type': 'shared_post',
+          },
+        ).ignore();
+      }
+
       ref.invalidate(sharedPostsProvider);
       state = state.copyWith(isSubmitting: false);
       return true;

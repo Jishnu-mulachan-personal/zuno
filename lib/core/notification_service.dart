@@ -2,6 +2,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../router.dart';
+import 'package:go_router/go_router.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -64,14 +66,29 @@ class NotificationService {
         showLocalNotification(
           title: message.notification!.title ?? 'New Notification',
           body: message.notification!.body ?? '',
+          payload: message.data['type'], // Pass type as payload for local notifications
         );
       }
     });
 
-    // 4. Save FCM token to Supabase for the current user
+    // 4. Handle notification clicks when app is in background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('Notification clicked (background): ${message.data}');
+      _handleNotificationClick(message.data['type']);
+    });
+
+    // 5. Check if app was opened from a terminated state via notification
+    _firebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        debugPrint('App opened from terminated state via notification: ${message.data}');
+        _handleNotificationClick(message.data['type']);
+      }
+    });
+
+    // 6. Save FCM token to Supabase for the current user
     _saveToken();
 
-    // 5. Setup Supabase Realtime for user_notifications
+    // 7. Setup Supabase Realtime for user_notifications
     _setupRealtimeNotifications();
   }
 
@@ -109,6 +126,25 @@ class NotificationService {
 
   void _onDidReceiveNotificationResponse(NotificationResponse response) {
     debugPrint('Notification clicked: ${response.payload}');
+    _handleNotificationClick(response.payload);
+  }
+
+  void _handleNotificationClick(String? type) {
+    if (type == null) return;
+
+    debugPrint('Handling notification click of type: $type');
+
+    final context = rootNavigatorKey.currentContext;
+    if (context == null) {
+      debugPrint('Could not navigate: rootNavigatorKey.currentContext is null');
+      return;
+    }
+
+    if (type == 'shared_post') {
+      context.push('/us');
+    } else if (type == 'partner_checkin') {
+      context.push('/dashboard');
+    }
   }
 
   Future<void> _saveToken() async {
