@@ -1621,12 +1621,12 @@ class _TimelineMonthGroupState extends State<_TimelineMonthGroup> {
         // ── Posts (Timeline Axis) ──
         if (_expanded)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Stack(
               children: [
                 // Dashed line
                 Positioned(
-                  left: 16, // Center of the 32px marker area
+                  left: 10, // Center of the 20px marker area
                   top: 0,
                   bottom: widget.isLastGroup ? 30 : 0, // Cut off nicely at end
                   child: CustomPaint(
@@ -1651,7 +1651,7 @@ class _TimelineMonthGroupState extends State<_TimelineMonthGroup> {
                           Padding(
                             padding: const EdgeInsets.only(top: 28),
                             child: SizedBox(
-                              width: 32, // Matches `left: 16` center line above
+                              width: 20, // Matches `left: 10` center line above
                               child: Align(
                                 alignment: Alignment.center,
                                 child: Container(
@@ -1669,7 +1669,7 @@ class _TimelineMonthGroupState extends State<_TimelineMonthGroup> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           // Post Card
                           Expanded(
                             child: _PostCard(
