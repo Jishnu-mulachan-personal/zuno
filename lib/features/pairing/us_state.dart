@@ -59,73 +59,151 @@ class SharedPost {
 
 // ── Feed provider ────────────────────────────────────────────────────────────
 
-final sharedPostsProvider = FutureProvider<List<SharedPost>>((ref) async {
-  final supabase = Supabase.instance.client;
-  final userId = supabase.auth.currentUser?.id;
-  if (userId == null) {
-    debugPrint('[sharedPostsProvider] No authenticated user');
-    return [];
+// ── Feed provider ────────────────────────────────────────────────────────────
+
+class SharedPostsState {
+  final List<SharedPost> posts;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final String? error;
+
+  const SharedPostsState({
+    this.posts = const [],
+    this.isLoading = false,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.error,
+  });
+
+  SharedPostsState copyWith({
+    List<SharedPost>? posts,
+    bool? isLoading,
+    bool? isLoadingMore,
+    bool? hasMore,
+    String? error,
+    bool clearError = false,
+  }) {
+    return SharedPostsState(
+      posts: posts ?? this.posts,
+      isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      error: clearError ? null : (error ?? this.error),
+    );
+  }
+}
+
+class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
+  SharedPostsNotifier() : super(const SharedPostsState()) {
+    fetchInitial();
   }
 
-  try {
-    // Step 1: Resolve this user's relationship_id
-    final userRow = await supabase
-        .from('users')
-        .select('relationship_id')
-        .eq('id', userId)
-        .maybeSingle();
+  static const int _pageSize = 15;
 
-    final relationshipId = userRow?['relationship_id'] as String?;
-    debugPrint('[sharedPostsProvider] relationshipId=$relationshipId');
-    if (relationshipId == null) return [];
+  Future<void> fetchInitial() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    final posts = await _fetchPage();
+    if (posts == null) return; // Error handled inside _fetchPage
 
-    // Step 2: Fetch posts — use explicit FK hint to avoid PostgREST ambiguity
-    final rows = await supabase
-        .from('shared_posts')
-        .select('id, user_id, caption, image_url, context_tags, created_at, updated_at')
-        .eq('relationship_id', relationshipId)
-        .order('created_at', ascending: false)
-        .limit(50);
-
-    debugPrint('[sharedPostsProvider] Fetched ${rows.length} posts');
-
-    if (rows.isEmpty) return [];
-
-    // Step 3: Fetch display names for all authors in one query
-    final authorIds = (rows as List)
-        .map((r) => r['user_id'] as String)
-        .toSet()
-        .toList();
-
-    final nameRows = await supabase
-        .from('users')
-        .select('id, display_name')
-        .inFilter('id', authorIds);
-
-    final nameMap = <String, String>{
-      for (final n in nameRows)
-        n['id'] as String: (n['display_name'] as String?) ?? 'Partner',
-    };
-
-    debugPrint('[sharedPostsProvider] Name map: $nameMap');
-
-    return rows.map((r) {
-      return SharedPost(
-        id: r['id'] as String,
-        userId: r['user_id'] as String,
-        userDisplayName: nameMap[r['user_id'] as String] ?? 'Partner',
-        caption: r['caption'] as String? ?? '',
-        imageUrl: r['image_url'] as String?,
-        contextTags: List<String>.from(r['context_tags'] ?? []),
-        createdAt: DateTime.parse(r['created_at'] as String),
-        updatedAt: DateTime.parse(r['updated_at'] as String),
-      );
-    }).toList();
-  } catch (e, st) {
-    debugPrint('[sharedPostsProvider] ERROR: $e');
-    debugPrint('[sharedPostsProvider] StackTrace: $st');
-    rethrow; // surface to UI error state instead of hiding behind []
+    state = state.copyWith(
+      posts: posts,
+      isLoading: false,
+      hasMore: posts.length >= _pageSize,
+    );
   }
+
+  Future<void> fetchMore() async {
+    if (state.isLoadingMore || !state.hasMore || state.posts.isEmpty) return;
+
+    state = state.copyWith(isLoadingMore: true);
+    final lastTimestamp = state.posts.last.createdAt;
+    final posts = await _fetchPage(beforeTimestamp: lastTimestamp);
+
+    if (posts == null) {
+      state = state.copyWith(isLoadingMore: false);
+      return;
+    }
+
+    state = state.copyWith(
+      posts: [...state.posts, ...posts],
+      isLoadingMore: false,
+      hasMore: posts.length >= _pageSize,
+    );
+  }
+
+  Future<void> refresh() => fetchInitial();
+
+  Future<List<SharedPost>?> _fetchPage({DateTime? beforeTimestamp}) async {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    try {
+      // Step 1: Resolve relationship_id
+      final userRow = await supabase
+          .from('users')
+          .select('relationship_id')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final relationshipId = userRow?['relationship_id'] as String?;
+      if (relationshipId == null) return [];
+
+      // Step 2: Fetch posts with pagination
+      var query = supabase
+          .from('shared_posts')
+          .select('id, user_id, caption, image_url, context_tags, created_at, updated_at')
+          .eq('relationship_id', relationshipId);
+
+      if (beforeTimestamp != null) {
+        query = query.lt('created_at', beforeTimestamp.toIso8601String());
+      }
+
+      final rows = await query
+          .order('created_at', ascending: false)
+          .limit(_pageSize);
+      if (rows.isEmpty) return [];
+
+      // Step 3: Fetch display names
+      final authorIds = (rows as List)
+          .map((r) => r['user_id'] as String)
+          .toSet()
+          .toList();
+
+      final nameRows = await supabase
+          .from('users')
+          .select('id, display_name')
+          .inFilter('id', authorIds);
+
+      final nameMap = <String, String>{
+        for (final n in nameRows)
+          n['id'] as String: (n['display_name'] as String?) ?? 'Partner',
+      };
+
+      return rows.map((r) {
+        return SharedPost(
+          id: r['id'] as String,
+          userId: r['user_id'] as String,
+          userDisplayName: nameMap[r['user_id'] as String] ?? 'Partner',
+          caption: r['caption'] as String? ?? '',
+          imageUrl: r['image_url'] as String?,
+          contextTags: List<String>.from(r['context_tags'] ?? []),
+          createdAt: DateTime.parse(r['created_at'] as String),
+          updatedAt: DateTime.parse(r['updated_at'] as String),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('[SharedPostsNotifier] ERROR: $e');
+      state = state.copyWith(error: e.toString(), isLoading: false, isLoadingMore: false);
+      return null;
+    }
+  }
+}
+
+final sharedPostsProvider =
+    StateNotifierProvider<SharedPostsNotifier, SharedPostsState>((ref) {
+  return SharedPostsNotifier();
 });
 
 

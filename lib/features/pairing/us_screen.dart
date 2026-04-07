@@ -21,6 +21,27 @@ class UsScreen extends ConsumerStatefulWidget {
 }
 
 class _UsScreenState extends ConsumerState<UsScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(sharedPostsProvider.notifier).fetchMore();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
@@ -37,35 +58,42 @@ class _UsScreenState extends ConsumerState<UsScreen> {
 
           return Stack(
             children: [
-              CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  _UsAppBar(),
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 20),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        if (isPaired) ...[
-                          _PairedHeader(partnerName: profile.partnerName!),
-                          const SizedBox(height: 24),
-                        ] else ...[
-                          _PairCard(),
-                          const SizedBox(height: 24),
-                          _UnpairedTimelineNote(),
-                          const SizedBox(height: 120),
-                        ],
-                      ]),
+              RefreshIndicator(
+                onRefresh: () => ref.read(sharedPostsProvider.notifier).refresh(),
+                color: ZunoTheme.primary,
+                backgroundColor: ZunoTheme.surface,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics()),
+                  slivers: [
+                    _UsAppBar(),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          if (isPaired) ...[
+                            _PairedHeader(partnerName: profile.partnerName!),
+                            const SizedBox(height: 24),
+                          ] else ...[
+                            _PairCard(),
+                            const SizedBox(height: 24),
+                            _UnpairedTimelineNote(),
+                            const SizedBox(height: 120),
+                          ],
+                        ]),
+                      ),
                     ),
-                  ),
-                  if (isPaired)
-                    _SharedFeed(
-                      relationshipId: profile.relationshipId!,
-                      currentUserId: profile.id,
-                    ),
-                  if (isPaired)
-                    const SliverToBoxAdapter(child: SizedBox(height: 160)),
-                ],
+                    if (isPaired)
+                      _SharedFeed(
+                        relationshipId: profile.relationshipId!,
+                        currentUserId: profile.id,
+                      ),
+                    if (isPaired)
+                      const SliverToBoxAdapter(child: SizedBox(height: 160)),
+                  ],
+                ),
               ),
               ZunoBottomNavBar(
                 activeTab: ZunoTab.us,
@@ -340,10 +368,10 @@ class _SharedFeed extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final postsAsync = ref.watch(sharedPostsProvider);
+    final state = ref.watch(sharedPostsProvider);
 
-    return postsAsync.when(
-      loading: () => SliverPadding(
+    if (state.isLoading && state.posts.isEmpty) {
+      return SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         sliver: SliverList(
           delegate: SliverChildListDelegate([
@@ -352,52 +380,71 @@ class _SharedFeed extends ConsumerWidget {
             _SkeletonCard(),
           ]),
         ),
-      ),
-      error: (e, _) => SliverToBoxAdapter(
+      );
+    }
+
+    if (state.error != null && state.posts.isEmpty) {
+      return SliverToBoxAdapter(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Text(
-              'Could not load posts:\n$e',
+              'Could not load posts:\n${state.error}',
               style: GoogleFonts.plusJakartaSans(
                   fontSize: 13, color: ZunoTheme.error),
             ),
           ),
         ),
-      ),
-      data: (posts) {
-        if (posts.isEmpty) {
-          return SliverToBoxAdapter(child: _EmptyState());
-        }
+      );
+    }
 
-        // Group posts by Month/Year
-        final Map<String, List<SharedPost>> groups = {};
-        for (final p in posts) {
-          final groupKey = _formatMonthYear(p.createdAt);
-          groups.putIfAbsent(groupKey, () => []).add(p);
-        }
+    if (state.posts.isEmpty) {
+      return SliverToBoxAdapter(child: _EmptyState());
+    }
 
-        final groupKeys = groups.keys.toList();
+    // Group posts by Month/Year
+    final Map<String, List<SharedPost>> groups = {};
+    for (final p in state.posts) {
+      final groupKey = _formatMonthYear(p.createdAt);
+      groups.putIfAbsent(groupKey, () => []).add(p);
+    }
 
-        return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 0),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (ctx, i) {
-                final key = groupKeys[i];
-                return _TimelineMonthGroup(
-                  title: key,
-                  posts: groups[key]!,
-                  currentUserId: currentUserId,
-                  isInitiallyExpanded: i == 0,
-                  isLastGroup: i == groupKeys.length - 1,
-                );
-              },
-              childCount: groupKeys.length,
+    final groupKeys = groups.keys.toList();
+
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (ctx, i) {
+              final key = groupKeys[i];
+              return _TimelineMonthGroup(
+                title: key,
+                posts: groups[key]!,
+                currentUserId: currentUserId,
+                isInitiallyExpanded: i == 0,
+                isLastGroup: i == groupKeys.length - 1 && !state.hasMore,
+              );
+            },
+            childCount: groupKeys.length,
+          ),
+        ),
+        if (state.isLoadingMore)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: ZunoTheme.primary,
+                  ),
+                ),
+              ),
             ),
           ),
-        );
-      },
+      ],
     );
   }
 }

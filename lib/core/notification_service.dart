@@ -2,7 +2,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../router.dart';
+import '../features/pairing/us_state.dart';
 import 'package:go_router/go_router.dart';
 
 @pragma('vm:entry-point')
@@ -23,8 +25,10 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  late final ProviderContainer _container;
 
-  Future<void> init() async {
+  Future<void> init(ProviderContainer container) async {
+    _container = container;
     // 1. Initialize local notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -141,6 +145,7 @@ class NotificationService {
     }
 
     if (type == 'shared_post') {
+      _container.read(sharedPostsProvider.notifier).refresh();
       context.push('/us');
     } else if (type == 'partner_checkin') {
       context.push('/dashboard');

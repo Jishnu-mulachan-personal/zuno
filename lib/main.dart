@@ -26,9 +26,14 @@ void main() async {
   );
 
   EncryptionService.init();
-  await NotificationService().init();
+
+  final container = ProviderContainer();
+  await NotificationService().init(container);
   
-  runApp(const ProviderScope(child: ZunoApp()));
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const ZunoApp(),
+  ));
 }
 
 class ZunoApp extends ConsumerStatefulWidget {
