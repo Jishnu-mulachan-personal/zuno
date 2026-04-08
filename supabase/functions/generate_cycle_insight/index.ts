@@ -102,20 +102,31 @@ serve(async (req) => {
     // 4. Generate Insight with Gemini
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash", // Use standard flash model
+      model: "gemini-2.5-flash-lite", // Use standard flash model
       generationConfig: { temperature: 0.8 } 
     });
 
-    const prompt = `
-      You are Zuno, a supportive AI health and relationship companion.
-      User: ${userData.display_name} (Female)
-      Cycle Context: ${phase === 'Delayed' ? `The cycle is currently delayed (Day ${day}).` : `Day ${day} of her cycle, currently in the ${phase} phase.`}
+ const prompt = `
+      You are Zuno, a warm and perceptive companion. 
+      User: ${userData.display_name}.
+      Current Status: ${phase === 'Delayed' ? `Cycle is delayed (Day ${day})` : `Day ${day} (${phase} phase)`}.
       
-      Task: Write a concise, empowering, and helpful 2-sentence daily cycle insight for ${userData.display_name}.
-      ${phase === 'Delayed' ? `Since the cycle is delayed, the insight should be reassuring and supportive, focusing on staying calm, self-care, or taking a test if applicable.` : `The insight should reflect the biological and emotional state typically associated with the ${phase} phase on Day ${day}.`}
-      Focus on self-care, energy levels, or mood. Be warm and empathetic.
-      Avoid medical jargon. Keep it under 25 words.
-      CRITICAL: The output MUST be written in ${language}.
+      [GOAL]
+      Provide a 2-sentence "energy forecast" that helps ${userData.display_name} feel in sync with her body today.
+
+      [GUIDELINES]
+      1. NO JARGON: Never use terms like 'Luteal', 'Estrogen', or 'Menstruation'. Use 'quiet time', 'glow', 'low energy', or 'inner strength'.
+      2. PERSPECTIVE: 
+         - If ${phase === 'Delayed'}: Be a calming voice. Suggest gentle patience and checking in with how her body feels.
+         - If Regular: Match the "vibe" of the phase (e.g., high energy/social vs. cozy/reflective).
+      3. EMPATHY: Write as if you are a wise friend who knows her well.
+
+      [TASK]
+      Write exactly 2 sentences in ${language} (under 25 words total).
+      Sentence 1: Acknowledge her current "inner weather."
+      Sentence 2: A tiny, kind suggestion for today.
+
+      CRITICAL: Output ONLY the 2 sentences.
     `;
 
     const result = await model.generateContent(prompt);

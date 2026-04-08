@@ -887,6 +887,9 @@ class _DynamicCardsSection extends ConsumerWidget {
                 isLoadingInsight: state.isLoadingCycleInsight,
                 accentColor: ZunoTheme.tertiary,
                 showChevron: true,
+                onRegenerate: () {
+                  ref.read(dashboardProvider.notifier).fetchCycleInsight(force: true);
+                },
               ),
             ),
           ],
@@ -931,6 +934,7 @@ class _DashboardSmartCard extends StatelessWidget {
   final bool isLoadingInsight;
   final Color accentColor;
   final bool showChevron;
+  final VoidCallback? onRegenerate;
 
   const _DashboardSmartCard({
     required this.icon,
@@ -941,6 +945,7 @@ class _DashboardSmartCard extends StatelessWidget {
     this.isLoadingInsight = false,
     required this.accentColor,
     this.showChevron = false,
+    this.onRegenerate,
   });
 
   @override
@@ -1013,6 +1018,27 @@ class _DashboardSmartCard extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
+                  if (onRegenerate != null) ...[
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: onRegenerate,
+                      child: Row(
+                        children: [
+                          Text(
+                            'REGENERATE INSIGHT',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: accentColor,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(Icons.refresh_rounded, color: accentColor, size: 14),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),
