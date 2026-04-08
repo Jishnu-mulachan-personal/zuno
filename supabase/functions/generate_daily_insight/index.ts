@@ -63,6 +63,7 @@ serve(async (req) => {
     const relSummary = relMemReq.data;
     const relevantUsers = partnersReq.data || [userData];
     const relevantIds = relevantUsers.map((u: any) => u.id);
+    const partnerData = relevantUsers.find((u: any) => u.id !== userData.id) || {};
 
     // 3. Fetch logs and cycle info
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
@@ -76,8 +77,10 @@ serve(async (req) => {
     const cycleRows = cycleReq.data;
 
     // 4. Decrypt & Process Context
-    const journalContext: string[] = [];
-    const moodContext: string[] = [];
+    const userJournalContext: string[] = [];
+    const partnerJournalContext: string[] = [];
+    const userMoodContext: string[] = [];
+    const partnerMoodContext: string[] = [];
     const cycleContext: string[] = [];
 
     // Cycle Helper
@@ -116,7 +119,13 @@ serve(async (req) => {
       for (const log of recentLogs) {
         const isOwner = log.user_id === userData.id;
         const name = log.users?.display_name || "Unknown";
-        moodContext.push(`${name} felt ${log.mood_emoji || 'neutral'} on ${log.log_date}`);
+        const moodEntry = `${name} felt ${log.mood_emoji || 'neutral'} on ${log.log_date}`;
+        
+        if (isOwner) {
+          userMoodContext.push(moodEntry);
+        } else {
+          partnerMoodContext.push(moodEntry);
+        }
 
         const canAccessNote = isOwner || log.is_note_private === false;
         if (log.journal_note && canAccessNote) {
@@ -136,7 +145,11 @@ serve(async (req) => {
 
             if (bytes.length > 0) {
               const dec = await decryptFernet(new Uint8Array(bytes), fernetKey!);
-              journalContext.push(`${name}'s Journal: "${dec}"`);
+              if (isOwner) {
+                userJournalContext.push(`"${dec}"`);
+              } else {
+                partnerJournalContext.push(`"${dec}"`);
+              }
             }
           } catch (e) {
             console.error(`[ERROR] Decryption error: ${e.message}`);
@@ -154,35 +167,31 @@ serve(async (req) => {
       generationConfig: { temperature: 0.7 } 
     });
 
-    const insightPrompt = `
+   const insightPrompt = `
       You are Zuno, an empathetic AI relationship companion. 
-      Target User: ${userData.display_name}. 
-      History Summary: ${userSummary?.summary_text || 'None'}.
-      Relationship History: ${relSummary?.summary_text || 'None'}.
+      User: ${userData.display_name}. 
+      Partner: ${partnerData.display_name || 'your partner'}.
       
-      Biological Context:
-      ${cycleContext.length > 0 ? cycleContext.join('\n') : 'No cycle tracking data available.'}
+      [CONTEXT]
+      User Status: ${userSummary?.summary_text || 'Stable'} | Moods: ${userMoodContext.length > 0 ? userMoodContext.join(', ') : 'None'} | Journals: ${userJournalContext.length > 0 ? userJournalContext.join(' | ') : 'None'}
+      Partner Status: ${relSummary?.summary_text || 'Stable'} | Moods: ${partnerMoodContext.length > 0 ? partnerMoodContext.join(', ') : 'None'} | Journals: ${partnerJournalContext.length > 0 ? partnerJournalContext.join(' | ') : 'None'}
+      Biological Energy: ${cycleContext.length > 0 ? cycleContext.join('\n') : 'Typical energy levels.'}
 
-      Recent Mood Data:
-      ${moodContext.join('\n')}
+      [GUIDELINES]
+      1. PARTNER FOCUS: If the partner is struggling (stress, health, cycle, or mood), prioritize acknowledgment of their burden.
+      2. SYNERGY: Connect how the user's current energy can best complement the partner's needs.
+      3. BIOLOGICAL NUANCE: Use cycle data to suggest "low-battery" vs "high-battery" activities (e.g., nesting vs. going out).
+      4. Privacy & Paraphrasing: DO NOT repeat the partner's words or specific journal entries. Interpret the "vibe" (e.g., stress, fatigue, or joy) and speak to that feeling generally.
       
-      Recent Journal Context:
-      ${journalContext.join('\n')}
 
-      Guidelines:
-        1. If the partner is feeling low → encourage empathy and support.
-        2. If the user is low → suggest self-care and communication.
-        3. If both are fine → suggest bonding or appreciation.
-        4. If cycle data exists → gently incorporate it (DO NOT dominate the insight).
+      [TASK]
+      Write a warm, 3-sentence insight in ${language}:
+      - Sentence 1 (The Mirror): Acknowledge the user's current internal state or energy.
+      - Sentence 2 (The Window): Gently highlight what ${partnerData.display_name} might be feeling or carrying right now.
+      - Sentence 3 (The Bridge): Suggest a specific, low-friction action to nurture the connection based on the above.
 
-      Task: Write a warm, natural, 2-sentence insight that balances:
-      - Self-awareness
-      - Partner-awareness
-      - Relationship care
-
-      CRITICAL: The output MUST be written in ${language}.
+      CRITICAL: Be concise and avoid "bot-speak." Output ONLY the 3 sentences.
     `;
-
     const insightResult = await model.generateContent(insightPrompt);
     const insightText = insightResult.response.text().trim().replace(/^"/, "").replace(/"$/, "");
 
