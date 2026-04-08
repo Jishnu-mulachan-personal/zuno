@@ -290,6 +290,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         color = ZunoTheme.onSurfaceVariant.withOpacity(0.5);
     }
 
+    final dayProgress = cycle.getDayProgress(day);
     final dateStr = '${_getMonthName(day.month)} ${day.day}, ${day.year}';
 
     return Padding(
@@ -314,15 +315,18 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  dateStr.toUpperCase(),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
-                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                Expanded(
+                  child: Text(
+                    dateStr.toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                      color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                    ),
                   ),
                 ),
+                if (type != 'normal') const SizedBox(width: 8),
                 if (type != 'normal')
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -343,14 +347,36 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 24),
+                Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: color, size: 24),
+                    ),
+                    if (dayProgress.isNotEmpty) const SizedBox(height: 8),
+                    if (dayProgress.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          dayProgress,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(

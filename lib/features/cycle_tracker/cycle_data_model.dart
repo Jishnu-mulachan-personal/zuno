@@ -169,6 +169,37 @@ class CycleData {
     return 'normal';
   }
 
+  /// Get the string representation of day progress, e.g., 'Day 5 / 28'
+  String getDayProgress(DateTime target) {
+    final t = DateTime(target.year, target.month, target.day);
+    final lastMidnight = currentCycleStart;
+    final diff = t.difference(lastMidnight).inDays;
+
+    if (diff < 0) return '';
+
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final nextPMidnight =
+        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
+
+    if (diff < cycleLength) {
+      return 'Day ${diff + 1} / $cycleLength';
+    }
+
+    if (todayMidnight.isAfter(nextPMidnight) || todayMidnight.isAtSameMomentAs(nextPMidnight)) {
+      if ((t.isAfter(nextPMidnight) || t.isAtSameMomentAs(nextPMidnight)) && 
+          (t.isBefore(todayMidnight) || t.isAtSameMomentAs(todayMidnight))) {
+        return 'Day ${diff + 1} / $cycleLength';
+      }
+      if (t.isAfter(todayMidnight)) {
+        return ''; 
+      }
+    }
+
+    final dayOfCycle = (diff % cycleLength) + 1;
+    return 'Day $dayOfCycle / $cycleLength';
+  }
+
   /// Whether to show the confirmation card (1 day before, day of, or up to 5 days late)
   bool get shouldShowConfirmationCard {
     final today = DateTime.now();
