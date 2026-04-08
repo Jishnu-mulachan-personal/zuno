@@ -25,33 +25,62 @@ class InsightsScreen extends ConsumerWidget {
           child: CircularProgressIndicator(color: ZunoTheme.primary),
         ),
         error: (err, stack) => Center(child: Text('Error: $err')),
-        data: (profile) => Stack(
-          children: [
-            CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                _InsightsAppBar(),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      _MoodTrendHeader(),
-                      const SizedBox(height: 24),
-                      _MoodChartSection(moodTrendAsync: moodTrendAsync),
-                      const SizedBox(height: 40),
-                      _ComingSoonSection(),
-                      const SizedBox(height: 120),
-                    ]),
+        data: (profile) {
+          final partnerId = profile.partnerId;
+          final partnerName = profile.partnerName ?? 'Partner';
+          final partnerMoodTrendAsync = partnerId != null 
+              ? ref.watch(partnerMoodTrendProvider(partnerId))
+              : null;
+
+          return Stack(
+            children: [
+              CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  _InsightsAppBar(),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        const _MoodTrendHeader(
+                          title: 'YOUR MOOD TREND',
+                          subtitle: 'The last 7 days',
+                        ),
+                        const SizedBox(height: 24),
+                        _MoodChartSection(
+                          moodTrendAsync: moodTrendAsync,
+                          mainColor: ZunoTheme.primary,
+                        ),
+                        
+                        if (partnerId != null && partnerMoodTrendAsync != null) ...[
+                          const SizedBox(height: 48),
+                          _MoodTrendHeader(
+                            title: '${partnerName.toUpperCase()}\'S MOOD TREND',
+                            subtitle: 'Shared logs from this week',
+                          ),
+                          const SizedBox(height: 24),
+                          _MoodChartSection(
+                            moodTrendAsync: partnerMoodTrendAsync,
+                            mainColor: ZunoTheme.secondary,
+                            emptyMessage: 'No logs found for $partnerName this week.',
+                          ),
+                        ],
+
+                        const SizedBox(height: 40),
+                        _ComingSoonSection(),
+                        const SizedBox(height: 120),
+                      ]),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            ZunoBottomNavBar(
-              activeTab: ZunoTab.insights,
-              relationshipStatus: profile.relationshipStatus,
-            ),
-          ],
-        ),
+                ],
+              ),
+              ZunoBottomNavBar(
+                activeTab: ZunoTab.insights,
+                relationshipStatus: profile.relationshipStatus,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -80,13 +109,21 @@ class _InsightsAppBar extends StatelessWidget {
 }
 
 class _MoodTrendHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _MoodTrendHeader({
+    required this.title,
+    required this.subtitle,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'YOUR MOOD TREND',
+          title,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 11,
             fontWeight: FontWeight.w700,
@@ -96,7 +133,7 @@ class _MoodTrendHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'The last 7 days',
+          subtitle,
           style: GoogleFonts.notoSerif(
             fontSize: 28,
             fontWeight: FontWeight.w600,
@@ -111,8 +148,14 @@ class _MoodTrendHeader extends StatelessWidget {
 
 class _MoodChartSection extends StatelessWidget {
   final AsyncValue<List<MoodTrendPoint>> moodTrendAsync;
+  final Color mainColor;
+  final String emptyMessage;
 
-  const _MoodChartSection({required this.moodTrendAsync});
+  const _MoodChartSection({
+    required this.moodTrendAsync,
+    required this.mainColor,
+    this.emptyMessage = 'No logs found for this week.\nKeep checking in to see your trends! ✨',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +172,7 @@ class _MoodChartSection extends StatelessWidget {
           if (points.isEmpty) {
             return Center(
               child: Text(
-                'No logs found for this week.\nKeep checking in to see your trends! ✨',
+                emptyMessage,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
@@ -141,7 +184,7 @@ class _MoodChartSection extends StatelessWidget {
           return LineChart(_buildChartData(points));
         },
         loading: () => Center(
-          child: CircularProgressIndicator(color: ZunoTheme.primary),
+          child: CircularProgressIndicator(color: mainColor),
         ),
         error: (err, _) => Center(child: Text('Error: $err')),
       ),
@@ -234,7 +277,7 @@ class _MoodChartSection extends StatelessWidget {
           isCurved: true,
           curveSmoothness: 0.35,
           gradient: LinearGradient(
-            colors: [ZunoTheme.primary, ZunoTheme.secondary],
+            colors: [mainColor, mainColor.withOpacity(0.7)],
           ),
           barWidth: 4,
           isStrokeCapRound: true,
@@ -242,7 +285,7 @@ class _MoodChartSection extends StatelessWidget {
             show: true,
             getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
               radius: 4,
-              color: ZunoTheme.primary,
+              color: mainColor,
               strokeWidth: 2,
               strokeColor: Colors.white,
             ),
@@ -253,8 +296,8 @@ class _MoodChartSection extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                ZunoTheme.primary.withOpacity(0.2),
-                ZunoTheme.primary.withOpacity(0.0),
+                mainColor.withOpacity(0.2),
+                mainColor.withOpacity(0.0),
               ],
             ),
           ),
@@ -262,7 +305,7 @@ class _MoodChartSection extends StatelessWidget {
       ],
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
-          getTooltipColor: (spot) => ZunoTheme.primary.withOpacity(0.8),
+          getTooltipColor: (spot) => mainColor.withOpacity(0.8),
           getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
               return LineTooltipItem(
@@ -279,6 +322,7 @@ class _MoodChartSection extends StatelessWidget {
       ),
     );
   }
+
 
   String _getWeekdayLabel(int weekday) {
     switch (weekday) {

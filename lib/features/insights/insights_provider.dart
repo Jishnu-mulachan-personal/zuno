@@ -10,10 +10,17 @@ class MoodTrendPoint {
 }
 
 final moodTrendProvider = FutureProvider<List<MoodTrendPoint>>((ref) async {
-  final supabase = Supabase.instance.client;
-  final user = supabase.auth.currentUser;
+  final user = Supabase.instance.client.auth.currentUser;
   if (user == null) return [];
+  return _fetchMoodTrendData(user.id);
+});
 
+final partnerMoodTrendProvider = FutureProvider.family<List<MoodTrendPoint>, String>((ref, partnerId) async {
+  return _fetchMoodTrendData(partnerId);
+});
+
+Future<List<MoodTrendPoint>> _fetchMoodTrendData(String userId) async {
+  final supabase = Supabase.instance.client;
   final today = DateTime.now();
   final sevenDaysAgo = today.subtract(const Duration(days: 7)).toIso8601String().split('T')[0];
 
@@ -21,7 +28,7 @@ final moodTrendProvider = FutureProvider<List<MoodTrendPoint>>((ref) async {
     final response = await supabase
         .from('daily_logs')
         .select('mood_emoji, log_date')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .gte('log_date', sevenDaysAgo)
         .order('log_date', ascending: true);
 
@@ -38,7 +45,7 @@ final moodTrendProvider = FutureProvider<List<MoodTrendPoint>>((ref) async {
 
       final val = _mapMoodToValue(emoji);
       groupedValues.putIfAbsent(dateStr, () => []).add(val);
-      latestEmoji[dateStr] = emoji; // Store the latest emoji for display/reference
+      latestEmoji[dateStr] = emoji; 
     }
 
     // Generate the last 7 days list to ensure we have placeholders for missing days
@@ -51,11 +58,6 @@ final moodTrendProvider = FutureProvider<List<MoodTrendPoint>>((ref) async {
         final vals = groupedValues[ds]!;
         final avg = vals.reduce((a, b) => a + b) / vals.length;
         points.add(MoodTrendPoint(date: d, value: avg, emoji: latestEmoji[ds]!));
-      } else {
-        // Option: Point at 0 or null? Let's use 0 to indicate no data
-        // points.add(MoodTrendPoint(date: d, value: 0, emoji: ''));
-        // Better: Skip it if we want a disconnected graph, or show a gap.
-        // For fl_chart, we can just skip it if we handle the x-axis offsets correctly.
       }
     }
 
@@ -63,7 +65,7 @@ final moodTrendProvider = FutureProvider<List<MoodTrendPoint>>((ref) async {
   } catch (e) {
     return [];
   }
-});
+}
 
 double _mapMoodToValue(String emoji) {
   switch (emoji) {
@@ -77,3 +79,4 @@ double _mapMoodToValue(String emoji) {
     default: return 3.0;
   }
 }
+
