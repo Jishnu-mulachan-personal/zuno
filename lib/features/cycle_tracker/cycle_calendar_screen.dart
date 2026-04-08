@@ -185,7 +185,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                     SliverPadding(
                       padding: const EdgeInsets.only(top: 16, bottom: 32),
                       sliver: SliverToBoxAdapter(
-                        child: _buildDayDetails(_selectedDay, cycleData),
+                        child: _buildDayDetails(_selectedDay, cycleData, ref.watch(dashboardProvider).cycleInsight),
                       ),
                     ),
                     _buildHistoryGraph(ref),
@@ -245,7 +245,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildDayDetails(DateTime day, CycleData cycle) {
+  Widget _buildDayDetails(DateTime day, CycleData cycle, String? cycleInsight) {
     final type = cycle.getDayType(day);
     String title;
     String subtitle;
@@ -288,6 +288,12 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         subtitle = 'Standard phase of your cycle. Keep tracking daily.';
         icon = Icons.wb_sunny_rounded;
         color = ZunoTheme.onSurfaceVariant.withOpacity(0.5);
+    }
+
+    if (cycleInsight != null && cycleInsight.isNotEmpty) {
+      if (isSameDay(day, DateTime.now())) {
+        subtitle = cycleInsight;
+      }
     }
 
     final dayProgress = cycle.getDayProgress(day);
