@@ -66,6 +66,7 @@ serve(async (req) => {
     const partnerData = relevantUsers.find((u: any) => u.id !== userData.id) || {};
 
     // 3. Fetch logs and cycle info
+    const currentDate = new Date().toISOString().split('T')[0];
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     
     const [logsReq, cycleReq] = await Promise.all([
@@ -146,9 +147,9 @@ serve(async (req) => {
             if (bytes.length > 0) {
               const dec = await decryptFernet(new Uint8Array(bytes), fernetKey!);
               if (isOwner) {
-                userJournalContext.push(`"${dec}"`);
+                userJournalContext.push(`[${log.log_date}] "${dec}"`);
               } else {
-                partnerJournalContext.push(`"${dec}"`);
+                partnerJournalContext.push(`[${log.log_date}] "${dec}"`);
               }
             }
           } catch (e) {
@@ -169,6 +170,7 @@ serve(async (req) => {
 
    const insightPrompt = `
       You are Zuno, an empathetic AI relationship companion. 
+      Today's Date: ${currentDate}.
       User: ${userData.display_name}. 
       Partner: ${partnerData.display_name || 'your partner'}.
       
@@ -182,7 +184,7 @@ serve(async (req) => {
       2. SYNERGY: Connect how the user's current energy can best complement the partner's needs.
       3. BIOLOGICAL NUANCE: Use cycle data to suggest "low-battery" vs "high-battery" activities (e.g., nesting vs. going out).
       4. Privacy & Paraphrasing: DO NOT repeat the partner's words or specific journal entries. Interpret the "vibe" (e.g., stress, fatigue, or joy) and speak to that feeling generally.
-      
+      5. TEMPORAL WEIGHTING: Give significantly higher weight to the most recent logs (where date matches Today's Date) over older ones when interpreting their current state.
 
       [TASK]
       Write a warm, 3-sentence insight in ${language}:
