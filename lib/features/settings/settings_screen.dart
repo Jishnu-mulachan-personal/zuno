@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../app_theme.dart';
@@ -9,6 +11,7 @@ import '../../core/theme_provider.dart';
 import '../../core/app_theme_data.dart';
 import '../dashboard/dashboard_state.dart';
 import 'settings_provider.dart';
+import '../../shared/widgets/profile_avatar.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +24,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1000,
+      maxHeight: 1000,
+      imageQuality: 85,
+    );
+
+    if (image == null) return;
+
+    final ok = await ref.read(settingsProvider.notifier).updateAvatar(File(image.path));
+    if (mounted) {
+      _snack(context, ok, success: 'Profile picture updated ✨', failure: 'Upload failed');
+    }
+  }
+
+  void _showNameEditor(BuildContext context, String currentName) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: ZunoTheme.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => _NameEditorSheet(initialName: currentName),
+    );
   }
 
   @override
@@ -58,6 +89,64 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         children: [
+          // ── Profile Header ────────────────────────────────────────────────
+          Center(
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: _pickAndUploadAvatar,
+                  child: Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: ZunoTheme.primary.withOpacity(0.2), width: 2),
+                        ),
+                        child: ProfileAvatar(
+                          url: profile?.avatarUrl,
+                          radius: 54,
+                          name: profile?.displayName ?? '?',
+                        ),
+
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: ZunoTheme.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: ZunoTheme.surface, width: 3),
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  profile?.displayName ?? 'Friend',
+                  style: GoogleFonts.notoSerif(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+                Text(
+                  Supabase.instance.client.auth.currentUser?.email ?? '',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+
           // ── Account ───────────────────────────────────────────────────────
           const _SectionHeader(label: 'ACCOUNT'),
           const SizedBox(height: 10),
@@ -67,8 +156,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             value: profile?.displayName ?? '—',
             iconBg: ZunoTheme.primaryFixed,
             iconColor: ZunoTheme.primary,
+            onTap: () => _showNameEditor(context, profile?.displayName ?? ''),
           ),
           const SizedBox(height: 12),
+
           _InfoTile(
             icon: Icons.translate_rounded,
             label: 'Zuno AI Language',
@@ -1192,11 +1283,120 @@ class _ColorDot extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: border != null
-            ? Border.all(color: border!, width: 1)
-            : null,
+        border: border != null ? Border.all(color: border!, width: 1) : null,
       ),
     );
   }
 }
+
+// ── Name Editor Sheet ────────────────────────────────────────────────────────
+
+
+class _NameEditorSheet extends StatefulWidget {
+  final String initialName;
+  const _NameEditorSheet({required this.initialName});
+
+  @override
+  State<_NameEditorSheet> createState() => _NameEditorSheetState();
+}
+
+class _NameEditorSheetState extends State<_NameEditorSheet> {
+  late TextEditingController _controller;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+                color: ZunoTheme.outlineVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(99)),
+          ),
+          Text('Change Name',
+              style: GoogleFonts.notoSerif(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: ZunoTheme.onSurface)),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            style: GoogleFonts.plusJakartaSans(color: ZunoTheme.onSurface),
+            decoration: InputDecoration(
+              labelText: 'Display Name',
+              labelStyle: GoogleFonts.plusJakartaSans(color: ZunoTheme.primary),
+              filled: true,
+              fillColor: ZunoTheme.surfaceContainerLowest,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: ZunoTheme.primary, width: 2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Consumer(
+            builder: (context, ref, _) => GestureDetector(
+              onTap: _loading
+                  ? null
+                  : () async {
+                      if (_controller.text.trim().isEmpty) return;
+                      setState(() => _loading = true);
+                      final ok = await ref
+                          .read(settingsProvider.notifier)
+                          .updateDisplayName(_controller.text);
+                      if (mounted) {
+                        setState(() => _loading = false);
+                        if (ok) {
+                          Navigator.pop(context);
+                          _snack(context, true, success: 'Name updated! ✨');
+                        }
+                      }
+                    },
+              child: Container(
+                width: double.infinity,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: ZunoTheme.primary,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Center(
+                  child: _loading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Text('Save Changes',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white)),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 

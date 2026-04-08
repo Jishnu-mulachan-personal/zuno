@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/profile_existence_provider.dart';
 import '../auth/user_repository.dart';
 import '../dashboard/dashboard_state.dart';
+import 'profile_image_service.dart';
 
 // ── Settings actions state ────────────────────────────────────────────────────
 
@@ -260,6 +262,52 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       return true;
     } catch (e) {
       debugPrint('[updateRelationshipStatus] Error: $e');
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> updateDisplayName(String name) async {
+    if (name.trim().isEmpty) return false;
+    _setLoading();
+    try {
+      final userRepo = _ref.read(userRepositoryProvider);
+      await userRepo.updateUserProfile(displayName: name.trim());
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Name updated');
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> updateAvatar(File file) async {
+    _setLoading();
+    try {
+      final profile = _ref.read(userProfileProvider).value;
+      if (profile == null) throw Exception('Profile not loaded');
+
+      // 1. Upload
+      final path = await ProfileImageService.compressAndUpload(
+        image: file,
+        bucketName: ProfileImageService.bucketAvatars,
+        folderId: profile.id,
+      );
+
+      // 2. Update DB
+      final userRepo = _ref.read(userRepositoryProvider);
+      await userRepo.updateUserProfile(avatarUrl: path);
+
+      // 3. Cleanup old (optional, but good for storage)
+      if (profile.avatarUrl != null) {
+        ProfileImageService.deleteByUrl(ProfileImageService.bucketAvatars, profile.avatarUrl!).ignore();
+      }
+
+      _ref.invalidate(userProfileProvider);
+      _setSuccess('Profile picture updated');
+      return true;
+    } catch (e) {
       _setError(e.toString());
       return false;
     }

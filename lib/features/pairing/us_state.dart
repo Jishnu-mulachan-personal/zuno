@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'us_image_service.dart';
+import '../settings/profile_image_service.dart';
+import '../auth/user_repository.dart';
+import '../dashboard/dashboard_state.dart';
+
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -10,6 +14,7 @@ class SharedPost {
   final String id;
   final String userId;
   final String userDisplayName;
+  final String? avatarUrl;
   final String caption;
   final String? imageUrl;
   final List<String> contextTags;
@@ -20,12 +25,14 @@ class SharedPost {
     required this.id,
     required this.userId,
     required this.userDisplayName,
+    this.avatarUrl,
     required this.caption,
     this.imageUrl,
     required this.contextTags,
     required this.createdAt,
     required this.updatedAt,
   });
+
 
   SharedPost copyWith({
     String? caption,
@@ -35,6 +42,7 @@ class SharedPost {
       id: id,
       userId: userId,
       userDisplayName: userDisplayName,
+      avatarUrl: avatarUrl,
       caption: caption ?? this.caption,
       imageUrl: imageUrl,
       contextTags: contextTags ?? this.contextTags,
@@ -48,6 +56,7 @@ class SharedPost {
       id: row['id'] as String,
       userId: row['user_id'] as String,
       userDisplayName: (row['users'] as Map?)?['display_name'] as String? ?? 'Partner',
+      avatarUrl: (row['users'] as Map?)?['avatar_url'] as String?,
       caption: row['caption'] as String? ?? '',
       imageUrl: row['image_url'] as String?,
       contextTags: List<String>.from(row['context_tags'] ?? []),
@@ -56,6 +65,7 @@ class SharedPost {
     );
   }
 }
+
 
 // ── Feed provider ────────────────────────────────────────────────────────────
 
@@ -173,19 +183,24 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
 
       final nameRows = await supabase
           .from('users')
-          .select('id, display_name')
+          .select('id, display_name, avatar_url')
           .inFilter('id', authorIds);
 
-      final nameMap = <String, String>{
+      final userDataMap = <String, (String, String?)>{
         for (final n in nameRows)
-          n['id'] as String: (n['display_name'] as String?) ?? 'Partner',
+          n['id'] as String: (
+            (n['display_name'] as String?) ?? 'Partner',
+            n['avatar_url'] as String?
+          ),
       };
 
       return rows.map((r) {
+        final userData = userDataMap[r['user_id'] as String];
         return SharedPost(
           id: r['id'] as String,
           userId: r['user_id'] as String,
-          userDisplayName: nameMap[r['user_id'] as String] ?? 'Partner',
+          userDisplayName: userData?.$1 ?? 'Partner',
+          avatarUrl: userData?.$2,
           caption: r['caption'] as String? ?? '',
           imageUrl: r['image_url'] as String?,
           contextTags: List<String>.from(r['context_tags'] ?? []),
@@ -193,6 +208,7 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
           updatedAt: DateTime.parse(r['updated_at'] as String),
         );
       }).toList();
+
     } catch (e) {
       debugPrint('[SharedPostsNotifier] ERROR: $e');
       state = state.copyWith(error: e.toString(), isLoading: false, isLoadingMore: false);
@@ -364,7 +380,46 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
 
   void setEditing(String? postId) =>
       state = state.copyWith(editingPostId: postId, clearEditing: postId == null);
+
+  // ── Update relationship photo ──────────────────────────────────────────────
+
+  Future<bool> updateUsPhoto({
+    required String relationshipId,
+    required File imageFile,
+    String? oldPath,
+  }) async {
+    state = state.copyWith(isSubmitting: true, clearError: true);
+
+    try {
+      // 1. Upload
+      final newPath = await ProfileImageService.compressAndUpload(
+        image: imageFile,
+        bucketName: ProfileImageService.bucketUsPhotos,
+        folderId: relationshipId,
+      );
+
+      // 2. Update DB
+      await ref.read(userRepositoryProvider).updateRelationshipDetails(
+        relationshipId: relationshipId,
+        usPhotoUrl: newPath,
+      );
+
+      // 3. Cleanup old
+      if (oldPath != null && oldPath.isNotEmpty) {
+        ProfileImageService.deleteByUrl(ProfileImageService.bucketUsPhotos, oldPath).ignore();
+      }
+
+      ref.invalidate(userProfileProvider);
+      state = state.copyWith(isSubmitting: false);
+      return true;
+    } catch (e) {
+      debugPrint('[UsPostNotifier.updateUsPhoto] Error: $e');
+      state = state.copyWith(isSubmitting: false, error: e.toString());
+      return false;
+    }
+  }
 }
+
 
 final usPostNotifierProvider =
     StateNotifierProvider<UsPostNotifier, UsPostState>((ref) {

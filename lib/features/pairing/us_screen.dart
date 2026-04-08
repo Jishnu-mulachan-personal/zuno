@@ -11,6 +11,8 @@ import '../dashboard/dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
 import 'us_image_service.dart';
 import 'us_state.dart';
+import '../settings/profile_image_service.dart';
+import '../../shared/widgets/profile_avatar.dart';
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -76,10 +78,11 @@ class _UsScreenState extends ConsumerState<UsScreen> {
                           horizontal: 24, vertical: 20),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
-                          if (isPaired) ...[
-                            _PairedHeader(partnerName: profile.partnerName!),
-                            const SizedBox(height: 24),
-                          ] else ...[
+                            if (isPaired) ...[
+                              _PairedHeader(profile: profile),
+                              const SizedBox(height: 24),
+                            ] else ...[
+
                             _PairCard(),
                             const SizedBox(height: 24),
                             _UnpairedTimelineNote(),
@@ -155,29 +158,163 @@ class _UsAppBar extends StatelessWidget {
 
 // ─── Paired hero header ───────────────────────────────────────────────────────
 
-class _PairedHeader extends StatelessWidget {
-  final String partnerName;
-  const _PairedHeader({required this.partnerName});
+class _PairedHeader extends ConsumerWidget {
+  final UserProfile profile;
+  const _PairedHeader({required this.profile});
+
+  Future<void> _updatePhoto(WidgetRef ref, BuildContext context) async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+
+    if (image == null) return;
+
+    final ok = await ref.read(usPostNotifierProvider.notifier).updateUsPhoto(
+          relationshipId: profile.relationshipId!,
+          imageFile: File(image.path),
+          oldPath: profile.usPhotoUrl,
+        );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok ? 'Us photo updated! ✨' : 'Failed to update photo'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: ok ? ZunoTheme.tertiary : ZunoTheme.error,
+        ),
+      );
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasPhoto = profile.usPhotoUrl != null && profile.usPhotoUrl!.isNotEmpty;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      width: double.infinity,
+      height: 180,
       decoration: BoxDecoration(
         color: ZunoTheme.primaryFixed.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Icon(Icons.favorite_rounded,
-              color: ZunoTheme.primary, size: 20),
-          const SizedBox(width: 10),
-          Text(
-            'Sharing moments with $partnerName',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: ZunoTheme.primary,
+          // Background Image
+          if (hasPhoto)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: FutureBuilder<String>(
+                  future: ProfileImageService.createSignedUrl(
+                    ProfileImageService.bucketUsPhotos,
+                    profile.usPhotoUrl!,
+                  ),
+                  builder: (ctx, snap) {
+                    if (snap.hasData) {
+                      return Image.network(
+                        snap.data!,
+                        fit: BoxFit.cover,
+                      );
+                    }
+                    return Container(color: ZunoTheme.surfaceContainerHigh);
+                  },
+                ),
+              ),
+            ),
+
+          // Gradient overlay for readability
+          if (hasPhoto)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.5),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.favorite_rounded,
+                      color: hasPhoto ? Colors.white : ZunoTheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Sharing moments with ${profile.partnerName}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: hasPhoto ? Colors.white : ZunoTheme.primary,
+                        shadows: hasPhoto
+                            ? [
+                                Shadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Edit Button
+          Positioned(
+            top: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => _updatePhoto(ref, context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (hasPhoto ? Colors.black : ZunoTheme.primary)
+                      .withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.camera_alt_rounded,
+                        color: Colors.white, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Edit',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -185,6 +322,7 @@ class _PairedHeader extends StatelessWidget {
     );
   }
 }
+
 
 // ─── Unpaired state ───────────────────────────────────────────────────────────
 
@@ -488,26 +626,12 @@ class _PostCard extends ConsumerWidget {
               child: Row(
                 children: [
                   // Avatar
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      gradient: ZunoTheme.primaryGradient,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        post.userDisplayName.isNotEmpty
-                            ? post.userDisplayName[0].toUpperCase()
-                            : '?',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                  ProfileAvatar(
+                    url: post.avatarUrl,
+                    radius: 19,
+                    name: post.userDisplayName,
                   ),
+
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

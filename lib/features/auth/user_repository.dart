@@ -67,13 +67,29 @@ class UserRepository {
     String? status,
     DateTime? marriedOn,
     String? relationshipDistance,
+    String? usPhotoUrl,
   }) async {
     await _supabase.from('relationships').update({
       if (status != null) 'status': status,
       if (marriedOn != null) 'anniversary_date': marriedOn.toIso8601String(),
       if (relationshipDistance != null) 'distance': relationshipDistance,
+      if (usPhotoUrl != null) 'us_photo_url': usPhotoUrl,
     }).eq('id', relationshipId);
   }
+
+  Future<void> updateUserProfile({
+    String? displayName,
+    String? avatarUrl,
+  }) async {
+    final sbUser = _supabase.auth.currentUser;
+    if (sbUser == null) throw Exception('Not authenticated');
+
+    await _supabase.from('users').update({
+      if (displayName != null) 'display_name': displayName,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+    }).eq('id', sbUser.id);
+  }
+
 
   Future<void> updateUserSettings({
     String? privacyPreference,

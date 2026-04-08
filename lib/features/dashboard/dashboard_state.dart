@@ -11,9 +11,12 @@ import '../cycle_tracker/cycle_data_model.dart';
 class UserProfile {
   final String id;
   final String displayName;
+  final String? avatarUrl;
   final String? relationshipId;
+  final String? usPhotoUrl;
   final String? partnerId;
   final String? partnerName;
+  final String? partnerAvatarUrl;
   final int streakDays;
   final DateTime? lastLoginAt;
   final String? gender;
@@ -24,9 +27,12 @@ class UserProfile {
   const UserProfile({
     required this.id,
     required this.displayName,
+    this.avatarUrl,
     this.relationshipId,
+    this.usPhotoUrl,
     this.partnerId,
     this.partnerName,
+    this.partnerAvatarUrl,
     this.streakDays = 0,
     this.lastLoginAt,
     this.gender,
@@ -66,7 +72,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     // Fetch current user + their relationship + settings
     final userRow = await supabase
         .from('users')
-        .select('*, user_settings(preferred_language, privacy_preference, journal_note_private, goals), current_relationship:relationships!users_relationship_id_fkey(status)')
+        .select('*, user_settings(preferred_language, privacy_preference, journal_note_private, goals), current_relationship:relationships!users_relationship_id_fkey(status, us_photo_url)')
         .eq('id', sbUser.id)
         .maybeSingle();
 
@@ -79,6 +85,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     debugPrint('[userProfileProvider] userRow found: $userRow');
 
     final displayName = (userRow['display_name'] as String?) ?? 'Friend';
+    final avatarUrl = userRow['avatar_url'] as String?;
     final relationshipId = userRow['relationship_id'];
     final gender = userRow['gender'] as String?;
     final userId = userRow['id'];
@@ -91,6 +98,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     // Relationship status from joined table (using the alias)
     final relationshipData = userRow['current_relationship'] as Map<String, dynamic>?;
     final relationshipStatus = relationshipData?['status'] as String? ?? 'single';
+    final usPhotoUrl = relationshipData?['us_photo_url'] as String?;
     
     // Streak data from Users table
     int streakDays = (userRow['streak_count'] as int?) ?? 0;
@@ -136,6 +144,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
 
     String? partnerId;
     String? partnerName;
+    String? partnerAvatarUrl;
 
     if (relationshipId != null) {
       debugPrint(
@@ -143,7 +152,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       // Fetch partner (the other person in the relationship)
       final partnerRow = await supabase
           .from('users')
-          .select('id, display_name')
+          .select('id, display_name, avatar_url')
           .eq('relationship_id', relationshipId)
           .neq('id', userId)
           .limit(1) // Safety
@@ -151,6 +160,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
 
       partnerId = partnerRow?['id'] as String?;
       partnerName = partnerRow?['display_name'] as String?;
+      partnerAvatarUrl = partnerRow?['avatar_url'] as String?;
       debugPrint('[userProfileProvider] Partner found: $partnerName (ID: $partnerId)');
     }
 
@@ -158,9 +168,12 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     return UserProfile(
       id: userId,
       displayName: displayName,
+      avatarUrl: avatarUrl,
       relationshipId: relationshipId,
+      usPhotoUrl: usPhotoUrl,
       partnerId: partnerId,
       partnerName: partnerName,
+      partnerAvatarUrl: partnerAvatarUrl,
       streakDays: streakDays,
       lastLoginAt: lastLoginAt,
       gender: gender,
@@ -171,6 +184,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       journalNotePrivate: journalNotePrivate,
       goals: goals,
     );
+
   } catch (e) {
     debugPrint('[userProfileProvider] ERROR: $e');
     if (e is PostgrestException) {
