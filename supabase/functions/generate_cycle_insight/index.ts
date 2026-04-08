@@ -111,7 +111,7 @@ serve(async (req) => {
       User: ${userData.display_name} (Female)
       Cycle Context: ${phase === 'Delayed' ? `The cycle is currently delayed (Day ${day}).` : `Day ${day} of her cycle, currently in the ${phase} phase.`}
       
-      Task: Write a concise, empowering, and helpful 1-sentence daily cycle insight for ${userData.display_name}.
+      Task: Write a concise, empowering, and helpful 2-sentence daily cycle insight for ${userData.display_name}.
       ${phase === 'Delayed' ? `Since the cycle is delayed, the insight should be reassuring and supportive, focusing on staying calm, self-care, or taking a test if applicable.` : `The insight should reflect the biological and emotional state typically associated with the ${phase} phase on Day ${day}.`}
       Focus on self-care, energy levels, or mood. Be warm and empathetic.
       Avoid medical jargon. Keep it under 25 words.

@@ -676,6 +676,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
       // Refresh the profile to update cycle calculations
       ref.invalidate(userProfileProvider);
+
+      // Force regenerate the cycle insight to reflect the newly logged period date
+      await fetchCycleInsight(force: true);
     } catch (e) {
       debugPrint('[updateCycleStartDate] Error: $e');
     }
