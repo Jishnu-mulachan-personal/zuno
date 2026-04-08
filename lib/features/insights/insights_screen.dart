@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../app_theme.dart';
+import '../../core/theme_provider.dart';
 import '../dashboard/dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
 import 'insights_provider.dart';
@@ -12,6 +13,8 @@ class InsightsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch theme changes to trigger rebuild
+    ref.watch(themeProvider);
     final profileAsync = ref.watch(userProfileProvider);
     final moodTrendAsync = ref.watch(moodTrendProvider);
 

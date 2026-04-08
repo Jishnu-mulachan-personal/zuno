@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
+import '../../core/theme_provider.dart';
 import '../cycle_tracker/cycle_data_model.dart';
 import 'dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
@@ -19,6 +20,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardProvider);
     final profileAsync = ref.watch(userProfileProvider);
+    // Watch theme changes to trigger rebuild
+    ref.watch(themeProvider);
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,

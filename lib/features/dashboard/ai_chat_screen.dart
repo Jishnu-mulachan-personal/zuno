@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../app_theme.dart';
+import '../../core/theme_provider.dart';
 import 'dashboard_state.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -88,6 +89,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch theme changes to trigger rebuild
+    ref.watch(themeProvider);
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
       appBar: AppBar(

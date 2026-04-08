@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../app_theme.dart';
+import '../../core/theme_provider.dart';
 import '../dashboard/dashboard_state.dart';
 import 'cycle_data_model.dart';
 
@@ -64,6 +65,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch theme changes to trigger rebuild
+    ref.watch(themeProvider);
     final profileAsync = ref.watch(userProfileProvider);
     final profile = profileAsync.valueOrNull;
     var cycleData = profile?.cycleData;

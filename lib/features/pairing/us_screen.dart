@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../app_theme.dart';
+import '../../core/theme_provider.dart';
 import '../dashboard/dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
 import 'us_image_service.dart';
@@ -44,6 +45,8 @@ class _UsScreenState extends ConsumerState<UsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch theme changes to trigger rebuild
+    ref.watch(themeProvider);
     final profileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
