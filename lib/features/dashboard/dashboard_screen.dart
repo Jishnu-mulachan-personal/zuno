@@ -879,7 +879,9 @@ class _DynamicCardsSection extends ConsumerWidget {
               child: _DashboardSmartCard(
                 icon: Icons.calendar_month_rounded,
                 tag: 'CYCLE TRACKER',
-                title: 'Day ${cycleData!.currentCycleDay}',
+                title: cycleData!.isPeriodDelayed 
+                    ? 'Cycle Delayed' 
+                    : 'Day ${cycleData!.currentCycleDay}',
                 subtitle: cycleData!.phaseSubtitle,
                 insight: state.cycleInsight,
                 isLoadingInsight: state.isLoadingCycleInsight,

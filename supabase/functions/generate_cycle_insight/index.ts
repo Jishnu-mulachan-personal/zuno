@@ -77,17 +77,22 @@ serve(async (req) => {
       const diff = Math.floor((todayMid.getTime() - lastMid.getTime()) / (1000 * 60 * 60 * 24));
       const length = row.cycle_length || 28;
       const dur = row.period_duration || 5;
-      let day = diff + 1;
-      if (day > length && day > 0) day = (day - 1) % length + 1;
-      else if (day <= 0) day = 1;
+      
+      const day = diff >= 0 ? diff + 1 : 1;
 
       let phase = "Luteal";
-      const ov = length - 14; 
-      const fwS = ov - 5;
-      const fwE = ov + 1;
-      if (day <= dur) phase = "Menstruation";
-      else if (day < fwS) phase = "Follicular";
-      else if (day >= fwS && day <= fwE) phase = "Ovulation";
+      const isPeriodDelayed = day > length;
+      
+      if (isPeriodDelayed) {
+        phase = "Delayed";
+      } else {
+        const ov = length - 14; 
+        const fwS = ov - 5;
+        const fwE = ov + 1;
+        if (day <= dur) phase = "Menstruation";
+        else if (day < fwS) phase = "Follicular";
+        else if (day >= fwS && day <= fwE) phase = "Ovulation";
+      }
       return { day, phase };
     };
 
@@ -104,10 +109,10 @@ serve(async (req) => {
     const prompt = `
       You are Zuno, a supportive AI health and relationship companion.
       User: ${userData.display_name} (Female)
-      Cycle Context: Day ${day} of her cycle, currently in the ${phase} phase.
+      Cycle Context: ${phase === 'Delayed' ? `The cycle is currently delayed (Day ${day}).` : `Day ${day} of her cycle, currently in the ${phase} phase.`}
       
       Task: Write a concise, empowering, and helpful 1-sentence daily cycle insight for ${userData.display_name}.
-      The insight should reflect the biological and emotional state typically associated with the ${phase} phase on Day ${day}.
+      ${phase === 'Delayed' ? `Since the cycle is delayed, the insight should be reassuring and supportive, focusing on staying calm, self-care, or taking a test if applicable.` : `The insight should reflect the biological and emotional state typically associated with the ${phase} phase on Day ${day}.`}
       Focus on self-care, energy levels, or mood. Be warm and empathetic.
       Avoid medical jargon. Keep it under 25 words.
       CRITICAL: The output MUST be written in ${language}.

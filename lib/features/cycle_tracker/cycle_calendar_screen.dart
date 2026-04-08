@@ -277,6 +277,12 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         icon = Icons.event_repeat_rounded;
         color = Colors.red;
         break;
+      case 'delayed':
+        title = 'Delayed Cycle';
+        subtitle = 'Your period is late. Log your start date when it arrives.';
+        icon = Icons.hourglass_empty_rounded;
+        color = Colors.orange.shade400;
+        break;
       default:
         title = 'Regular Day';
         subtitle = 'Standard phase of your cycle. Keep tracking daily.';
@@ -550,6 +556,18 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                   shape: BoxShape.circle,
                 ),
               ),
+            )
+          else if (type == 'delayed')
+            Positioned(
+              bottom: 4,
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade400,
+                  shape: BoxShape.circle,
+                ),
+              ),
             ),
         ],
       ),
@@ -598,7 +616,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     }
 
     final type = cycle.getDayType(day);
-    if (type == 'normal' || type == 'next_period') {
+    if (type == 'normal' || type == 'next_period' || type == 'delayed') {
       if (isToday) {
         return BoxDecoration(
           border: Border.all(color: ZunoTheme.primary, width: 2),
@@ -642,6 +660,9 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     }
     if (type == 'maybe_fertile') {
       return Colors.green.shade900;
+    }
+    if (type == 'delayed' && !isToday) {
+      return Colors.orange.shade800; // Stand out a bit more than normal text
     }
     return isToday ? ZunoTheme.primary : ZunoTheme.onSurface;
   }

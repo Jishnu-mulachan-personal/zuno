@@ -94,17 +94,22 @@ serve(async (req) => {
       const diff = Math.floor((todayMid.getTime() - lastMid.getTime()) / (1000 * 60 * 60 * 24));
       const length = row.cycle_length || 28;
       const dur = row.period_duration || 5;
-      let day = diff + 1;
-      if (day > length && day > 0) day = (day - 1) % length + 1;
-      else if (day <= 0) day = 1;
+      
+      const day = diff >= 0 ? diff + 1 : 1;
 
       let phase = "Luteal";
-      const ov = length - 14; 
-      const fwS = ov - 5;
-      const fwE = ov + 1;
-      if (day <= dur) phase = "Menstruation";
-      else if (day < fwS) phase = "Follicular";
-      else if (day >= fwS && day <= fwE) phase = "Ovulation";
+      const isPeriodDelayed = day > length;
+      
+      if (isPeriodDelayed) {
+        phase = "Delayed";
+      } else {
+        const ov = length - 14; 
+        const fwS = ov - 5;
+        const fwE = ov + 1;
+        if (day <= dur) phase = "Menstruation";
+        else if (day < fwS) phase = "Follicular";
+        else if (day >= fwS && day <= fwE) phase = "Ovulation";
+      }
       return { day, phase };
     };
 

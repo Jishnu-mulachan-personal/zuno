@@ -19,39 +19,23 @@ class CycleData {
     this.historicalPeriods = const [],
   });
 
-  /// The day of the current cycle (1 to cycleLength)
+  /// The day of the current cycle (days since last period)
   int get currentCycleDay {
     final today = DateTime.now();
     final todayMidnight = DateTime(today.year, today.month, today.day);
-    final lastMidnight =
-        DateTime(lastPeriodDate.year, lastPeriodDate.month, lastPeriodDate.day);
+    final lastMidnight = currentCycleStart;
 
     final diff = todayMidnight.difference(lastMidnight).inDays;
     
-    // Day 1 is the first day of the period
-    int day = diff + 1;
-
-    // Modulo if user hasn't synced
-    if (day > cycleLength && day > 0) {
-      day = (day - 1) % cycleLength + 1;
-    } else if (day <= 0) {
-      day = 1;
-    }
-    return day;
+    return diff >= 0 ? diff + 1 : 1;
   }
 
-  /// Calculates the start date of the current cycle interval
+  /// Calculates the start date of the current cycle interval (last actual period)
   DateTime get currentCycleStart {
-    final today = DateTime.now();
-    final todayMidnight = DateTime(today.year, today.month, today.day);
-    final lastMidnight =
-        DateTime(lastPeriodDate.year, lastPeriodDate.month, lastPeriodDate.day);
-
-    final diff = todayMidnight.difference(lastMidnight).inDays;
-    final cycleNum = diff >= 0 ? diff ~/ cycleLength : 0;
-    
-    return lastMidnight.add(Duration(days: cycleNum * cycleLength));
+    return DateTime(lastPeriodDate.year, lastPeriodDate.month, lastPeriodDate.day);
   }
+
+
 
   /// Next predicted period
   DateTime get nextPeriodDate {
@@ -97,6 +81,10 @@ class CycleData {
   /// Helpful text to show in Dashboard card
   String get phaseSubtitle {
     switch (currentPhase) {
+      case 'Delayed':
+        final diff = DateTime.now().difference(nextPeriodDate).inDays;
+        if (diff > 0) return 'Cycle delayed by $diff ${diff == 1 ? 'day' : 'days'}.';
+        return 'Your cycle might be delayed.';
       case 'Menstruation':
         return 'Take it easy, rest up.';
       case 'Follicular':
@@ -126,21 +114,57 @@ class CycleData {
       return 'normal';
     }
 
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final nextPMidnight =
+        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
+
+    // If within the active logged cycle (diff < cycleLength)
+    if (diff < cycleLength) {
+      final dayOfCycle = diff + 1;
+      final ovForTarget = nextPMidnight.subtract(const Duration(days: 14));
+      final fwStart = ovForTarget.subtract(const Duration(days: 5));
+      final fwEnd = ovForTarget.add(const Duration(days: 1));
+      final maybeFwStart = fwStart.subtract(const Duration(days: 2));
+      final maybeFwEnd = fwEnd.add(const Duration(days: 1));
+
+      if (dayOfCycle <= periodDuration) return 'period';
+      if (!t.isBefore(fwStart) && !t.isAfter(fwEnd)) return 'fertile';
+      if (!t.isBefore(maybeFwStart) && !t.isAfter(maybeFwEnd)) return 'maybe_fertile';
+      return 'normal';
+    }
+
+    // Past the expected next period start
+    final diffToday = todayMidnight.difference(nextPMidnight).inDays;
+    
+    if (diffToday >= 0) {
+      if (t.isAtSameMomentAs(nextPMidnight)) {
+         return 'next_period'; // The projected exact first day
+      }
+      
+      if (t.isAfter(nextPMidnight) && !t.isAfter(todayMidnight)) {
+         return 'delayed'; // Days elapsed while period hasn't arrived
+      }
+      
+      // If t is in the future, don't show fake predictions if currently delayed
+      return 'normal';
+    }
+
+    // If we are NOT delayed (today is before nextPMidnight), but t is in the future
     final dayOfCycle = (diff % cycleLength) + 1;
+    if (dayOfCycle == 1) return 'next_period';
+    
     final cycleStartForTarget = t.subtract(Duration(days: dayOfCycle - 1));
     final nextPForTarget = cycleStartForTarget.add(Duration(days: cycleLength));
     final ovForTarget = nextPForTarget.subtract(const Duration(days: 14));
     final fwStart = ovForTarget.subtract(const Duration(days: 5));
     final fwEnd = ovForTarget.add(const Duration(days: 1));
-    
-    // Maybe fertile window (2 days before and 1 day after main window)
     final maybeFwStart = fwStart.subtract(const Duration(days: 2));
     final maybeFwEnd = fwEnd.add(const Duration(days: 1));
 
     if (dayOfCycle <= periodDuration) return 'period';
     if (!t.isBefore(fwStart) && !t.isAfter(fwEnd)) return 'fertile';
     if (!t.isBefore(maybeFwStart) && !t.isAfter(maybeFwEnd)) return 'maybe_fertile';
-    if (t.isAtSameMomentAs(nextPForTarget)) return 'next_period';
 
     return 'normal';
   }
