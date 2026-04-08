@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -605,7 +605,7 @@ class _PostCard extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _PostOptionsSheet(post: post, ref: ref),
+      builder: (_) => _PostOptionsSheet(post: post),
     );
   }
 }
@@ -689,12 +689,11 @@ class _AuthenticatedImage extends StatelessWidget {
 
 class _PostOptionsSheet extends ConsumerWidget {
   final SharedPost post;
-  final WidgetRef ref;
 
-  const _PostOptionsSheet({required this.post, required this.ref});
+  const _PostOptionsSheet({required this.post});
 
   @override
-  Widget build(BuildContext context, WidgetRef refConsumer) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -739,10 +738,12 @@ class _PostOptionsSheet extends ConsumerWidget {
             label: 'Delete post',
             color: ZunoTheme.error,
             onTap: () async {
-              Navigator.pop(context);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+
               final confirm = await showDialog<bool>(
                 context: context,
-                builder: (_) => AlertDialog(
+                builder: (ctx) => AlertDialog(
                   backgroundColor: ZunoTheme.surfaceContainerLowest,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20)),
@@ -757,12 +758,12 @@ class _PostOptionsSheet extends ConsumerWidget {
                   ),
                   actions: [
                     TextButton(
-                        onPressed: () => Navigator.pop(context, false),
+                        onPressed: () => Navigator.pop(ctx, false),
                         child: Text('Cancel',
                             style: GoogleFonts.plusJakartaSans(
                                 color: ZunoTheme.onSurfaceVariant))),
                     TextButton(
-                        onPressed: () => Navigator.pop(context, true),
+                        onPressed: () => Navigator.pop(ctx, true),
                         child: Text('Delete',
                             style: GoogleFonts.plusJakartaSans(
                                 color: ZunoTheme.error,
@@ -770,10 +771,34 @@ class _PostOptionsSheet extends ConsumerWidget {
                   ],
                 ),
               );
+
               if (confirm == true) {
-                await ref
+                // Pop the bottom sheet first so it's gone
+                navigator.pop();
+
+                final success = await ref
                     .read(usPostNotifierProvider.notifier)
                     .deletePost(postId: post.id, imageUrl: post.imageUrl);
+
+                if (success) {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: const Text('Post deleted successfully'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: ZunoTheme.onSurface,
+                    ),
+                  );
+                } else {
+                  final error = ref.read(usPostNotifierProvider).error ??
+                      'Unknown error occurred';
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete: $error'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: ZunoTheme.error,
+                    ),
+                  );
+                }
               }
             },
           ),

@@ -333,12 +333,24 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
     try {
       final supabase = Supabase.instance.client;
 
-      // Delete storage image first (best-effort)
+      // Step 1: Delete database record
+      // We use .select().maybeSingle() to verify that the row was actually 
+      // deleted (which confirms the ID exists AND the user has RLS permission).
+      final response = await supabase
+          .from('shared_posts')
+          .delete()
+          .eq('id', postId)
+          .select()
+          .maybeSingle();
+
+      if (response == null) {
+        throw Exception('Post not found or you do not have permission to delete it.');
+      }
+
+      // Step 2: Delete storage image (best-effort)
       if (imageUrl != null && imageUrl.isNotEmpty) {
         await UsImageService.deleteByUrl(imageUrl);
       }
-
-      await supabase.from('shared_posts').delete().eq('id', postId);
 
       ref.invalidate(sharedPostsProvider);
       state = state.copyWith(isSubmitting: false);
