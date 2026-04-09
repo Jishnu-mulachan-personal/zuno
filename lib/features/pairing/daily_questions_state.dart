@@ -34,6 +34,7 @@ class DailyAnswer {
   final String answer;
   final String? partnerReviewStatus;
   final String? partnerReviewComment;
+  final DateTime? createdAt;
 
   const DailyAnswer({
     required this.id,
@@ -42,6 +43,7 @@ class DailyAnswer {
     required this.answer,
     this.partnerReviewStatus,
     this.partnerReviewComment,
+    this.createdAt,
   });
 
   factory DailyAnswer.fromRow(Map<String, dynamic> row) {
@@ -52,6 +54,7 @@ class DailyAnswer {
       answer: row['answer'] as String,
       partnerReviewStatus: row['partner_review_status'] as String?,
       partnerReviewComment: row['partner_review_comment'] as String?,
+      createdAt: row['created_at'] != null ? DateTime.parse(row['created_at'] as String) : null,
     );
   }
 }
@@ -64,6 +67,7 @@ class DailyQuestionsState {
   final int gameScore;
   final int gameStreak;
   final bool isLoading;
+  final bool isLoadingHistory;
   final String? error;
 
   const DailyQuestionsState({
@@ -72,6 +76,7 @@ class DailyQuestionsState {
     this.gameScore = 0,
     this.gameStreak = 0,
     this.isLoading = false,
+    this.isLoadingHistory = false,
     this.error,
   });
 
@@ -81,6 +86,7 @@ class DailyQuestionsState {
     int? gameScore,
     int? gameStreak,
     bool? isLoading,
+    bool? isLoadingHistory,
     String? error,
     bool clearError = false,
   }) {
@@ -90,25 +96,38 @@ class DailyQuestionsState {
       gameScore: gameScore ?? this.gameScore,
       gameStreak: gameStreak ?? this.gameStreak,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingHistory: isLoadingHistory ?? this.isLoadingHistory,
       error: clearError ? null : (error ?? this.error),
     );
   }
 
   // Helpers to get specific data
-  DailyAnswer? getUserAnswer(String questionId, String currentUserId) {
+  DailyAnswer? getUserAnswer(String coupleDailyQuestionId, String currentUserId) {
     try {
-      return answers.firstWhere((a) => a.coupleDailyQuestionId == questionId && a.userId == currentUserId);
+      return answers.firstWhere(
+          (a) => a.coupleDailyQuestionId == coupleDailyQuestionId && a.userId == currentUserId);
     } catch (_) {
       return null;
     }
   }
 
-  DailyAnswer? getPartnerAnswer(String questionId, String currentUserId) {
+  DailyAnswer? getPartnerAnswer(String coupleDailyQuestionId, String currentUserId) {
     try {
-      return answers.firstWhere((a) => a.coupleDailyQuestionId == questionId && a.userId != currentUserId);
+      return answers.firstWhere(
+          (a) => a.coupleDailyQuestionId == coupleDailyQuestionId && a.userId != currentUserId);
     } catch (_) {
       return null;
     }
+  }
+
+  // Grouped by date for history
+  Map<String, List<DailyQuestion>> get questionsByDate {
+    final Map<String, List<DailyQuestion>> map = {};
+    for (var q in questions) {
+      final dateKey = q.assignedDate.toIso8601String().split('T')[0];
+      map.putIfAbsent(dateKey, () => []).add(q);
+    }
+    return map;
   }
 }
 
@@ -119,13 +138,17 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
   RealtimeChannel? _channel;
 
   DailyQuestionsNotifier(this.ref) : super(const DailyQuestionsState()) {
-    fetchToday();
+    refresh();
   }
 
   @override
   void dispose() {
     _channel?.unsubscribe();
     super.dispose();
+  }
+
+  Future<void> refresh() async {
+    await fetchToday();
   }
 
   Future<void> fetchToday() async {
@@ -159,8 +182,6 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
               table: 'couple_daily_answers',
               callback: (payload) {
                 debugPrint('[DailyQuestionsNotifier] Realtime event received: ${payload.eventType}');
-                // If anything changes in the answers table, refresh our state
-                // to catch partner answers or reviews.
                 fetchToday();
               },
             )
@@ -185,8 +206,8 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
       final int gameScore = relRow?['game_score'] as int? ?? 0;
       final int gameStreak = relRow?['game_streak'] as int? ?? 0;
 
-      // 2. Fetch or assign today''s questions using RPC
-      final questionsResponse = await supabase.rpc(
+      // 2. Fetch or assign today's questions using RPC
+      await supabase.rpc(
         'assign_daily_questions',
         params: {
           'p_relationship_id': relationshipId,
@@ -194,13 +215,26 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
         },
       );
 
-      final List<DailyQuestion> questions = (questionsResponse as List)
-          .map((r) => DailyQuestion.fromRow(r as Map<String, dynamic>))
-          .toList();
+      // 3. Fetch History (including today)
+      // We'll fetch all assigned questions for this couple
+      final historyResponse = await supabase
+          .from('couple_daily_questions')
+          .select('id, question_id, assigned_date, daily_questions(question_text)')
+          .eq('relationship_id', relationshipId)
+          .order('assigned_date', ascending: false);
 
-      final questionIds = questions.map((q) => q.coupleDailyQuestionId).toList();
+      final List<DailyQuestion> allQuestions = (historyResponse as List).map((r) {
+        return DailyQuestion(
+          coupleDailyQuestionId: r['id'] as String,
+          questionId: r['question_id'] as String,
+          questionText: (r['daily_questions'] as Map)['question_text'] as String,
+          assignedDate: DateTime.parse(r['assigned_date'] as String),
+        );
+      }).toList();
 
-      // 3. Fetch all answers for these questions
+      final questionIds = allQuestions.map((q) => q.coupleDailyQuestionId).toList();
+
+      // 4. Fetch all answers for these questions
       List<DailyAnswer> answers = [];
       if (questionIds.isNotEmpty) {
         final answersResponse = await supabase
@@ -214,7 +248,7 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
       }
 
       state = state.copyWith(
-        questions: questions,
+        questions: allQuestions, // Now contains everything
         answers: answers,
         gameScore: gameScore,
         gameStreak: gameStreak,
@@ -251,7 +285,7 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
         ).ignore();
       }
 
-      // Optimistic refresh
+      // Refresh to update local state
       await fetchToday();
       return true;
     } catch (e) {

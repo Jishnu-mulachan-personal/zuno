@@ -14,6 +14,7 @@ import 'us_state.dart';
 import '../settings/profile_image_service.dart';
 import '../../shared/widgets/profile_avatar.dart';
 import 'widgets/daily_questions_card.dart';
+import 'widgets/daily_questions_history.dart';
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,7 @@ class _UsScreenState extends ConsumerState<UsScreen> {
                               _PairedHeader(profile: profile),
                               const SizedBox(height: 24),
                               const DailyQuestionsWidget(),
+                              const DailyQuestionsHistory(),
                             ] else ...[
 
                             _PairCard(),

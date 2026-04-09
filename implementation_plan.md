@@ -1,29 +1,39 @@
-# Fix: Missing Real-Time Refresh for Daily Questions
+# Implementation Plan: Chat-Style Interaction UI
 
-The user reports that notifications are working, but the UI does not refresh when the partner answers. This is likely because the `couple_daily_answers` table has not been added to the `supabase_realtime` publication, preventing the app from receiving change events.
+This plan transitions the Daily Question interaction from a card-based layout to a modern "Chat Thread" layout, making the exchange feel like a private conversation between partners.
+
+## User Review Required
+
+> [!IMPORTANT]
+> The interaction will now look like a chat window. 
+> - **Self-Answers**: Aligned to the right.
+> - **Partner-Answers**: Aligned to the left with their profile picture.
+> - **Question**: Will appear as a "System Message" at the start of the thread.
 
 ## Proposed Changes
 
-### Backend (Supabase)
+### UI Components
 
-#### [MODIFY] `supabase/migrations/20260409_daily_questions.sql` (or new migration)
-- Enable replication for the `couple_daily_answers` table by adding it to the `supabase_realtime` publication.
-- Logic:
-  ```sql
-  alter publication supabase_realtime add table public.couple_daily_answers;
-  ```
-
-### Frontend (Flutter)
-
-#### [VERIFY] `lib/features/pairing/daily_questions_state.dart`
-- Ensure the `PostgresChangeEvent.all` listener is correctly handling events.
-- Add logging to the callback to confirm when an event is received.
+#### [MODIFY] `lib/features/pairing/widgets/daily_question_interactive_sheet.dart`
+- **Layout Refactor**: Change the content from a simple `Column` to a chat-like thread.
+- **New Chat Bubble Widgets**:
+  - `ChatBubble`: A reusable widget for messages.
+  - Aligned Left/Right based on the user.
+  - Integrated profile avatars (using `ProfileAvatar` from the app).
+- **Interactive Review Flow**:
+  - The "How did they do?" review buttons will be styled as action chips or a follow-up interaction in the thread.
+- **Improved Input**:
+  - Style the answer/comment inputs to match a standard chat box at the bottom of the screen.
 
 ## Verification Plan
 
 ### Manual Verification
-1. Apply the migration to enable replication.
-2. Open the "Us" screen on one device.
-3. Submit an answer from a different device (Partner).
-4. Verify that the first device's UI automatically refreshes without manual interaction.
-5. Check debug logs for "Realtime event received" if adding logs.
+1. **Visual Look**:
+   - Verify the question looks like a starting prompt.
+   - Verify my answer appears on the right.
+   - Verify the partner's answer appears on the left with their avatar.
+2. **Interactive Flow**:
+   - Verify the "Review" buttons appear naturally after the partner's message.
+   - Verify the chat thread handles long messages gracefully without overflow.
+3. **Keyboard Handling**:
+   - Ensure the chat input remains visible and focused when the keyboard opens.
