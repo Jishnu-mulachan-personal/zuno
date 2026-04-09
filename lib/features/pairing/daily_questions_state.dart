@@ -116,9 +116,16 @@ class DailyQuestionsState {
 
 class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
   final Ref ref;
+  RealtimeChannel? _channel;
 
   DailyQuestionsNotifier(this.ref) : super(const DailyQuestionsState()) {
     fetchToday();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> fetchToday() async {
@@ -139,6 +146,30 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
       if (relationshipId == null) {
         state = state.copyWith(isLoading: false);
         return;
+      }
+
+      // ── Realtime Setup ─────────────────────────────────────────────────────
+      if (_channel == null) {
+        debugPrint('[DailyQuestionsNotifier] Setting up Realtime subscription...');
+        _channel = supabase
+            .channel('daily_answers_realtime')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'couple_daily_answers',
+              callback: (payload) {
+                debugPrint('[DailyQuestionsNotifier] Realtime event received: ${payload.eventType}');
+                // If anything changes in the answers table, refresh our state
+                // to catch partner answers or reviews.
+                fetchToday();
+              },
+            )
+            .subscribe((status, [error]) {
+              debugPrint('[DailyQuestionsNotifier] Subscription status: $status');
+              if (error != null) {
+                debugPrint('[DailyQuestionsNotifier] Subscription error: $error');
+              }
+            });
       }
 
       // Format today local date (YYYY-MM-DD):
@@ -199,13 +230,26 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
   Future<bool> submitAnswer(String coupleDailyQuestionId, String answerText) async {
     try {
       final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser!.id;
+      final user = supabase.auth.currentUser;
+      if (user == null) return false;
 
       await supabase.from('couple_daily_answers').insert({
         'couple_daily_question_id': coupleDailyQuestionId,
-        'user_id': userId,
+        'user_id': user.id,
         'answer': answerText.trim(),
       });
+
+      // Trigger partner notification via Edge Function
+      final identifier = user.email ?? user.phone;
+      if (identifier != null) {
+        supabase.functions.invoke(
+          'notify_partner',
+          body: {
+            'identifier': identifier,
+            'type': 'daily_question_answer',
+          },
+        ).ignore();
+      }
 
       // Optimistic refresh
       await fetchToday();
