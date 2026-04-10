@@ -70,7 +70,7 @@ class DailyQuestionsWidget extends ConsumerWidget {
                   Icon(Icons.psychology_rounded, color: ZunoTheme.primary, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Daily Questions',
+                    'Daily Chat',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -137,7 +137,7 @@ class DailyQuestionsWidget extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        allAnswered ? 'Today\'s Questions Finished' : 'Answer Today\'s Questions',
+                        allAnswered ? 'Daily Chat Finished' : 'Start Today\'s Chat',
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

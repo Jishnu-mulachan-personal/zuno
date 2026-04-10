@@ -82,7 +82,7 @@ class _DailyQuestionInteractionSheetState extends ConsumerState<DailyQuestionInt
                       ),
                     ),
                     Text(
-                      'Daily Interaction',
+                      'Daily Chat',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -154,7 +154,7 @@ class _DailyQuestionInteractionSheetState extends ConsumerState<DailyQuestionInt
                   
                   // Progress Text
                   Text(
-                    'Question ${_currentPage + 1} of ${questions.length}',
+                    'Topic ${_currentPage + 1} of ${questions.length}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -244,41 +244,15 @@ class _QuestionThreadState extends ConsumerState<_QuestionThread> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             children: [
-              // 1. The Question (System Message)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: ZunoTheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'TODAY\'S QUESTION',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: ZunoTheme.primary,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.question.questionText,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.notoSerif(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: ZunoTheme.onSurface,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              // 1. The Question (Partner asking)
+              _ChatBubble(
+                text: widget.question.questionText,
+                isMe: false,
+                isQuestion: true,
+                partnerName: profile?.partnerName ?? 'Partner',
+                partnerAvatar: profile?.partnerAvatarUrl,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
               // 2. My Answer (Right)
               if (myAnswer != null)
@@ -376,6 +350,7 @@ class _ChatBubble extends StatelessWidget {
   final String text;
   final bool isMe;
   final bool isSystem;
+  final bool isQuestion;
   final DateTime? timestamp;
   final String? partnerName;
   final String? partnerAvatar;
@@ -386,6 +361,7 @@ class _ChatBubble extends StatelessWidget {
     required this.text,
     required this.isMe,
     this.isSystem = false,
+    this.isQuestion = false,
     this.timestamp,
     this.partnerName,
     this.partnerAvatar,
@@ -427,14 +403,21 @@ class _ChatBubble extends StatelessWidget {
                   ],
                   Text(
                     text,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      height: 1.4,
-                      color: isMe 
-                        ? (isSystem ? (color ?? ZunoTheme.primary) : ZunoTheme.onPrimary)
-                        : (isSystem ? (color ?? ZunoTheme.onSurface) : ZunoTheme.onSurface),
-                      fontWeight: isSystem ? FontWeight.bold : FontWeight.w500,
-                    ),
+                    style: isQuestion 
+                      ? GoogleFonts.notoSerif(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurface,
+                          height: 1.4,
+                        )
+                      : GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        height: 1.4,
+                        color: isMe 
+                          ? (isSystem ? (color ?? ZunoTheme.primary) : ZunoTheme.onPrimary)
+                          : (isSystem ? (color ?? ZunoTheme.onSurface) : ZunoTheme.onSurface),
+                        fontWeight: isSystem ? FontWeight.bold : FontWeight.w500,
+                      ),
                   ),
                 ],
               ),

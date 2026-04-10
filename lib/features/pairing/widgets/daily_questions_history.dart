@@ -27,7 +27,7 @@ class DailyQuestionsHistory extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 16, top: 8),
           child: Text(
-            'QUESTION HISTORY',
+            'CHAT HISTORY',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -106,7 +106,7 @@ class _HistoryDayItemState extends ConsumerState<_HistoryDayItem> {
             ),
           ),
           subtitle: Text(
-            '${widget.questions.length} questions answered',
+            '${widget.questions.length} messages exchanged',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
