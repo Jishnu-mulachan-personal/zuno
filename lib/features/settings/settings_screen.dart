@@ -162,7 +162,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _InfoTile(
             icon: Icons.translate_rounded,
-            label: 'Zuno AI Language',
+            label: 'Preferred Language',
             value: profile?.preferredLanguage ?? 'English',
             iconBg: ZunoTheme.secondaryContainer,
             iconColor: ZunoTheme.secondary,
@@ -814,7 +814,7 @@ class _LanguageSelectorSheet extends ConsumerWidget {
                   fontWeight: FontWeight.w600,
                   color: ZunoTheme.onSurface)),
           const SizedBox(height: 8),
-          Text('AI insights will be generated in your selected language.',
+          Text('AI insights and Daily Chat questions will be available in your selected language.',
               style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   color: ZunoTheme.onSurfaceVariant.withOpacity(0.7))),

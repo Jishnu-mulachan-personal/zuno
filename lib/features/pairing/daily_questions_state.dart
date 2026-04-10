@@ -8,12 +8,14 @@ class DailyQuestion {
   final String coupleDailyQuestionId;
   final String questionId;
   final String questionText;
+  final Map<String, String>? translations;
   final DateTime assignedDate;
 
   const DailyQuestion({
     required this.coupleDailyQuestionId,
     required this.questionId,
     required this.questionText,
+    this.translations,
     required this.assignedDate,
   });
 
@@ -22,6 +24,7 @@ class DailyQuestion {
       coupleDailyQuestionId: row['couple_daily_question_id'] as String,
       questionId: row['question_id'] as String,
       questionText: row['question_text'] as String,
+      translations: row['translations'] != null ? Map<String, String>.from(row['translations'] as Map) : null,
       assignedDate: DateTime.parse(row['assigned_date'] as String),
     );
   }
@@ -66,6 +69,7 @@ class DailyQuestionsState {
   final List<DailyAnswer> answers;
   final int gameScore;
   final int gameStreak;
+  final String preferredLanguage;
   final bool isLoading;
   final bool isLoadingHistory;
   final String? error;
@@ -75,6 +79,7 @@ class DailyQuestionsState {
     this.answers = const [],
     this.gameScore = 0,
     this.gameStreak = 0,
+    this.preferredLanguage = 'English',
     this.isLoading = false,
     this.isLoadingHistory = false,
     this.error,
@@ -85,6 +90,7 @@ class DailyQuestionsState {
     List<DailyAnswer>? answers,
     int? gameScore,
     int? gameStreak,
+    String? preferredLanguage,
     bool? isLoading,
     bool? isLoadingHistory,
     String? error,
@@ -95,6 +101,7 @@ class DailyQuestionsState {
       answers: answers ?? this.answers,
       gameScore: gameScore ?? this.gameScore,
       gameStreak: gameStreak ?? this.gameStreak,
+      preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       isLoading: isLoading ?? this.isLoading,
       isLoadingHistory: isLoadingHistory ?? this.isLoadingHistory,
       error: clearError ? null : (error ?? this.error),
@@ -206,6 +213,14 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
       final int gameScore = relRow?['game_score'] as int? ?? 0;
       final int gameStreak = relRow?['game_streak'] as int? ?? 0;
 
+      // 1.5. Fetch preferred language
+      final langRow = await supabase
+          .from('user_settings')
+          .select('preferred_language')
+          .eq('user_id', userId)
+          .maybeSingle();
+      final preferredLanguage = langRow?['preferred_language'] as String? ?? 'English';
+
       // 2. Fetch or assign today's questions using RPC
       await supabase.rpc(
         'assign_daily_questions',
@@ -219,7 +234,7 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
       // We'll fetch all assigned questions for this couple
       final historyResponse = await supabase
           .from('couple_daily_questions')
-          .select('id, question_id, assigned_date, daily_questions(question_text)')
+          .select('id, question_id, assigned_date, daily_questions(question_text, translations)')
           .eq('relationship_id', relationshipId)
           .order('assigned_date', ascending: false);
 
@@ -228,6 +243,9 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
           coupleDailyQuestionId: r['id'] as String,
           questionId: r['question_id'] as String,
           questionText: (r['daily_questions'] as Map)['question_text'] as String,
+          translations: (r['daily_questions'] as Map)['translations'] != null 
+              ? Map<String, String>.from((r['daily_questions'] as Map)['translations'] as Map)
+              : null,
           assignedDate: DateTime.parse(r['assigned_date'] as String),
         );
       }).toList();
@@ -252,6 +270,7 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
         answers: answers,
         gameScore: gameScore,
         gameStreak: gameStreak,
+        preferredLanguage: preferredLanguage,
         isLoading: false,
       );
 

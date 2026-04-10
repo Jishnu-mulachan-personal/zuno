@@ -204,6 +204,7 @@ class _QuestionThreadState extends ConsumerState<_QuestionThread> {
   final _answerController = TextEditingController();
   final _commentController = TextEditingController();
   bool _isSubmitting = false;
+  bool _showTranslation = false;
 
   @override
   void dispose() {
@@ -246,11 +247,17 @@ class _QuestionThreadState extends ConsumerState<_QuestionThread> {
             children: [
               // 1. The Question (Partner asking)
               _ChatBubble(
-                text: widget.question.questionText,
+                text: (_showTranslation && widget.question.translations?[widget.state.preferredLanguage] != null)
+                    ? widget.question.translations![widget.state.preferredLanguage]!
+                    : widget.question.questionText,
                 isMe: false,
                 isQuestion: true,
                 partnerName: profile?.partnerName ?? 'Partner',
                 partnerAvatar: profile?.partnerAvatarUrl,
+                showTranslateButton: widget.question.translations?[widget.state.preferredLanguage] != null,
+                isTranslated: _showTranslation,
+                onTranslate: () => setState(() => _showTranslation = !_showTranslation),
+                preferredLanguage: widget.state.preferredLanguage,
               ),
               const SizedBox(height: 24),
 
@@ -356,6 +363,10 @@ class _ChatBubble extends StatelessWidget {
   final String? partnerAvatar;
   final String? emoji;
   final Color? color;
+  final VoidCallback? onTranslate;
+  final bool showTranslateButton;
+  final bool isTranslated;
+  final String? preferredLanguage;
 
   const _ChatBubble({
     required this.text,
@@ -367,6 +378,10 @@ class _ChatBubble extends StatelessWidget {
     this.partnerAvatar,
     this.emoji,
     this.color,
+    this.onTranslate,
+    this.showTranslateButton = false,
+    this.isTranslated = false,
+    this.preferredLanguage,
   });
 
   @override
@@ -419,6 +434,31 @@ class _ChatBubble extends StatelessWidget {
                         fontWeight: isSystem ? FontWeight.bold : FontWeight.w500,
                       ),
                   ),
+                  if (showTranslateButton) ...[
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: onTranslate,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.translate_rounded,
+                            size: 14,
+                            color: ZunoTheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isTranslated ? 'Show Original' : 'Translate',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: ZunoTheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

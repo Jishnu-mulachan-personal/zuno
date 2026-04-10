@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/profile_existence_provider.dart';
 import '../auth/user_repository.dart';
 import '../dashboard/dashboard_state.dart';
+import '../pairing/daily_questions_state.dart';
 import 'profile_image_service.dart';
 
 // ── Settings actions state ────────────────────────────────────────────────────
@@ -151,6 +152,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       });
 
       _ref.invalidate(userProfileProvider);
+      _ref.invalidate(dailyQuestionsProvider); // ADDED
       _ref.read(dashboardProvider.notifier).refreshInsights();
       
       _setSuccess('Language updated to $lang');
