@@ -604,6 +604,10 @@ class _PostCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (post.type == SharedPostType.dailyLog) {
+      return _JournalCard(post: post, isOwn: isOwn);
+    }
+
     return GestureDetector(
       onLongPress: isOwn ? () => _showPostOptions(context, ref) : null,
       child: Container(
@@ -737,6 +741,109 @@ class _PostCard extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => _PostOptionsSheet(post: post),
+    );
+  }
+}
+
+// ─── Journal Card ─────────────────────────────────────────────────────────────
+
+class _JournalCard extends ConsumerWidget {
+  final SharedPost post;
+  final bool isOwn;
+
+  const _JournalCard({required this.post, required this.isOwn});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bgColor = ZunoTheme.tertiary.withValues(alpha: 0.04);
+    final borderColor = ZunoTheme.tertiary.withValues(alpha: 0.1);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: ZunoTheme.tertiary.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                ProfileAvatar(
+                  url: post.avatarUrl,
+                  radius: 19,
+                  name: post.userDisplayName,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.userDisplayName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: ZunoTheme.onSurface,
+                        ),
+                      ),
+                      Text(
+                        '${relativeTime(post.createdAt)} • Partner Journal',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (post.moodEmoji != null)
+                  Text(
+                    post.moodEmoji!,
+                    style: const TextStyle(fontSize: 22),
+                  ),
+              ],
+            ),
+          ),
+          if (post.caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  post.caption,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          if (post.contextTags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: post.contextTags.map((tag) => _TagChip(label: tag)).toList(),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

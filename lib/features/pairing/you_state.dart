@@ -10,6 +10,7 @@ class DailyLog {
   final bool connectionFelt;
   final List<String> contextTags;
   final String? journalNote;
+  final bool shareWithPartner;
 
   DailyLog({
     required this.date,
@@ -18,6 +19,7 @@ class DailyLog {
     required this.connectionFelt,
     required this.contextTags,
     this.journalNote,
+    this.shareWithPartner = false,
   });
 }
 
@@ -105,6 +107,7 @@ final userLogsProvider = FutureProvider<List<DailyLog>>((ref) async {
       connectionFelt: row['connection_felt'] as bool? ?? true,
       contextTags: List<String>.from(row['context_tags'] ?? []),
       journalNote: noteStr,
+      shareWithPartner: row['share_with_partner'] as bool? ?? false,
     );
   }).toList();
 });

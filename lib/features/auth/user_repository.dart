@@ -94,6 +94,7 @@ class UserRepository {
   Future<void> updateUserSettings({
     String? privacyPreference,
     bool? journalNotePrivate,
+    bool? shareJournalWithPartner,
     List<String>? goals,
   }) async {
     final sbUser = _supabase.auth.currentUser;
@@ -103,6 +104,8 @@ class UserRepository {
       'user_id': sbUser.id,
       if (privacyPreference != null) 'privacy_preference': privacyPreference,
       if (journalNotePrivate != null) 'journal_note_private': journalNotePrivate,
+      if (shareJournalWithPartner != null)
+        'share_journal_with_partner': shareJournalWithPartner,
       if (goals != null) 'goals': goals,
     });
   }

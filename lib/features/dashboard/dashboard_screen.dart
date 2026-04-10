@@ -512,29 +512,58 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
                 ),
               ),
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: ZunoTheme.tertiary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.lock_outline_rounded,
-                        size: 12, color: ZunoTheme.tertiary),
-                    const SizedBox(width: 6),
-                    Text(
-                      'PRIVATE & END-TO-END ENCRYPTED',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                        color: ZunoTheme.tertiary,
-                      ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: ZunoTheme.tertiary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.lock_outline_rounded,
+                            size: 12, color: ZunoTheme.tertiary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'PRIVATE',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: ZunoTheme.tertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Share with Partner',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.8),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Transform.scale(
+                        scale: 0.7,
+                        child: Switch(
+                          value: state.shareWithPartner,
+                          onChanged: (val) => ref
+                              .read(dashboardProvider.notifier)
+                              .toggleShareWithPartner(val),
+                          activeColor: ZunoTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               _SaveCheckInButton(

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/encryption_service.dart';
 import 'us_image_service.dart';
 import '../settings/profile_image_service.dart';
 import '../auth/user_repository.dart';
@@ -9,6 +10,7 @@ import '../dashboard/dashboard_state.dart';
 
 
 // ── Model ─────────────────────────────────────────────────────────────────────
+enum SharedPostType { post, dailyLog }
 
 class SharedPost {
   final String id;
@@ -20,6 +22,8 @@ class SharedPost {
   final List<String> contextTags;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final SharedPostType type;
+  final String? moodEmoji;
 
   const SharedPost({
     required this.id,
@@ -31,6 +35,8 @@ class SharedPost {
     required this.contextTags,
     required this.createdAt,
     required this.updatedAt,
+    this.type = SharedPostType.post,
+    this.moodEmoji,
   });
 
 
@@ -62,6 +68,8 @@ class SharedPost {
       contextTags: List<String>.from(row['context_tags'] ?? []),
       createdAt: DateTime.parse(row['created_at'] as String),
       updatedAt: DateTime.parse(row['updated_at'] as String),
+      type: row['type'] == 'daily_log' ? SharedPostType.dailyLog : SharedPostType.post,
+      moodEmoji: row['mood_emoji'] as String?,
     );
   }
 }
@@ -150,7 +158,7 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
     if (userId == null) return [];
 
     try {
-      // Step 1: Resolve relationship_id
+      // Step 1: Resolve relationship members
       final userRow = await supabase
           .from('users')
           .select('relationship_id')
@@ -160,26 +168,48 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
       final relationshipId = userRow?['relationship_id'] as String?;
       if (relationshipId == null) return [];
 
-      // Step 2: Fetch posts with pagination
-      var query = supabase
+      final memberRows = await supabase
+          .from('users')
+          .select('id')
+          .eq('relationship_id', relationshipId);
+      final memberIds = (memberRows as List).map((m) => m['id'] as String).toList();
+
+      // Step 2: Fetch regular posts
+      var postsQuery = supabase
           .from('shared_posts')
           .select('id, user_id, caption, image_url, context_tags, created_at, updated_at')
           .eq('relationship_id', relationshipId);
 
       if (beforeTimestamp != null) {
-        query = query.lt('created_at', beforeTimestamp.toIso8601String());
+        postsQuery = postsQuery.lt('created_at', beforeTimestamp.toIso8601String());
       }
 
-      final rows = await query
+      final postRows = await postsQuery
           .order('created_at', ascending: false)
           .limit(_pageSize);
-      if (rows.isEmpty) return [];
 
-      // Step 3: Fetch display names
-      final authorIds = (rows as List)
-          .map((r) => r['user_id'] as String)
-          .toSet()
-          .toList();
+      // Step 3: Fetch shared daily logs
+      var logsFetchQuery = supabase
+          .from('daily_logs')
+          .select('id, user_id, journal_note, context_tags, created_at, mood_emoji')
+          .eq('share_with_partner', true)
+          .inFilter('user_id', memberIds);
+
+      if (beforeTimestamp != null) {
+        logsFetchQuery = logsFetchQuery.lt('created_at', beforeTimestamp.toIso8601String());
+      }
+
+      final logRows = await logsFetchQuery
+          .order('created_at', ascending: false)
+          .limit(_pageSize);
+
+      if (postRows.isEmpty && logRows.isEmpty) return [];
+
+      // Step 4: Fetch display names for all authors
+      final authorIds = {
+        ...postRows.map((r) => r['user_id'] as String),
+        ...logRows.map((r) => r['user_id'] as String),
+      }.toList();
 
       final nameRows = await supabase
           .from('users')
@@ -194,9 +224,13 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
           ),
       };
 
-      return rows.map((r) {
+      // Step 5: Merge and decrypt
+      final List<SharedPost> allPosts = [];
+
+      // Add regular posts
+      for (final r in postRows) {
         final userData = userDataMap[r['user_id'] as String];
-        return SharedPost(
+        allPosts.add(SharedPost(
           id: r['id'] as String,
           userId: r['user_id'] as String,
           userDisplayName: userData?.$1 ?? 'Partner',
@@ -206,8 +240,76 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
           contextTags: List<String>.from(r['context_tags'] ?? []),
           createdAt: DateTime.parse(r['created_at'] as String),
           updatedAt: DateTime.parse(r['updated_at'] as String),
-        );
-      }).toList();
+          type: SharedPostType.post,
+        ));
+      }
+
+      // Add shared daily logs
+      for (final l in logRows) {
+        final userData = userDataMap[l['user_id'] as String];
+        
+        // Decrypt journal note
+        String decryptedNote = '';
+        if (l['journal_note'] != null) {
+          try {
+            final dynamic jn = l['journal_note'];
+            if (jn is List) {
+              decryptedNote = EncryptionService.decrypt(List<int>.from(jn)) ?? '';
+            } else if (jn is String) {
+              if (jn.startsWith('\\x')) {
+                final hexStr = jn.substring(2);
+                final asciiBytes = <int>[];
+                for (int i = 0; i < hexStr.length; i += 2) {
+                  asciiBytes.add(int.parse(hexStr.substring(i, i + 2), radix: 16));
+                }
+                final inner = String.fromCharCodes(asciiBytes);
+                if (inner.startsWith('[')) {
+                  final stripped = inner.substring(1, inner.length - 1).trim();
+                  if (stripped.isNotEmpty) {
+                    final parsedBytes = stripped.split(',').map((e) => int.parse(e.trim())).toList();
+                    try {
+                      decryptedNote = EncryptionService.decrypt(parsedBytes) ?? '';
+                    } catch (_) {
+                      decryptedNote = String.fromCharCodes(parsedBytes);
+                    }
+                  }
+                } else {
+                  decryptedNote = EncryptionService.decrypt(asciiBytes) ?? '';
+                }
+              } else if (jn.startsWith('[')) {
+                final stripped = jn.substring(1, jn.length - 1).trim();
+                if (stripped.isNotEmpty) {
+                  final codeUnits = stripped.split(',').map((e) => int.parse(e.trim())).toList();
+                  decryptedNote = String.fromCharCodes(codeUnits);
+                }
+              } else {
+                decryptedNote = jn;
+              }
+            }
+          } catch (e) {
+            debugPrint('[SharedPostsNotifier] journal_note decrypt error: $e');
+          }
+        }
+
+        allPosts.add(SharedPost(
+          id: l['id'] as String,
+          userId: l['user_id'] as String,
+          userDisplayName: userData?.$1 ?? 'Partner',
+          avatarUrl: userData?.$2,
+          caption: decryptedNote,
+          imageUrl: null,
+          contextTags: List<String>.from(l['context_tags'] ?? []),
+          createdAt: DateTime.parse(l['created_at'] as String),
+          updatedAt: DateTime.parse(l['created_at'] as String),
+          type: SharedPostType.dailyLog,
+          moodEmoji: l['mood_emoji'] as String?,
+        ));
+      }
+
+      // Sort combined list by createdAt descending
+      allPosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return allPosts.take(_pageSize).toList();
 
     } catch (e) {
       debugPrint('[SharedPostsNotifier] ERROR: $e');

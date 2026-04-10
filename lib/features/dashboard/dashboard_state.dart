@@ -41,11 +41,13 @@ class UserProfile {
     this.relationshipStatus = 'single',
     this.privacyPreference = 'balanced',
     this.journalNotePrivate = false,
+    this.shareJournalWithPartner = false,
     this.goals = const [],
   });
   
   final String privacyPreference;
   final bool journalNotePrivate;
+  final bool shareJournalWithPartner;
   final List<String> goals;
 }
 
@@ -72,7 +74,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     // Fetch current user + their relationship + settings
     final userRow = await supabase
         .from('users')
-        .select('*, user_settings(preferred_language, privacy_preference, journal_note_private, goals), current_relationship:relationships!users_relationship_id_fkey(status, us_photo_url)')
+        .select('*, user_settings(preferred_language, privacy_preference, journal_note_private, share_journal_with_partner, goals), current_relationship:relationships!users_relationship_id_fkey(status, us_photo_url)')
         .eq('id', sbUser.id)
         .maybeSingle();
 
@@ -93,6 +95,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final preferredLanguage = userSettings?['preferred_language'] as String? ?? 'English';
     final privacyPreference = userSettings?['privacy_preference'] as String? ?? 'balanced';
     final journalNotePrivate = userSettings?['journal_note_private'] as bool? ?? false;
+    final shareJournalWithPartner = userSettings?['share_journal_with_partner'] as bool? ?? false;
     final goals = List<String>.from(userSettings?['goals'] ?? []);
     
     // Relationship status from joined table (using the alias)
@@ -182,6 +185,7 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
       relationshipStatus: relationshipStatus,
       privacyPreference: privacyPreference,
       journalNotePrivate: journalNotePrivate,
+      shareJournalWithPartner: shareJournalWithPartner,
       goals: goals,
     );
 
@@ -424,6 +428,7 @@ class DashboardState {
   final String journalNote;
   final String? dailyInsight;
   final bool isLoadingInsight;
+  final bool shareWithPartner;
   final String? cycleInsight;
   final bool isLoadingCycleInsight;
 
@@ -437,6 +442,7 @@ class DashboardState {
     this.journalNote = '',
     this.dailyInsight,
     this.isLoadingInsight = false,
+    this.shareWithPartner = false,
     this.cycleInsight,
     this.isLoadingCycleInsight = false,
   });
@@ -451,6 +457,7 @@ class DashboardState {
     String? journalNote,
     String? dailyInsight,
     bool? isLoadingInsight,
+    bool? shareWithPartner,
     String? cycleInsight,
     bool? isLoadingCycleInsight,
   }) {
@@ -464,6 +471,7 @@ class DashboardState {
       journalNote: journalNote ?? this.journalNote,
       dailyInsight: dailyInsight ?? this.dailyInsight,
       isLoadingInsight: isLoadingInsight ?? this.isLoadingInsight,
+      shareWithPartner: shareWithPartner ?? this.shareWithPartner,
       cycleInsight: cycleInsight ?? this.cycleInsight,
       isLoadingCycleInsight:
           isLoadingCycleInsight ?? this.isLoadingCycleInsight,
@@ -488,6 +496,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           '[DashboardNotifier] profile listener: gender=${profile?.gender}, hasCycleData=${profile?.cycleData != null}');
       if (profile?.gender == 'Female' && profile?.cycleData != null) {
         fetchCycleInsight();
+      }
+      if (profile != null) {
+        state = state.copyWith(shareWithPartner: profile.shareJournalWithPartner);
       }
     }, fireImmediately: true);
   }
@@ -580,6 +591,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     }
     state = state.copyWith(selectedTags: tags);
   }
+  
+  void toggleShareWithPartner(bool val) => state = state.copyWith(shareWithPartner: val);
 
   Future<bool> saveLog() async {
     final sbUser = Supabase.instance.client.auth.currentUser;
@@ -610,6 +623,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         'context_tags': state.selectedTags,
         'log_date': todayStr,
         'is_note_private': isNotePrivate,
+        'share_with_partner': state.shareWithPartner,
         if (state.journalNote.trim().isNotEmpty)
           'journal_note': EncryptionService.encrypt(state.journalNote.trim()),
       });
