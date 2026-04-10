@@ -102,7 +102,7 @@ serve(async (req) => {
     // 4. Generate Insight with Gemini
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash-lite", // Use standard flash model
+      model: "gemini-3.1-flash-lite-preview", // Use standard flash model
       generationConfig: { temperature: 0.8 } 
     });
 

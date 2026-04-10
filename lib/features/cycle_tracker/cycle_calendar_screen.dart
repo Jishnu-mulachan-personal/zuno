@@ -7,6 +7,7 @@ import '../../app_theme.dart';
 import '../../core/theme_provider.dart';
 import '../dashboard/dashboard_state.dart';
 import 'cycle_data_model.dart';
+import '../../shared/widgets/loading_overlay.dart';
 
 class CycleCalendarScreen extends ConsumerStatefulWidget {
   const CycleCalendarScreen({super.key});
@@ -82,131 +83,134 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           historicalPeriods: historyState.historicalPeriods);
     }
 
-    return Scaffold(
-      backgroundColor: ZunoTheme.surface,
-      body: cycleData == null
-          ? const Center(child: Text('No cycle data available.'))
-          : Stack(
-              children: [
-                CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverAppBar(
-                      pinned: true,
-                      title: Text(
-                        'Cycle Calendar',
-                        style: GoogleFonts.notoSerif(
-                          color: ZunoTheme.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 20,
+    return ZunoLoadingOverlay(
+      isLoading: ref.watch(dashboardProvider).isCycleActionLoading,
+      child: Scaffold(
+        backgroundColor: ZunoTheme.surface,
+        body: cycleData == null
+            ? const Center(child: Text('No cycle data available.'))
+            : Stack(
+                children: [
+                  CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      SliverAppBar(
+                        pinned: true,
+                        title: Text(
+                          'Cycle Calendar',
+                          style: GoogleFonts.notoSerif(
+                            color: ZunoTheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 20,
+                          ),
                         ),
-                      ),
-                      centerTitle: true,
-                      backgroundColor: ZunoTheme.onPrimary,
-                      elevation: 0,
-                      leading: IconButton(
-                        icon: Icon(Icons.arrow_back,
-                            color: ZunoTheme.primary),
-                        onPressed: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go('/dashboard');
-                          }
-                        },
-                      ),
-                    ),
-                    if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
-                      SliverToBoxAdapter(
-                        child: _buildConfirmationCard(profile!.id, cycleData),
-                      ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      sliver: SliverToBoxAdapter(
-                        child: TableCalendar(
-                          firstDay: DateTime.utc(2020, 10, 16),
-                          lastDay: DateTime.utc(2030, 3, 14),
-                          focusedDay: _focusedDay,
-                          availableGestures: AvailableGestures
-                              .horizontalSwipe, // Enable vertical scroll to pass through
-                          selectedDayPredicate: (day) =>
-                              isSameDay(_selectedDay, day),
-                          onDaySelected: (selectedDay, focusedDay) {
-                            setState(() {
-                              _selectedDay = selectedDay;
-                              _focusedDay = focusedDay;
-                            });
-                          },
-                          onPageChanged: (focusedDay) {
-                            setState(() => _focusedDay = focusedDay);
-
-                            // Detect if we need to load more history
-                            // If user swiped back to a date earlier than our earliest loaded record
-                            if (historyState.earliestLoaded != null &&
-                                focusedDay.isBefore(historyState.earliestLoaded!
-                                    .subtract(const Duration(days: 30)))) {
-                              ref
-                                  .read(cycleHistoryNotifierProvider(profile!.id)
-                                      .notifier)
-                                  .loadMore();
+                        centerTitle: true,
+                        backgroundColor: ZunoTheme.onPrimary,
+                        elevation: 0,
+                        leading: IconButton(
+                          icon: Icon(Icons.arrow_back,
+                              color: ZunoTheme.primary),
+                          onPressed: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/dashboard');
                             }
                           },
-                          headerStyle: HeaderStyle(
-                            formatButtonVisible: false,
-                            titleCentered: true,
-                            titleTextStyle: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: ZunoTheme.onSurface,
+                        ),
+                      ),
+                      if (cycleData.shouldShowConfirmationCard && !_isSnoozed)
+                        SliverToBoxAdapter(
+                          child: _buildConfirmationCard(profile!.id, cycleData),
+                        ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        sliver: SliverToBoxAdapter(
+                          child: TableCalendar(
+                            firstDay: DateTime.utc(2020, 10, 16),
+                            lastDay: DateTime.utc(2030, 3, 14),
+                            focusedDay: _focusedDay,
+                            availableGestures: AvailableGestures
+                                .horizontalSwipe, // Enable vertical scroll to pass through
+                            selectedDayPredicate: (day) =>
+                                isSameDay(_selectedDay, day),
+                            onDaySelected: (selectedDay, focusedDay) {
+                              setState(() {
+                                _selectedDay = selectedDay;
+                                _focusedDay = focusedDay;
+                              });
+                            },
+                            onPageChanged: (focusedDay) {
+                              setState(() => _focusedDay = focusedDay);
+
+                              // Detect if we need to load more history
+                              // If user swiped back to a date earlier than our earliest loaded record
+                              if (historyState.earliestLoaded != null &&
+                                  focusedDay.isBefore(historyState.earliestLoaded!
+                                      .subtract(const Duration(days: 30)))) {
+                                ref
+                                    .read(cycleHistoryNotifierProvider(profile!.id)
+                                        .notifier)
+                                    .loadMore();
+                              }
+                            },
+                            headerStyle: HeaderStyle(
+                              formatButtonVisible: false,
+                              titleCentered: true,
+                              titleTextStyle: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: ZunoTheme.onSurface,
+                              ),
                             ),
-                          ),
-                          calendarBuilders: CalendarBuilders(
-                            defaultBuilder: (context, day, focusedDay) =>
-                                _buildCalendarDay(day, cycleData!),
-                            selectedBuilder: (context, day, focusedDay) =>
-                                _buildSelectedDay(day, cycleData!),
-                            todayBuilder: (context, day, focusedDay) =>
-                                _buildToday(day, cycleData!),
-                            outsideBuilder: (context, day, focusedDay) =>
-                                _buildOutsideDay(day),
-                          ),
-                          daysOfWeekStyle: DaysOfWeekStyle(
-                            weekdayStyle: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: ZunoTheme.onSurfaceVariant,
+                            calendarBuilders: CalendarBuilders(
+                              defaultBuilder: (context, day, focusedDay) =>
+                                  _buildCalendarDay(day, cycleData!),
+                              selectedBuilder: (context, day, focusedDay) =>
+                                  _buildSelectedDay(day, cycleData!),
+                              todayBuilder: (context, day, focusedDay) =>
+                                  _buildToday(day, cycleData!),
+                              outsideBuilder: (context, day, focusedDay) =>
+                                  _buildOutsideDay(day),
                             ),
-                            weekendStyle: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                            daysOfWeekStyle: DaysOfWeekStyle(
+                              weekdayStyle: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: ZunoTheme.onSurfaceVariant,
+                              ),
+                              weekendStyle: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.only(top: 16, bottom: 32),
-                      sliver: SliverToBoxAdapter(
-                        child: _buildDayDetails(_selectedDay, cycleData, ref.watch(dashboardProvider).cycleInsight),
+                      SliverPadding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 32),
+                        sliver: SliverToBoxAdapter(
+                          child: _buildDayDetails(_selectedDay, cycleData, ref.watch(dashboardProvider).cycleInsight, profile),
+                        ),
+                      ),
+                      _buildHistoryGraph(ref),
+                    ],
+                  ),
+                  if (historyState.isLoading)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: LinearProgressIndicator(
+                        backgroundColor: Colors.transparent,
+                        color: ZunoTheme.primary,
+                        minHeight: 2,
                       ),
                     ),
-                    _buildHistoryGraph(ref),
-                  ],
-                ),
-                if (historyState.isLoading)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: LinearProgressIndicator(
-                      backgroundColor: Colors.transparent,
-                      color: ZunoTheme.primary,
-                      minHeight: 2,
-                    ),
-                  ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -248,7 +252,58 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildDayDetails(DateTime day, CycleData cycle, String? cycleInsight) {
+  Future<void> _confirmDelete(String userId, DateTime day) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ZunoTheme.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Delete mark?', style: GoogleFonts.notoSerif(fontWeight: FontWeight.w600)),
+        content: Text('Are you sure you want to remove this period start date? Your cycle predictions will be updated.', 
+          style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: GoogleFonts.plusJakartaSans(color: ZunoTheme.onSurfaceVariant)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: GoogleFonts.plusJakartaSans(color: Colors.red, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(dashboardProvider.notifier).deleteCycleEntry(userId, day);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Period mark deleted', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: ZunoTheme.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  bool _isPeriodStart(DateTime day, CycleData cycle) {
+    if (isSameDay(day, cycle.lastPeriodDate)) return true;
+    return cycle.historicalPeriods.any((p) => isSameDay(day, p));
+  }
+
+  Widget _buildDayDetails(DateTime day, CycleData cycle, String? cycleInsight, UserProfile? profile) {
     final type = cycle.getDayType(day);
     String title;
     String subtitle;
@@ -414,6 +469,22 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            if (profile != null && _isPeriodStart(day, cycle))
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => _confirmDelete(profile.id, day),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                  label: Text(
+                    'Delete period mark',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.red,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

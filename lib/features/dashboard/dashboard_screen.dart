@@ -7,6 +7,7 @@ import '../../core/theme_provider.dart';
 import '../cycle_tracker/cycle_data_model.dart';
 import 'dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
+import '../../shared/widgets/loading_overlay.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -89,8 +90,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     bool isLoading = false,
     String? error,
   }) {
-    return Stack(
-      children: [
+    return ZunoLoadingOverlay(
+      isLoading: state.isCycleActionLoading,
+      child: Stack(
+        children: [
         CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
@@ -143,6 +146,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           relationshipStatus: relationshipStatus,
         ),
       ],
+    ),
     );
   }
 }

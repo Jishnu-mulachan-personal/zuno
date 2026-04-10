@@ -431,6 +431,7 @@ class DashboardState {
   final bool shareWithPartner;
   final String? cycleInsight;
   final bool isLoadingCycleInsight;
+  final bool isCycleActionLoading;
 
   const DashboardState({
     this.selectedMood,
@@ -445,6 +446,7 @@ class DashboardState {
     this.shareWithPartner = false,
     this.cycleInsight,
     this.isLoadingCycleInsight = false,
+    this.isCycleActionLoading = false,
   });
 
   DashboardState copyWith({
@@ -460,6 +462,7 @@ class DashboardState {
     bool? shareWithPartner,
     String? cycleInsight,
     bool? isLoadingCycleInsight,
+    bool? isCycleActionLoading,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
@@ -475,6 +478,7 @@ class DashboardState {
       cycleInsight: cycleInsight ?? this.cycleInsight,
       isLoadingCycleInsight:
           isLoadingCycleInsight ?? this.isLoadingCycleInsight,
+      isCycleActionLoading: isCycleActionLoading ?? this.isCycleActionLoading,
     );
   }
 }
@@ -503,10 +507,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     }, fireImmediately: true);
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 
   Future<void> fetchDailyInsight({bool force = false}) async {
     if (!force && state.dailyInsight != null) return;
@@ -688,6 +688,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   Future<void> updateCycleStartDate(String userId, DateTime date) async {
     final supabase = Supabase.instance.client;
     final dateStr = date.toIso8601String().split('T')[0];
+    state = state.copyWith(isCycleActionLoading: true);
     try {
       // 1. Update the prediction anchor
       await supabase.from('cycle_data').update({
@@ -709,6 +710,65 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       await fetchCycleInsight(force: true);
     } catch (e) {
       debugPrint('[updateCycleStartDate] Error: $e');
+    } finally {
+      state = state.copyWith(isCycleActionLoading: false);
+    }
+  }
+
+  Future<void> deleteCycleEntry(String userId, DateTime date) async {
+    final supabase = Supabase.instance.client;
+    final dateStr = date.toIso8601String().split('T')[0];
+    state = state.copyWith(isCycleActionLoading: true);
+    try {
+      // 1. Delete from cycle_periods
+      await supabase
+          .from('cycle_periods')
+          .delete()
+          .eq('user_id', userId)
+          .eq('start_date', dateStr);
+
+      // 2. Check if this was the current anchor
+      final profile = ref.read(userProfileProvider).value;
+      if (profile?.cycleData != null) {
+        final currentAnchor = profile!.cycleData!.lastPeriodDate;
+        final isAnchor = currentAnchor.year == date.year &&
+            currentAnchor.month == date.month &&
+            currentAnchor.day == date.day;
+
+        if (isAnchor) {
+          // Fetch the new latest date
+          final remaining = await supabase
+              .from('cycle_periods')
+              .select('start_date')
+              .eq('user_id', userId)
+              .order('start_date', ascending: false)
+              .limit(1)
+              .maybeSingle();
+
+          if (remaining != null) {
+            final newDateStr = remaining['start_date'];
+            await supabase.from('cycle_data').update({
+              'last_period_date': newDateStr,
+              'updated_at': DateTime.now().toIso8601String(),
+            }).eq('user_id', userId);
+          } else {
+            // No more records, disable tracking
+            await supabase.from('cycle_data').update({
+              'is_tracking': false,
+              'updated_at': DateTime.now().toIso8601String(),
+            }).eq('user_id', userId);
+          }
+        }
+      }
+
+      // Refresh data
+      ref.invalidate(userProfileProvider);
+      await fetchCycleInsight(force: true);
+    } catch (e) {
+      debugPrint('[deleteCycleEntry] Error: $e');
+      rethrow;
+    } finally {
+      state = state.copyWith(isCycleActionLoading: false);
     }
   }
 }
