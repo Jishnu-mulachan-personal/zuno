@@ -58,8 +58,16 @@ serve(async (req) => {
       .eq('type', type)
       .single();
 
-    let message = template?.message || "Something new shared with you! 💖";
-    const title = template?.title || "Update from Zuno";
+    let message = template?.message;
+    if (!message) {
+      if (type === 'shared_journal') {
+        message = "Your partner just shared their day with you! Check it out on the Us tab! ✨";
+      } else {
+        message = "Something new shared with you! 💖";
+      }
+    }
+    
+    const title = template?.title || (type === 'shared_journal' ? "New Journal Log! 🌸" : "Update from Zuno");
 
     // Personalize message if it contains placeholders or just prepend/replace
     if (message.includes('Your partner')) {

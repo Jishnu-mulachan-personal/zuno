@@ -660,7 +660,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       // 3. Trigger partner notification
       supabase.functions.invoke(
         'notify_partner',
-        body: {'identifier': identifier},
+        body: {
+          'identifier': identifier,
+          'type': state.shareWithPartner ? 'shared_journal' : 'partner_checkin',
+        },
       ).ignore();
 
       state = state.copyWith(
