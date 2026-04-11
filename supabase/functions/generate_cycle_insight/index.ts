@@ -22,23 +22,22 @@ serve(async (req) => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // 1. Check if we already generated an insight for today (skip if forced)
-    if (!force) {
-      const { data: existingInsight } = await supabaseClient
-        .from('daily_cycle_insights')
-        .select('insight_text')
-        .eq('user_id', userId)
-        .eq('last_generated_at', today)
-        .maybeSingle();
+    // 1. Fetch Last Insight (for context)
+    const { data: lastInsightData } = await supabaseClient
+      .from('daily_cycle_insights')
+      .select('insight_text, last_generated_at')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-      console.log(`[generate_cycle_insight] Existing insight for today: ${existingInsight ? 'FOUND' : 'NOT FOUND'}`);
-
-      if (existingInsight) {
-        return new Response(JSON.stringify({ insight: existingInsight.insight_text }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (!force && lastInsightData?.last_generated_at === today) {
+      console.log(`[generate_cycle_insight] Returning cached insight for today`);
+      return new Response(JSON.stringify({ insight: lastInsightData.insight_text }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+
+    const lastInsight = lastInsightData?.insight_text || "No previous insight available.";
+    const currentFullTime = new Date().toLocaleString();
 
     // 2. Fetch User & Cycle Data
     const { data: userData } = await supabaseClient
@@ -106,10 +105,13 @@ serve(async (req) => {
       generationConfig: { temperature: 0.8 } 
     });
 
- const prompt = `
+    const prompt = `
       You are Zuno, a warm and perceptive companion. 
+      Today's Date: ${today}.
+      Current Time: ${currentFullTime}.
       User: ${userData.display_name}.
       Current Status: ${phase === 'Delayed' ? `Cycle is delayed (Day ${day})` : `Day ${day} (${phase} phase)`}.
+      Last Insight: "${lastInsight}"
       
       [GOAL]
       Provide a 2-sentence "energy forecast" that helps ${userData.display_name} feel in sync with her body today.

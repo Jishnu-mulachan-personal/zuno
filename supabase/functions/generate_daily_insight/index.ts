@@ -31,22 +31,21 @@ serve(async (req) => {
       .single();
     if (!userData) throw new Error("User not found");
 
-    // 2. Refresh Cache? 
-    if (!force) {
-      const today = new Date().toISOString().split('T')[0];
-      const { data: existingInsight } = await supabaseClient
-        .from('daily_insights')
-        .select('insight_text')
-        .eq('user_id', userData.id)
-        .eq('last_generated_at', today)
-        .maybeSingle();
+    // 2. Fetch Last Insight (for context)
+    const { data: lastInsightData } = await supabaseClient
+      .from('daily_insights')
+      .select('insight_text, last_generated_at')
+      .eq('user_id', userData.id)
+      .maybeSingle();
 
-      if (existingInsight) {
-        return new Response(JSON.stringify({ insight: existingInsight.insight_text }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (!force && lastInsightData?.last_generated_at === new Date().toISOString().split('T')[0]) {
+      return new Response(JSON.stringify({ insight: lastInsightData.insight_text }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+
+    const lastInsight = lastInsightData?.insight_text || "No previous insight available.";
+    const currentFullTime = new Date().toLocaleString();
 
     const language = (userData?.user_settings as any)?.preferred_language || 'English';
 
@@ -176,10 +175,12 @@ serve(async (req) => {
    const insightPrompt = `
       You are Zuno, an empathetic AI relationship companion. 
       Today's Date: ${currentDate}.
+      Current Time: ${currentFullTime}.
       User: ${userData.display_name}. 
       Partner: ${partnerData.display_name || 'your partner'}.
       
       [CONTEXT]
+      Last Insight: "${lastInsight}"
       User Status: ${userSummary?.summary_text || 'Stable'} | Moods: ${userMoodContext.length > 0 ? userMoodContext.join(', ') : 'None'} | Journals: ${userJournalContext.length > 0 ? userJournalContext.join(' | ') : 'None'}
       Partner Status: ${relSummary?.summary_text || 'Stable'} | Moods: ${partnerMoodContext.length > 0 ? partnerMoodContext.join(', ') : 'None'} | Journals: ${partnerJournalContext.length > 0 ? partnerJournalContext.join(' | ') : 'None'}
       Biological Energy: ${cycleContext.length > 0 ? cycleContext.join('\n') : 'Typical energy levels.'}
