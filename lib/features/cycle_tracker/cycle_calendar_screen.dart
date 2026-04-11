@@ -706,21 +706,9 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
 
   Widget _buildCalendarDay(DateTime day, CycleData cycle, {bool isToday = false}) {
     final type = cycle.getDayType(day);
-    final prevType = cycle.getDayType(day.subtract(const Duration(days: 1)));
-    final nextType = cycle.getDayType(day.add(const Duration(days: 1)));
-
-    final isConnectedLeft =
-        type != 'normal' && type != 'next_period' && prevType == type;
-    final isConnectedRight =
-        type != 'normal' && type != 'next_period' && nextType == type;
 
     return Container(
-      margin: EdgeInsets.only(
-        top: 4,
-        bottom: 4,
-        left: isConnectedLeft ? 0 : 4,
-        right: isConnectedRight ? 0 : 4,
-      ),
+      margin: const EdgeInsets.all(4),
       decoration: _getBoxDecoration(day, cycle, isToday: isToday),
       alignment: Alignment.center,
       child: Stack(
@@ -800,6 +788,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
       return BoxDecoration(
         color: ZunoTheme.primary,
         shape: BoxShape.circle,
+        border: isToday ? Border.all(color: Colors.black, width: 3) : null,
       );
     }
 
@@ -807,6 +796,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     if (type == 'normal' || type == 'next_period' || type == 'delayed') {
       if (isToday) {
         return BoxDecoration(
+          color: ZunoTheme.primary.withOpacity(0.1),
           border: Border.all(color: ZunoTheme.primary, width: 2),
           shape: BoxShape.circle,
         );
@@ -814,39 +804,38 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
       return null;
     }
 
-    final prevType = cycle.getDayType(day.subtract(const Duration(days: 1)));
-    final nextType = cycle.getDayType(day.add(const Duration(days: 1)));
+    Color fillColor;
+    Color borderColor;
 
-    final isStart = prevType != type;
-    final isEnd = nextType != type;
-
-    Color color;
     if (type == 'period') {
-      color = Colors.red.shade400.withOpacity(0.8);
+      fillColor = Colors.red.shade50;
+      borderColor = Colors.red.shade700;
     } else if (type == 'fertile') {
-      color = Colors.green.shade400.withOpacity(0.8);
+      fillColor = Colors.green.shade50;
+      borderColor = Colors.green.shade700;
     } else if (type == 'maybe_fertile') {
-      color = Colors.green.shade200.withOpacity(0.6);
+      fillColor = Colors.green.shade50.withOpacity(0.5);
+      borderColor = Colors.green.shade300;
     } else {
       return null;
     }
 
     return BoxDecoration(
-      color: color,
-      border: isToday ? Border.all(color: Colors.black, width: 2) : null,
-      borderRadius: BorderRadius.horizontal(
-        left: isStart ? const Radius.circular(20) : Radius.zero,
-        right: isEnd ? const Radius.circular(20) : Radius.zero,
+      color: fillColor,
+      shape: BoxShape.circle,
+      border: Border.all(
+        color: isToday ? ZunoTheme.primary : borderColor,
+        width: isToday ? 3.5 : 2,
       ),
     );
   }
 
   Color _getTextColor(DateTime day, CycleData cycle, {bool isToday = false}) {
     final type = cycle.getDayType(day);
-    if (type == 'period' || type == 'fertile') {
-      return Colors.white;
+    if (type == 'period') {
+      return Colors.red.shade900;
     }
-    if (type == 'maybe_fertile') {
+    if (type == 'fertile' || type == 'maybe_fertile') {
       return Colors.green.shade900;
     }
     if (type == 'delayed' && !isToday) {
