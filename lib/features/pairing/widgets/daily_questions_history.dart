@@ -378,9 +378,9 @@ class _HistoryQuestionTile extends StatelessWidget {
                     question.questionText,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.notoSerif(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.bold,
                       color: ZunoTheme.onSurface,
                     ),
                   ),

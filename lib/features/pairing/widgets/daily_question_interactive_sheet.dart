@@ -267,16 +267,23 @@ class _QuestionThreadState extends ConsumerState<_QuestionThread> {
                   text: myAnswer.answer,
                   isMe: true,
                   timestamp: myAnswer.createdAt,
+                  userAvatar: profile?.avatarUrl,
+                  userName: profile?.displayName,
                 ),
 
               // 3. Partner Answer (Left)
-              if (partnerAnswer != null)
+              if (partnerAnswer != null && myAnswer != null)
                 _ChatBubble(
                   text: partnerAnswer.answer,
                   isMe: false,
                   timestamp: partnerAnswer.createdAt,
                   partnerName: profile?.partnerName ?? 'Partner',
                   partnerAvatar: profile?.partnerAvatarUrl,
+                )
+              else if (partnerAnswer != null && myAnswer == null)
+                _SystemStatus(
+                  icon: Icons.lock_rounded,
+                  text: '${profile?.partnerName ?? "Partner"} has answered! Submit your answer to see theirs.',
                 ),
 
               // 4. Waiting/Review Interaction
@@ -293,6 +300,8 @@ class _QuestionThreadState extends ConsumerState<_QuestionThread> {
                   isSystem: true,
                   emoji: _getReviewEmoji(partnerAnswer.partnerReviewStatus!),
                   color: _getReviewColor(partnerAnswer.partnerReviewStatus!),
+                  userAvatar: profile?.avatarUrl,
+                  userName: profile?.displayName,
                 ),
 
               if (myAnswer != null && myAnswer.partnerReviewStatus != null)
@@ -307,7 +316,7 @@ class _QuestionThreadState extends ConsumerState<_QuestionThread> {
                 ),
 
               // 5. Review Action (If both answered but I haven't reviewed)
-              if (partnerAnswer != null && partnerAnswer.partnerReviewStatus == null) ...[
+              if (myAnswer != null && partnerAnswer != null && partnerAnswer.partnerReviewStatus == null) ...[
                 const SizedBox(height: 24),
                 _ReviewActionView(
                   partnerAnswerId: partnerAnswer.id,
@@ -361,6 +370,8 @@ class _ChatBubble extends StatelessWidget {
   final DateTime? timestamp;
   final String? partnerName;
   final String? partnerAvatar;
+  final String? userAvatar; // NEW
+  final String? userName; // NEW
   final String? emoji;
   final Color? color;
   final VoidCallback? onTranslate;
@@ -376,6 +387,8 @@ class _ChatBubble extends StatelessWidget {
     this.timestamp,
     this.partnerName,
     this.partnerAvatar,
+    this.userAvatar,
+    this.userName,
     this.emoji,
     this.color,
     this.onTranslate,
@@ -418,21 +431,14 @@ class _ChatBubble extends StatelessWidget {
                   ],
                   Text(
                     text,
-                    style: isQuestion 
-                      ? GoogleFonts.notoSerif(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: ZunoTheme.onSurface,
-                          height: 1.4,
-                        )
-                      : GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        height: 1.4,
-                        color: isMe 
-                          ? (isSystem ? (color ?? ZunoTheme.primary) : ZunoTheme.onPrimary)
-                          : (isSystem ? (color ?? ZunoTheme.onSurface) : ZunoTheme.onSurface),
-                        fontWeight: isSystem ? FontWeight.bold : FontWeight.w500,
-                      ),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: isQuestion ? 16 : 15,
+                      fontWeight: isQuestion ? FontWeight.bold : FontWeight.w500,
+                      height: 1.4,
+                      color: isMe 
+                        ? (isSystem ? (color ?? ZunoTheme.primary) : ZunoTheme.onPrimary)
+                        : (isSystem ? (color ?? ZunoTheme.onSurface) : ZunoTheme.onSurface),
+                    ),
                   ),
                   if (showTranslateButton) ...[
                     const SizedBox(height: 8),
@@ -463,7 +469,10 @@ class _ChatBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (isMe) const SizedBox(width: 44), // Offset for avatar balance
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            ProfileAvatar(url: userAvatar, radius: 18, name: userName ?? 'M'),
+          ],
         ],
       ),
     );
