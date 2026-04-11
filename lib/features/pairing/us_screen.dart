@@ -247,6 +247,29 @@ class _PairedHeader extends ConsumerWidget {
                 ),
               ),
             ),
+          // Fallback UI when no photo
+          if (!hasPhoto)
+            Positioned.fill(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_a_photo_rounded,
+                    color: ZunoTheme.primary.withValues(alpha: 0.25),
+                    size: 32,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Add a cover photo of you both ✨',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: ZunoTheme.primary.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           // Content
           Padding(
@@ -309,7 +332,7 @@ class _PairedHeader extends ConsumerWidget {
                         color: Colors.white, size: 14),
                     const SizedBox(width: 6),
                     Text(
-                      'Edit',
+                      hasPhoto ? 'Edit' : 'Add',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,

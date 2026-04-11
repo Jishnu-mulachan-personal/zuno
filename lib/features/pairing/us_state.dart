@@ -506,9 +506,10 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
         usPhotoUrl: newPath,
       );
 
-      // 3. Cleanup old
+      // 3. Cleanup old (best-effort but awaited for reliability)
       if (oldPath != null && oldPath.isNotEmpty) {
-        ProfileImageService.deleteByUrl(ProfileImageService.bucketUsPhotos, oldPath).ignore();
+        debugPrint('[UsPostNotifier.updateUsPhoto] Cleaning up old photo: $oldPath');
+        await ProfileImageService.deleteByUrl(ProfileImageService.bucketUsPhotos, oldPath);
       }
 
       ref.invalidate(userProfileProvider);

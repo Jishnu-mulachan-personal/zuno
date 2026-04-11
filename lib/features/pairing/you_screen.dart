@@ -7,6 +7,7 @@ import '../../core/theme_provider.dart';
 import '../dashboard/dashboard_state.dart';
 import 'you_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
+import '../../shared/widgets/profile_avatar.dart';
 
 class YouScreen extends ConsumerWidget {
   const YouScreen({super.key});
@@ -148,21 +149,21 @@ class _ProfileHero extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 88,
-          height: 88,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: ZunoTheme.primaryGradient,
             boxShadow: [
               BoxShadow(
-                color: ZunoTheme.primary.withOpacity(0.25),
-                blurRadius: 32,
+                color: ZunoTheme.primary.withOpacity(0.15),
+                blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(Icons.person_rounded,
-              color: Colors.white, size: 42),
+          child: ProfileAvatar(
+            url: profile.avatarUrl,
+            radius: 44,
+            name: profile.displayName,
+          ),
         ),
         const SizedBox(height: 16),
         Text(

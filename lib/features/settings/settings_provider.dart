@@ -303,7 +303,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
       // 3. Cleanup old (optional, but good for storage)
       if (profile.avatarUrl != null) {
-        ProfileImageService.deleteByUrl(ProfileImageService.bucketAvatars, profile.avatarUrl!).ignore();
+        debugPrint('[SettingsNotifier.updateAvatar] Cleaning up old avatar: ${profile.avatarUrl}');
+        await ProfileImageService.deleteByUrl(ProfileImageService.bucketAvatars, profile.avatarUrl!);
       }
 
       _ref.invalidate(userProfileProvider);
