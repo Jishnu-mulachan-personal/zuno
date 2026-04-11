@@ -67,6 +67,8 @@ class InsightsScreen extends ConsumerWidget {
                         ],
 
                         const SizedBox(height: 40),
+                        _WeeklyReportSection(),
+                        const SizedBox(height: 24),
                         _ComingSoonSection(),
                         const SizedBox(height: 120),
                       ]),
@@ -81,6 +83,135 @@ class InsightsScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _WeeklyReportSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weeklyInsightAsync = ref.watch(weeklyInsightProvider);
+
+    return weeklyInsightAsync.when(
+      data: (insight) {
+        if (insight == null) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _MoodTrendHeader(
+              title: 'WEEKLY RELATIONSHIP REPORT',
+              subtitle: 'From ${insight.createdAt.toLocal().toString().split(' ')[0]}',
+            ),
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                color: ZunoTheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: ZunoTheme.primary.withOpacity(0.1), width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  _WeeklyInsightCard(
+                    title: 'Pattern',
+                    content: insight.pattern,
+                    icon: Icons.auto_awesome_rounded,
+                    color: ZunoTheme.primary,
+                  ),
+                  _Divider(),
+                  _WeeklyInsightCard(
+                    title: 'Alignment',
+                    content: insight.alignment,
+                    icon: Icons.sync_rounded,
+                    color: ZunoTheme.secondary,
+                  ),
+                  _Divider(),
+                  _WeeklyInsightCard(
+                    title: 'Theme',
+                    content: insight.theme,
+                    icon: Icons.favorite_rounded,
+                    color: ZunoTheme.tertiary,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _WeeklyInsightCard extends StatelessWidget {
+  final String title;
+  final String content;
+  final IconData icon;
+  final Color color;
+
+  const _WeeklyInsightCard({
+    required this.title,
+    required this.content,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title.toUpperCase(),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            content,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              height: 1.6,
+              color: ZunoTheme.onSurface.withOpacity(0.9),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Divider(
+        color: ZunoTheme.outlineVariant.withOpacity(0.1),
+        height: 1,
       ),
     );
   }

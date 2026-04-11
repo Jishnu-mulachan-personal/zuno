@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../dashboard/dashboard_state.dart';
 
 class MoodTrendPoint {
   final DateTime date;
@@ -8,6 +9,60 @@ class MoodTrendPoint {
 
   MoodTrendPoint({required this.date, required this.value, required this.emoji});
 }
+
+class WeeklyInsight {
+  final String id;
+  final String relationshipId;
+  final String pattern;
+  final String alignment;
+  final String theme;
+  final DateTime createdAt;
+
+  WeeklyInsight({
+    required this.id,
+    required this.relationshipId,
+    required this.pattern,
+    required this.alignment,
+    required this.theme,
+    required this.createdAt,
+  });
+
+  factory WeeklyInsight.fromMap(Map<String, dynamic> map) {
+    return WeeklyInsight(
+      id: map['id'],
+      relationshipId: map['relationship_id'],
+      pattern: map['pattern_text'],
+      alignment: map['alignment_text'],
+      theme: map['theme_text'],
+      createdAt: DateTime.parse(map['created_at']),
+    );
+  }
+}
+
+final weeklyInsightProvider = FutureProvider<WeeklyInsight?>((ref) async {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return null;
+
+  // Get relationship_id from the user's profile
+  final profile = await ref.watch(userProfileProvider.future);
+  final relId = profile.relationshipId;
+  if (relId == null) return null;
+
+  try {
+    final response = await Supabase.instance.client
+        .from('weekly_insights')
+        .select('*')
+        .eq('relationship_id', relId)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return WeeklyInsight.fromMap(response);
+  } catch (e) {
+    return null;
+  }
+});
 
 final moodTrendProvider = FutureProvider<List<MoodTrendPoint>>((ref) async {
   final user = Supabase.instance.client.auth.currentUser;

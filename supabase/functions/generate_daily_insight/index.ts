@@ -168,7 +168,7 @@ serve(async (req) => {
     
     // 🔥 FIX: Set standard Flash model and configure temperature for empathy
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-3.1-flash-lite-preview",
       generationConfig: { temperature: 0.7 } 
     });
 
@@ -191,6 +191,7 @@ serve(async (req) => {
       3. BIOLOGICAL NUANCE: Use cycle data to suggest "low-battery" vs "high-battery" activities (e.g., nesting vs. going out).
       4. Privacy & Paraphrasing: DO NOT repeat the partner's words or specific journal entries. Interpret the "vibe" (e.g., stress, fatigue, or joy) and speak to that feeling generally.
       5. TEMPORAL WEIGHTING: Give significantly higher weight to the most recent logs (where date matches Today's Date) over older ones when interpreting their current state.
+      6. SIMPLICITY (CRITICAL): Speak like a normal, supportive friend. Use highly simple, everyday vocabulary (8th-grade reading level). Absolutely NO poetic metaphors, complex phrasing, or therapist jargon.
 
       [TASK]
       Write a warm, 3-sentence insight in ${language}:
