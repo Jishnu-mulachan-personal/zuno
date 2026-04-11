@@ -698,15 +698,17 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       }, onConflict: 'user_id, start_date');
 
       // 2. Synchronize the prediction anchor to the latest record
-      await _syncLastPeriodDate(userId);
+      final changed = await _syncLastPeriodDate(userId);
 
       // Refresh the profile to update cycle calculations
       ref.invalidate(userProfileProvider);
       ref.invalidate(cycleHistoryNotifierProvider(userId));
       ref.invalidate(cycleHistoryProvider);
 
-      // Force regenerate the cycle insight in the background
-      unawaited(fetchCycleInsight(force: true));
+      // Only regenerate insight if the anchor date actually changed
+      if (changed) {
+        unawaited(fetchCycleInsight(force: true));
+      }
     } catch (e) {
       debugPrint('[updateCycleStartDate] Error: $e');
     } finally {
@@ -727,14 +729,16 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           .eq('start_date', dateStr);
 
       // 2. Synchronize the prediction anchor
-      await _syncLastPeriodDate(userId);
+      final changed = await _syncLastPeriodDate(userId);
 
       // Refresh data
       ref.invalidate(userProfileProvider);
       ref.invalidate(cycleHistoryNotifierProvider(userId));
       ref.invalidate(cycleHistoryProvider);
-      // Force regenerate the cycle insight in the background
-      unawaited(fetchCycleInsight(force: true));
+      
+      if (changed) {
+        unawaited(fetchCycleInsight(force: true));
+      }
     } catch (e) {
       debugPrint('[deleteCycleEntry] Error: $e');
       rethrow;
@@ -743,9 +747,20 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     }
   }
 
-  Future<void> _syncLastPeriodDate(String userId) async {
+  Future<bool> _syncLastPeriodDate(String userId) async {
     final supabase = Supabase.instance.client;
     try {
+      // 1. Get current state to detect changes
+      final current = await supabase
+          .from('cycle_data')
+          .select('last_period_date, is_tracking')
+          .eq('user_id', userId)
+          .maybeSingle();
+      
+      final String? oldDate = current?['last_period_date'];
+      final bool? oldTracking = current?['is_tracking'];
+
+      // 2. Get latest record from history
       final latest = await supabase
           .from('cycle_periods')
           .select('start_date')
@@ -756,19 +771,28 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
       if (latest != null) {
         final newDateStr = latest['start_date'];
-        await supabase.from('cycle_data').update({
-          'last_period_date': newDateStr,
-          'updated_at': DateTime.now().toIso8601String(),
-          'is_tracking': true,
-        }).eq('user_id', userId);
-        debugPrint('[_syncLastPeriodDate] Updated anchor to $newDateStr');
+        final bool isChanged = newDateStr != oldDate || oldTracking != true;
+
+        if (isChanged) {
+          await supabase.from('cycle_data').update({
+            'last_period_date': newDateStr,
+            'updated_at': DateTime.now().toIso8601String(),
+            'is_tracking': true,
+          }).eq('user_id', userId);
+          debugPrint('[_syncLastPeriodDate] Updated anchor to $newDateStr');
+        }
+        return isChanged;
       } else {
-        // No more records, disable tracking
-        await supabase.from('cycle_data').update({
-          'is_tracking': false,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('user_id', userId);
-        debugPrint('[_syncLastPeriodDate] No records found. Tracking disabled.');
+        final bool wasTracking = oldTracking ?? false;
+        if (wasTracking) {
+          // No more records, disable tracking
+          await supabase.from('cycle_data').update({
+            'is_tracking': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          }).eq('user_id', userId);
+          debugPrint('[_syncLastPeriodDate] No records found. Tracking disabled.');
+        }
+        return wasTracking; // Changed if it was tracking and now is not
       }
     } catch (e) {
       debugPrint('[_syncLastPeriodDate] Error: $e');
