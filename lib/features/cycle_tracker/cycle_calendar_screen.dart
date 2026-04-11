@@ -298,6 +298,62 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     }
   }
 
+  Future<void> _markAsPeriodStart(String userId, DateTime day) async {
+    final dateStr = '${_getMonthName(day.month)} ${day.day}, ${day.year}';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ZunoTheme.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Mark period start?',
+            style: GoogleFonts.notoSerif(fontWeight: FontWeight.w600)),
+        content: Text(
+            'Are you sure you want to mark $dateStr as the start of your period? This will update your cycle predictions.',
+            style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: GoogleFonts.plusJakartaSans(
+                    color: ZunoTheme.onSurfaceVariant)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Confirm',
+                style: GoogleFonts.plusJakartaSans(
+                    color: ZunoTheme.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref
+            .read(dashboardProvider.notifier)
+            .updateCycleStartDate(userId, day);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Period start logged for $dateStr',
+                style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: ZunoTheme.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   bool _isPeriodStart(DateTime day, CycleData cycle) {
     if (isSameDay(day, cycle.lastPeriodDate)) return true;
     return cycle.historicalPeriods.any((p) => isSameDay(day, p));
@@ -481,6 +537,32 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                       color: Colors.red,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              )
+            else if (profile != null && !day.isAfter(DateTime.now()))
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: ElevatedButton.icon(
+                    onPressed: () => _markAsPeriodStart(profile.id, day),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(
+                      'Cycle start',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ZunoTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
                     ),
                   ),
                 ),

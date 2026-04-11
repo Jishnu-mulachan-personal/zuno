@@ -690,21 +690,20 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     final dateStr = date.toIso8601String().split('T')[0];
     state = state.copyWith(isCycleActionLoading: true);
     try {
-      // 1. Update the prediction anchor
-      await supabase.from('cycle_data').update({
-        'last_period_date': dateStr,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('user_id', userId);
-
-      // 2. Log to history table for future graphing
+      // 1. Log to history table for future graphing
       // Note: UPSERT here handles the case where user changes their mind on the same day
       await supabase.from('cycle_periods').upsert({
         'user_id': userId,
         'start_date': dateStr,
       }, onConflict: 'user_id, start_date');
 
+      // 2. Synchronize the prediction anchor to the latest record
+      await _syncLastPeriodDate(userId);
+
       // Refresh the profile to update cycle calculations
       ref.invalidate(userProfileProvider);
+      ref.invalidate(cycleHistoryNotifierProvider(userId));
+      ref.invalidate(cycleHistoryProvider);
 
       // Force regenerate the cycle insight to reflect the newly logged period date
       await fetchCycleInsight(force: true);
@@ -727,48 +726,52 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           .eq('user_id', userId)
           .eq('start_date', dateStr);
 
-      // 2. Check if this was the current anchor
-      final profile = ref.read(userProfileProvider).value;
-      if (profile?.cycleData != null) {
-        final currentAnchor = profile!.cycleData!.lastPeriodDate;
-        final isAnchor = currentAnchor.year == date.year &&
-            currentAnchor.month == date.month &&
-            currentAnchor.day == date.day;
-
-        if (isAnchor) {
-          // Fetch the new latest date
-          final remaining = await supabase
-              .from('cycle_periods')
-              .select('start_date')
-              .eq('user_id', userId)
-              .order('start_date', ascending: false)
-              .limit(1)
-              .maybeSingle();
-
-          if (remaining != null) {
-            final newDateStr = remaining['start_date'];
-            await supabase.from('cycle_data').update({
-              'last_period_date': newDateStr,
-              'updated_at': DateTime.now().toIso8601String(),
-            }).eq('user_id', userId);
-          } else {
-            // No more records, disable tracking
-            await supabase.from('cycle_data').update({
-              'is_tracking': false,
-              'updated_at': DateTime.now().toIso8601String(),
-            }).eq('user_id', userId);
-          }
-        }
-      }
+      // 2. Synchronize the prediction anchor
+      await _syncLastPeriodDate(userId);
 
       // Refresh data
       ref.invalidate(userProfileProvider);
+      ref.invalidate(cycleHistoryNotifierProvider(userId));
+      ref.invalidate(cycleHistoryProvider);
       await fetchCycleInsight(force: true);
     } catch (e) {
       debugPrint('[deleteCycleEntry] Error: $e');
       rethrow;
     } finally {
       state = state.copyWith(isCycleActionLoading: false);
+    }
+  }
+
+  Future<void> _syncLastPeriodDate(String userId) async {
+    final supabase = Supabase.instance.client;
+    try {
+      final latest = await supabase
+          .from('cycle_periods')
+          .select('start_date')
+          .eq('user_id', userId)
+          .order('start_date', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (latest != null) {
+        final newDateStr = latest['start_date'];
+        await supabase.from('cycle_data').update({
+          'last_period_date': newDateStr,
+          'updated_at': DateTime.now().toIso8601String(),
+          'is_tracking': true,
+        }).eq('user_id', userId);
+        debugPrint('[_syncLastPeriodDate] Updated anchor to $newDateStr');
+      } else {
+        // No more records, disable tracking
+        await supabase.from('cycle_data').update({
+          'is_tracking': false,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('user_id', userId);
+        debugPrint('[_syncLastPeriodDate] No records found. Tracking disabled.');
+      }
+    } catch (e) {
+      debugPrint('[_syncLastPeriodDate] Error: $e');
+      rethrow;
     }
   }
 }
