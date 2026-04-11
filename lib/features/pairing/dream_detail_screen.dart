@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_theme.dart';
+import '../../core/tts_service.dart';
 
 // Dummy data structure for the list and details
 class DreamMilestone {
@@ -68,16 +70,16 @@ final List<DreamModel> mockDreams = [
   ),
 ];
 
-class DreamDetailScreen extends StatefulWidget {
+class DreamDetailScreen extends ConsumerStatefulWidget {
   final String dreamId;
 
   const DreamDetailScreen({super.key, required this.dreamId});
 
   @override
-  State<DreamDetailScreen> createState() => _DreamDetailScreenState();
+  ConsumerState<DreamDetailScreen> createState() => _DreamDetailScreenState();
 }
 
-class _DreamDetailScreenState extends State<DreamDetailScreen> {
+class _DreamDetailScreenState extends ConsumerState<DreamDetailScreen> {
   late DreamModel dream;
 
   @override
@@ -353,13 +355,25 @@ class _AINudgePlaceholder extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Both of you have great energy today, maybe spend 10 minutes looking at house listings!',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    height: 1.4,
-                    color: ZunoTheme.onSurface,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Both of you have great energy today, maybe spend 10 minutes looking at house listings!',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: ZunoTheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _TtsButton(
+                      text: 'Both of you have great energy today, maybe spend 10 minutes looking at house listings!',
+                      color: ZunoTheme.tertiary,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -440,6 +454,45 @@ class _MilestoneTile extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+class _TtsButton extends ConsumerWidget {
+  final String text;
+  final Color color;
+
+  const _TtsButton({
+    required this.text,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ttsState = ref.watch(ttsProvider);
+    final isSpeakingThis = ttsState.isSpeaking && ttsState.currentText == text;
+
+    return GestureDetector(
+      onTap: () => ref.read(ttsProvider.notifier).speak(text),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, anim) => RotationTransition(
+            turns: anim,
+            child: ScaleTransition(scale: anim, child: child),
+          ),
+          child: Icon(
+            isSpeakingThis ? Icons.stop_rounded : Icons.volume_up_rounded,
+            key: ValueKey(isSpeakingThis),
+            color: color,
+            size: 18,
           ),
         ),
       ),

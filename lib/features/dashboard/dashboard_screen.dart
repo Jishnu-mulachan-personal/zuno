@@ -8,6 +8,7 @@ import '../cycle_tracker/cycle_data_model.dart';
 import 'dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
 import '../../shared/widgets/loading_overlay.dart';
+import '../../core/tts_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -855,6 +856,12 @@ class _DynamicCardsSection extends ConsumerWidget {
                         color: Colors.white.withOpacity(0.8),
                       ),
                     ),
+                    const Spacer(),
+                    if (state.dailyInsight != null)
+                      _TtsButton(
+                        text: state.dailyInsight!,
+                        color: Colors.white,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1015,6 +1022,12 @@ class _DashboardSmartCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const Spacer(),
+                    if (insight != null)
+                      _TtsButton(
+                        text: insight!,
+                        color: accentColor,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1448,3 +1461,42 @@ class _ToggleItem extends StatelessWidget {
 }
 
 
+class _TtsButton extends ConsumerWidget {
+  final String text;
+  final Color color;
+
+  const _TtsButton({
+    required this.text,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ttsState = ref.watch(ttsProvider);
+    final isSpeakingThis = ttsState.isSpeaking && ttsState.currentText == text;
+
+    return GestureDetector(
+      onTap: () => ref.read(ttsProvider.notifier).speak(text),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, anim) => RotationTransition(
+            turns: anim,
+            child: ScaleTransition(scale: anim, child: child),
+          ),
+          child: Icon(
+            isSpeakingThis ? Icons.stop_rounded : Icons.volume_up_rounded,
+            key: ValueKey(isSpeakingThis),
+            color: color,
+            size: 18,
+          ),
+        ),
+      ),
+    );
+  }
+}
