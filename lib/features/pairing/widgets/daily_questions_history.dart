@@ -6,46 +6,217 @@ import '../../../app_theme.dart';
 import '../daily_questions_state.dart';
 import 'daily_question_interactive_sheet.dart';
 
-class DailyQuestionsHistory extends ConsumerWidget {
+class DailyQuestionsHistory extends ConsumerStatefulWidget {
   const DailyQuestionsHistory({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DailyQuestionsHistory> createState() => _DailyQuestionsHistoryState();
+}
+
+class _DailyQuestionsHistoryState extends ConsumerState<DailyQuestionsHistory> {
+  bool _isSectionExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(dailyQuestionsProvider);
-    final history = state.questionsByDate;
+    final questionsByDate = state.questionsByDate;
     final today = DateTime.now().toIso8601String().split('T')[0];
     
-    // Remove today from history as it's in the teaser card
-    final historyDates = history.keys.where((d) => d != today).toList()
-      ..sort((a, b) => b.compareTo(a)); // Sort descending by date
+    // Remove today from history
+    final historyDates = questionsByDate.keys.where((d) => d != today).toList()
+      ..sort((a, b) => b.compareTo(a)); 
 
-    if (historyDates.isEmpty) return const SizedBox.shrink();
+    if (historyDates.isEmpty && !state.hasMoreHistory) return const SizedBox.shrink();
+
+    // Grouping by Month/Year
+    final Map<String, List<String>> monthsMap = {};
+    for (var date in historyDates) {
+      final monthKey = _formatMonthYear(date);
+      monthsMap.putIfAbsent(monthKey, () => []).add(date);
+    }
+    
+    final sortedMonthKeys = monthsMap.keys.toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 16, top: 8),
-          child: Text(
-            'CHAT HISTORY',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.2,
-              color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+        GestureDetector(
+          onTap: () => setState(() => _isSectionExpanded = !_isSectionExpanded),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 0, bottom: 16, top: 40),
+            child: Row(
+              children: [
+                Text(
+                  'CHAT HISTORY',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.2,
+                    color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _isSectionExpanded 
+                      ? Icons.keyboard_arrow_up_rounded 
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 14,
+                  color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.3),
+                ),
+                const Spacer(),
+                if (!_isSectionExpanded && sortedMonthKeys.isNotEmpty)
+                  Text(
+                    '${sortedMonthKeys.length} months',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.3),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: historyDates.length,
-          itemBuilder: (ctx, index) {
-            final date = historyDates[index];
-            final questions = history[date]!;
-            return _HistoryDayItem(date: date, questions: questions);
-          },
+        
+        if (_isSectionExpanded) ...[
+          if (state.isLoadingHistory && monthsMap.isEmpty)
+            const Center(child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: CircularProgressIndicator(),
+            ))
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: sortedMonthKeys.length,
+              itemBuilder: (ctx, index) {
+                final monthKey = sortedMonthKeys[index];
+                final datesInMonth = monthsMap[monthKey]!;
+                return _MonthHistoryGroup(
+                  monthLabel: monthKey,
+                  dates: datesInMonth,
+                  isInitiallyExpanded: index == 0, // Auto-expand latest month
+                );
+              },
+            ),
+            
+          if (state.hasMoreHistory)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 24),
+              child: Center(
+                child: TextButton(
+                  onPressed: state.isLoadingMoreHistory 
+                      ? null 
+                      : () => ref.read(dailyQuestionsProvider.notifier).fetchHistoryMore(),
+                  child: state.isLoadingMoreHistory
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          'Load Earlier Months',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: ZunoTheme.primary,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  String _formatMonthYear(String dateStr) {
+    final parts = dateStr.split('-');
+    final dt = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    final months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return '${months[dt.month - 1]} ${dt.year}';
+  }
+}
+
+class _MonthHistoryGroup extends StatefulWidget {
+  final String monthLabel;
+  final List<String> dates;
+  final bool isInitiallyExpanded;
+
+  const _MonthHistoryGroup({
+    required this.monthLabel,
+    required this.dates,
+    this.isInitiallyExpanded = false,
+  });
+
+  @override
+  State<_MonthHistoryGroup> createState() => _MonthHistoryGroupState();
+}
+
+class _MonthHistoryGroupState extends State<_MonthHistoryGroup> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.isInitiallyExpanded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+            child: Row(
+              children: [
+                Text(
+                  widget.monthLabel,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: ZunoTheme.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  color: ZunoTheme.outlineVariant,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    height: 1,
+                    color: ZunoTheme.outlineVariant.withOpacity(0.1),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
+        
+        if (_isExpanded)
+          Consumer(
+            builder: (context, ref, _) {
+              final history = ref.watch(dailyQuestionsProvider).questionsByDate;
+              return Column(
+                children: widget.dates.map((date) {
+                  return _HistoryDayItem(
+                    date: date,
+                    questions: history[date] ?? [],
+                  );
+                }).toList(),
+              );
+            },
+          ),
       ],
     );
   }
@@ -62,15 +233,12 @@ class _HistoryDayItem extends ConsumerStatefulWidget {
 }
 
 class _HistoryDayItemState extends ConsumerState<_HistoryDayItem> {
-  bool _isExpanded = false;
+  bool _isTileExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dailyQuestionsProvider);
     final myId = Supabase.instance.client.auth.currentUser?.id;
-
-    // Logic to calculate progress could go here in the future
-    // for now we just show total count of questions assigned that day.
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -78,7 +246,7 @@ class _HistoryDayItemState extends ConsumerState<_HistoryDayItem> {
         color: ZunoTheme.surfaceContainerLow.withOpacity(0.5),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: ZunoTheme.outlineVariant.withOpacity(_isExpanded ? 0.3 : 0.1),
+          color: ZunoTheme.outlineVariant.withOpacity(_isTileExpanded ? 0.3 : 0.1),
         ),
       ),
       child: Theme(
@@ -86,7 +254,7 @@ class _HistoryDayItemState extends ConsumerState<_HistoryDayItem> {
         child: ExpansionTile(
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
           collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
-          onExpansionChanged: (val) => setState(() => _isExpanded = val),
+          onExpansionChanged: (val) => setState(() => _isTileExpanded = val),
           tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           leading: Container(
             width: 40,
@@ -241,3 +409,4 @@ class _HistoryQuestionTile extends StatelessWidget {
     );
   }
 }
+

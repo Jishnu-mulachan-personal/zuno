@@ -72,6 +72,8 @@ class DailyQuestionsState {
   final String preferredLanguage;
   final bool isLoading;
   final bool isLoadingHistory;
+  final bool isLoadingMoreHistory; // NEW
+  final bool hasMoreHistory; // NEW
   final String? error;
 
   const DailyQuestionsState({
@@ -82,6 +84,8 @@ class DailyQuestionsState {
     this.preferredLanguage = 'English',
     this.isLoading = false,
     this.isLoadingHistory = false,
+    this.isLoadingMoreHistory = false,
+    this.hasMoreHistory = true,
     this.error,
   });
 
@@ -93,6 +97,8 @@ class DailyQuestionsState {
     String? preferredLanguage,
     bool? isLoading,
     bool? isLoadingHistory,
+    bool? isLoadingMoreHistory,
+    bool? hasMoreHistory,
     String? error,
     bool clearError = false,
   }) {
@@ -104,6 +110,8 @@ class DailyQuestionsState {
       preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       isLoading: isLoading ?? this.isLoading,
       isLoadingHistory: isLoadingHistory ?? this.isLoadingHistory,
+      isLoadingMoreHistory: isLoadingMoreHistory ?? this.isLoadingMoreHistory,
+      hasMoreHistory: hasMoreHistory ?? this.hasMoreHistory,
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -145,7 +153,12 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
   RealtimeChannel? _channel;
 
   DailyQuestionsNotifier(this.ref) : super(const DailyQuestionsState()) {
-    refresh();
+    _init();
+  }
+
+  void _init() async {
+    await fetchToday();
+    await fetchHistoryInitial();
   }
 
   @override
@@ -230,15 +243,15 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
         },
       );
 
-      // 3. Fetch History (including today)
-      // We'll fetch all assigned questions for this couple
-      final historyResponse = await supabase
+      // 3. Fetch ONLY TODAY's pairs (question + answer)
+      // This keeps the "Today" card accurate without loading all history
+      final todayResponse = await supabase
           .from('couple_daily_questions')
           .select('id, question_id, assigned_date, daily_questions(question_text, translations)')
           .eq('relationship_id', relationshipId)
-          .order('assigned_date', ascending: false);
+          .eq('assigned_date', todayStr);
 
-      final List<DailyQuestion> allQuestions = (historyResponse as List).map((r) {
+      final List<DailyQuestion> todayQuestions = (todayResponse as List).map((r) {
         return DailyQuestion(
           coupleDailyQuestionId: r['id'] as String,
           questionId: r['question_id'] as String,
@@ -250,24 +263,37 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
         );
       }).toList();
 
-      final questionIds = allQuestions.map((q) => q.coupleDailyQuestionId).toList();
+      final todayQuestionIds = todayQuestions.map((q) => q.coupleDailyQuestionId).toList();
 
-      // 4. Fetch all answers for these questions
-      List<DailyAnswer> answers = [];
-      if (questionIds.isNotEmpty) {
+      // 4. Fetch answers for today only
+      List<DailyAnswer> todayAnswers = [];
+      if (todayQuestionIds.isNotEmpty) {
         final answersResponse = await supabase
             .from('couple_daily_answers')
             .select('*')
-            .inFilter('couple_daily_question_id', questionIds);
+            .inFilter('couple_daily_question_id', todayQuestionIds);
 
-        answers = (answersResponse as List)
+        todayAnswers = (answersResponse as List)
             .map((r) => DailyAnswer.fromRow(r as Map<String, dynamic>))
             .toList();
       }
 
+      // Merge with existing state (to preserve previously loaded history)
+      final Set<String> newIds = todayQuestions.map((q) => q.coupleDailyQuestionId).toSet();
+      final List<DailyQuestion> updatedQuestions = [
+        ...todayQuestions,
+        ...state.questions.where((q) => !newIds.contains(q.coupleDailyQuestionId)),
+      ];
+      
+      final Set<String> newAnswerIds = todayAnswers.map((a) => a.id).toSet();
+      final List<DailyAnswer> updatedAnswers = [
+        ...todayAnswers,
+        ...state.answers.where((a) => !newAnswerIds.contains(a.id)),
+      ];
+
       state = state.copyWith(
-        questions: allQuestions, // Now contains everything
-        answers: answers,
+        questions: updatedQuestions,
+        answers: updatedAnswers,
         gameScore: gameScore,
         gameStreak: gameStreak,
         preferredLanguage: preferredLanguage,
@@ -277,6 +303,128 @@ class DailyQuestionsNotifier extends StateNotifier<DailyQuestionsState> {
     } catch (e) {
       debugPrint('[DailyQuestionsNotifier.fetchToday] Error: $e');
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> fetchHistoryInitial() async {
+    state = state.copyWith(isLoadingHistory: true, clearError: true);
+    final questions = await _fetchHistoryPage();
+    if (questions == null) return;
+
+    final questionIds = questions.map((q) => q.coupleDailyQuestionId).toList();
+    List<DailyAnswer> answers = [];
+    if (questionIds.isNotEmpty) {
+      final supabase = Supabase.instance.client;
+      final answersResponse = await supabase
+          .from('couple_daily_answers')
+          .select('*')
+          .inFilter('couple_daily_question_id', questionIds);
+
+      answers = (answersResponse as List)
+          .map((r) => DailyAnswer.fromRow(r as Map<String, dynamic>))
+          .toList();
+    }
+
+    // Merge with existing (mostly just today's questions)
+    final Set<String> existingIds = state.questions.map((q) => q.coupleDailyQuestionId).toSet();
+    final Set<String> existingAnswerIds = state.answers.map((a) => a.id).toSet();
+
+    state = state.copyWith(
+      questions: [...state.questions, ...questions.where((q) => !existingIds.contains(q.coupleDailyQuestionId))],
+      answers: [...state.answers, ...answers.where((a) => !existingAnswerIds.contains(a.id))],
+      isLoadingHistory: false,
+      hasMoreHistory: questions.length >= 15,
+    );
+  }
+
+  Future<void> fetchHistoryMore() async {
+    if (state.isLoadingMoreHistory || !state.hasMoreHistory || state.questions.isEmpty) return;
+
+    state = state.copyWith(isLoadingMoreHistory: true);
+    
+    // Find the earliest date currently loaded in history (excluding today)
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final historyOnly = state.questions.where((q) => q.assignedDate.toIso8601String().split('T')[0] != todayStr).toList();
+    
+    DateTime? lastDate;
+    if (historyOnly.isNotEmpty) {
+      historyOnly.sort((a, b) => a.assignedDate.compareTo(b.assignedDate));
+      lastDate = historyOnly.first.assignedDate;
+    }
+
+    final questions = await _fetchHistoryPage(beforeDate: lastDate);
+    if (questions == null) {
+      state = state.copyWith(isLoadingMoreHistory: false);
+      return;
+    }
+
+    final questionIds = questions.map((q) => q.coupleDailyQuestionId).toList();
+    List<DailyAnswer> answers = [];
+    if (questionIds.isNotEmpty) {
+      final supabase = Supabase.instance.client;
+      final answersResponse = await supabase
+          .from('couple_daily_answers')
+          .select('*')
+          .inFilter('couple_daily_question_id', questionIds);
+
+      answers = (answersResponse as List)
+          .map((r) => DailyAnswer.fromRow(r as Map<String, dynamic>))
+          .toList();
+    }
+
+    state = state.copyWith(
+      questions: [...state.questions, ...questions],
+      answers: [...state.answers, ...answers],
+      isLoadingMoreHistory: false,
+      hasMoreHistory: questions.length >= 15,
+    );
+  }
+
+  Future<List<DailyQuestion>?> _fetchHistoryPage({DateTime? beforeDate}) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      final userRow = await supabase
+          .from('users')
+          .select('relationship_id')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final relationshipId = userRow?['relationship_id'] as String?;
+      if (relationshipId == null) return [];
+
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+
+      var query = supabase
+          .from('couple_daily_questions')
+          .select('id, question_id, assigned_date, daily_questions(question_text, translations)')
+          .eq('relationship_id', relationshipId)
+          .neq('assigned_date', todayStr); // Exclude today as it's fetched separately
+
+      if (beforeDate != null) {
+        query = query.lt('assigned_date', beforeDate.toIso8601String().split('T')[0]);
+      }
+
+      final response = await query
+          .order('assigned_date', ascending: false)
+          .limit(15);
+
+      return (response as List).map((r) {
+        return DailyQuestion(
+          coupleDailyQuestionId: r['id'] as String,
+          questionId: r['question_id'] as String,
+          questionText: (r['daily_questions'] as Map)['question_text'] as String,
+          translations: (r['daily_questions'] as Map)['translations'] != null 
+              ? Map<String, String>.from((r['daily_questions'] as Map)['translations'] as Map)
+              : null,
+          assignedDate: DateTime.parse(r['assigned_date'] as String),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('[DailyQuestionsNotifier._fetchHistoryPage] Error: $e');
+      return null;
     }
   }
 
