@@ -15,6 +15,7 @@ import '../settings/profile_image_service.dart';
 import '../../shared/widgets/profile_avatar.dart';
 import 'widgets/daily_questions_card.dart';
 import 'widgets/daily_questions_history.dart';
+import 'widgets/our_dreams_section.dart';
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,8 @@ class _UsScreenState extends ConsumerState<UsScreen> {
                             if (isPaired) ...[
                               _PairedHeader(profile: profile),
                               const SizedBox(height: 24),
+                              const OurDreamsSection(),
+                              const SizedBox(height: 28),
                               const DailyQuestionsWidget(),
                               const DailyQuestionsHistory(),
                             ] else ...[
