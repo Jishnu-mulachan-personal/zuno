@@ -705,8 +705,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       ref.invalidate(cycleHistoryNotifierProvider(userId));
       ref.invalidate(cycleHistoryProvider);
 
-      // Force regenerate the cycle insight to reflect the newly logged period date
-      await fetchCycleInsight(force: true);
+      // Force regenerate the cycle insight in the background
+      unawaited(fetchCycleInsight(force: true));
     } catch (e) {
       debugPrint('[updateCycleStartDate] Error: $e');
     } finally {
@@ -733,7 +733,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       ref.invalidate(userProfileProvider);
       ref.invalidate(cycleHistoryNotifierProvider(userId));
       ref.invalidate(cycleHistoryProvider);
-      await fetchCycleInsight(force: true);
+      // Force regenerate the cycle insight in the background
+      unawaited(fetchCycleInsight(force: true));
     } catch (e) {
       debugPrint('[deleteCycleEntry] Error: $e');
       rethrow;
