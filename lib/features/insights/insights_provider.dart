@@ -15,15 +15,19 @@ class WeeklyInsight {
   final String relationshipId;
   final String pattern;
   final String alignment;
+  final Map<String, dynamic>? alignmentData;
   final String theme;
+  final List<dynamic>? patternData;
   final DateTime createdAt;
 
   WeeklyInsight({
     required this.id,
     required this.relationshipId,
     required this.pattern,
+    this.alignmentData,
     required this.alignment,
     required this.theme,
+    this.patternData,
     required this.createdAt,
   });
 
@@ -32,7 +36,9 @@ class WeeklyInsight {
       id: map['id'],
       relationshipId: map['relationship_id'],
       pattern: map['pattern_text'],
+      patternData: map['pattern_data'] as List<dynamic>?,
       alignment: map['alignment_text'],
+      alignmentData: map['alignment_data'] as Map<String, dynamic>?,
       theme: map['theme_text'],
       createdAt: DateTime.parse(map['created_at']),
     );

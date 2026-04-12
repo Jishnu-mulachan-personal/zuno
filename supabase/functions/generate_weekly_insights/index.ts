@@ -133,10 +133,17 @@ serve(async (req) => {
       and translate it into a gentle, supportive observation or suggestion that builds connection without violating privacy.
 
       [OUTPUT FORMAT]
-      Return a JSON object with exactly these three fields:
-      1. "pattern": A structural observation of their week (e.g., moods tied to specific days, or how their moods influenced each other).
-      2. "alignment": How their daily question answers aligned or conflicted, highlighting shared values or areas for conversation.
-      3. "theme": The underlying emotional theme of the week derived from their journals and interactions, stated supportively.
+      Return a JSON object with exactly these fields:
+      1. "pattern_text": A structural observation of their week (e.g., moods tied to specific days).
+      2. "pattern_data": An array of 7 objects representing the days of the week. 
+         CRITICAL: "day" MUST be only the 3-letter day name (e.g., "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"). 
+         DO NOT use dates or month names.
+         Example: [{"day": "Mon", "partnerA": 4, "partnerB": 3}, ...]
+      3. "alignment_text": How their daily question answers aligned or conflicted.
+      4. "alignment_data": An object with 4 categories (Support, Connection, Energy, Romance) containing a score (1-5) for each partner based on their Q&A.
+         Example: {"Support": {"partnerA": 4, "partnerB": 5}, "Connection": {"partnerA": 3, "partnerB": 3}, ...}
+      5. "theme_text": The underlying emotional theme of the week.
+      6. SIMPLICITY (CRITICAL): Speak like a normal, supportive friend. Use highly simple, everyday vocabulary (8th-grade reading level). Absolutely NO poetic metaphors, complex phrasing, or therapist jargon.
 
       Tone: Empathetic, insightful, professional yet warm, like a world-class relationship therapist.
     `;
@@ -150,9 +157,11 @@ serve(async (req) => {
       .from('weekly_insights')
       .insert({
         relationship_id,
-        pattern_text: insights.pattern,
-        alignment_text: insights.alignment,
-        theme_text: insights.theme
+        pattern_text: insights.pattern_text,
+        pattern_data: insights.pattern_data,
+        alignment_text: insights.alignment_text,
+        alignment_data: insights.alignment_data,
+        theme_text: insights.theme_text
       });
 
     if (insertError) throw insertError;

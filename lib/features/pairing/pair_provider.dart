@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../dashboard/dashboard_state.dart';
 
 // ── Token generation helper ─────────────────────────────────────────────────
 
@@ -106,7 +107,8 @@ class ClaimState {
 }
 
 class ClaimNotifier extends StateNotifier<ClaimState> {
-  ClaimNotifier() : super(const ClaimState());
+  final Ref ref;
+  ClaimNotifier(this.ref) : super(const ClaimState());
 
   /// Validates and claims `token`, linking both users under a shared relationship_id.
   Future<bool> claimToken(String token) async {
@@ -123,96 +125,28 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
     try {
       final supabase = Supabase.instance.client;
 
-      // 1. Look up the invite row
-      final invite = await supabase
-          .from('partner_invites')
-          .select('id, created_by, used, expires_at')
-          .eq('token', token)
-          .maybeSingle();
+      // Fetch the current user's profile to get their preferred status
+      final profile = ref.read(userProfileProvider).value;
+      final currentStatus = profile?.relationshipStatus;
 
-      if (invite == null) {
-        state = const ClaimState(
-            status: ClaimStatus.error, message: 'Invite not found');
+      // Call the secure RPC that handles cross-user updates safely
+      final response = await supabase.rpc(
+        'claim_pair_invite',
+        params: {
+          'invite_token': token,
+          'p_status': currentStatus,
+        },
+      );
+
+      final success = (response is Map) ? (response['success'] as bool? ?? false) : false;
+      final message = (response is Map) ? (response['message'] as String? ?? 'Error') : 'Unknown error';
+
+      if (!success) {
+        state = ClaimState(status: ClaimStatus.error, message: message);
         return false;
       }
 
-      final alreadyUsed = (invite['used'] as bool?) ?? false;
-      final expiresAt =
-          DateTime.parse(invite['expires_at'] as String).toLocal();
-
-      if (alreadyUsed) {
-        state = const ClaimState(
-            status: ClaimStatus.error,
-            message: 'Invite already used or expired');
-        return false;
-      }
-      if (DateTime.now().isAfter(expiresAt)) {
-        state = const ClaimState(
-            status: ClaimStatus.error, message: 'Invite has expired');
-        return false;
-      }
-
-      final claimerId = sbUser.id;
-      final creatorId = invite['created_by'] as String;
-
-      if (claimerId == creatorId) {
-        state = const ClaimState(
-            status: ClaimStatus.error,
-            message: 'You cannot pair with yourself');
-        return false;
-      }
-
-      // 3. Find or create the relationships row
-      //    Strategy: use creator's existing relationship_id if they have one,
-      //    otherwise create a new row with partner_a_id = creatorId.
-      final creatorRow = await supabase
-          .from('users')
-          .select('relationship_id')
-          .eq('id', creatorId)
-          .maybeSingle();
-
-      final existingRelId = creatorRow?['relationship_id'] as String?;
-
-      String relationshipId;
-
-      if (existingRelId != null) {
-        // Creator already has a relationship row — update partner_b_id on it
-        await supabase
-            .from('relationships')
-            .update({'partner_b_id': claimerId}).eq('id', existingRelId);
-
-        relationshipId = existingRelId;
-      } else {
-        // No relationship row yet — create one with both partners
-        final inserted = await supabase
-            .from('relationships')
-            .insert({
-              'partner_a_id': creatorId,
-              'partner_b_id': claimerId,
-              'status': 'dating', // sensible default
-            })
-            .select('id')
-            .single();
-
-        relationshipId = inserted['id'] as String;
-      }
-
-      // 4. Point both user rows at the relationship
-      await supabase
-          .from('users')
-          .update({'relationship_id': relationshipId}).eq('id', creatorId);
-
-      await supabase
-          .from('users')
-          .update({'relationship_id': relationshipId}).eq('id', claimerId);
-
-      // 5. Mark invite as used
-      await supabase
-          .from('partner_invites')
-          .update({'used': true, 'used_by': claimerId}).eq('token', token);
-
-      state = const ClaimState(
-          status: ClaimStatus.success, message: 'Paired successfully! 💚');
+      state = ClaimState(status: ClaimStatus.success, message: message);
       return true;
     } catch (e) {
       debugPrint('[claimToken] $e');
@@ -225,5 +159,5 @@ class ClaimNotifier extends StateNotifier<ClaimState> {
 }
 
 final claimProvider = StateNotifierProvider<ClaimNotifier, ClaimState>((ref) {
-  return ClaimNotifier();
+  return ClaimNotifier(ref);
 });

@@ -98,9 +98,12 @@ final userProfileProvider = FutureProvider<UserProfile>((ref) async {
     final shareJournalWithPartner = userSettings?['share_journal_with_partner'] as bool? ?? false;
     final goals = List<String>.from(userSettings?['goals'] ?? []);
     
-    // Relationship status from joined table (using the alias)
+    // 1. Preferred status from users table (Persistent source of truth)
+    final profileStatus = userRow['relationship_status'] as String? ?? 'single';
+
+    // 2. Fallback to joined relations table if needed (optional enrichment)
     final relationshipData = userRow['current_relationship'] as Map<String, dynamic>?;
-    final relationshipStatus = relationshipData?['status'] as String? ?? 'single';
+    final relationshipStatus = profileStatus;
     final usPhotoUrl = relationshipData?['us_photo_url'] as String?;
     
     // Streak data from Users table

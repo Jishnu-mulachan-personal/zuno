@@ -8,6 +8,8 @@ import '../dashboard/dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
 import 'insights_provider.dart';
 
+import '../../shared/widgets/profile_avatar.dart';
+
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
 
@@ -16,7 +18,6 @@ class InsightsScreen extends ConsumerWidget {
     // Watch theme changes to trigger rebuild
     ref.watch(themeProvider);
     final profileAsync = ref.watch(userProfileProvider);
-    final moodTrendAsync = ref.watch(moodTrendProvider);
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
@@ -26,12 +27,6 @@ class InsightsScreen extends ConsumerWidget {
         ),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (profile) {
-          final partnerId = profile.partnerId;
-          final partnerName = profile.partnerName ?? 'Partner';
-          final partnerMoodTrendAsync = partnerId != null 
-              ? ref.watch(partnerMoodTrendProvider(partnerId))
-              : null;
-
           return Stack(
             children: [
               CustomScrollView(
@@ -39,35 +34,11 @@ class InsightsScreen extends ConsumerWidget {
                 slivers: [
                   _InsightsAppBar(),
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        const _MoodTrendHeader(
-                          title: 'YOUR MOOD TREND',
-                          subtitle: 'The last 7 days',
-                        ),
-                        const SizedBox(height: 24),
-                        _MoodChartSection(
-                          moodTrendAsync: moodTrendAsync,
-                          mainColor: ZunoTheme.primary,
-                        ),
-                        
-                        if (partnerId != null && partnerMoodTrendAsync != null) ...[
-                          const SizedBox(height: 48),
-                          _MoodTrendHeader(
-                            title: '${partnerName.toUpperCase()}\'S MOOD TREND',
-                            subtitle: 'Shared logs from this week',
-                          ),
-                          const SizedBox(height: 24),
-                          _MoodChartSection(
-                            moodTrendAsync: partnerMoodTrendAsync,
-                            mainColor: ZunoTheme.secondary,
-                            emptyMessage: 'No logs found for $partnerName this week.',
-                          ),
-                        ],
-
-                        const SizedBox(height: 40),
-                        _WeeklyReportSection(),
+                        const SizedBox(height: 12),
+                        _WeeklyReportSection(profile: profile),
                         const SizedBox(height: 24),
                         _ComingSoonSection(),
                         const SizedBox(height: 120),
@@ -89,6 +60,9 @@ class InsightsScreen extends ConsumerWidget {
 }
 
 class _WeeklyReportSection extends ConsumerWidget {
+  final UserProfile profile;
+  
+  const _WeeklyReportSection({required this.profile});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weeklyInsightAsync = ref.watch(weeklyInsightProvider);
@@ -100,42 +74,67 @@ class _WeeklyReportSection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── MOOD SYNC ──
             _MoodTrendHeader(
-              title: 'WEEKLY RELATIONSHIP REPORT',
-              subtitle: 'From ${insight.createdAt.toLocal().toString().split(' ')[0]}',
+              title: 'THE MOOD SYNC WAVE',
+              subtitle: 'Last 7 days',
             ),
             const SizedBox(height: 24),
-            Container(
-              decoration: BoxDecoration(
-                color: ZunoTheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: ZunoTheme.primary.withOpacity(0.1), width: 1.5),
+            if (insight.patternData != null)
+              Container(
+                height: 320,
+                padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
+                decoration: BoxDecoration(
+                  color: ZunoTheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+                ),
+                child: _MoodSyncWave(data: insight.patternData!, profile: profile),
               ),
-              child: Column(
-                children: [
-                  _WeeklyInsightCard(
-                    title: 'Pattern',
-                    content: insight.pattern,
-                    icon: Icons.auto_awesome_rounded,
-                    color: ZunoTheme.primary,
-                  ),
-                  _Divider(),
-                  _WeeklyInsightCard(
-                    title: 'Alignment',
-                    content: insight.alignment,
-                    icon: Icons.sync_rounded,
-                    color: ZunoTheme.secondary,
-                  ),
-                  _Divider(),
-                  _WeeklyInsightCard(
-                    title: 'Theme',
-                    content: insight.theme,
-                    icon: Icons.favorite_rounded,
-                    color: ZunoTheme.tertiary,
-                  ),
-                  const SizedBox(height: 12),
-                ],
+            const SizedBox(height: 20),
+            _AIInsightContainer(
+              content: insight.pattern,
+              color: ZunoTheme.primary,
+              icon: Icons.auto_awesome_rounded,
+            ),
+
+            const SizedBox(height: 48),
+
+            // ── SHARED VALUES ──
+            _MoodTrendHeader(
+              title: 'SHARED VALUES ALIGNMENT',
+              subtitle: 'Synergy from your Daily Q&A',
+            ),
+            const SizedBox(height: 24),
+            if (insight.alignmentData != null)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: ZunoTheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+                ),
+                child: _SharedValuesRadar(data: insight.alignmentData!),
               ),
+            const SizedBox(height: 20),
+            _AIInsightContainer(
+              content: insight.alignment,
+              color: ZunoTheme.secondary,
+              icon: Icons.sync_rounded,
+            ),
+
+            const SizedBox(height: 48),
+
+            // ── WEEKLY THEME ──
+            _MoodTrendHeader(
+              title: 'WEEKLY THEME',
+              subtitle: 'The emotional current',
+            ),
+            const SizedBox(height: 20),
+            _AIInsightContainer(
+              content: insight.theme,
+              color: ZunoTheme.tertiary,
+              icon: Icons.favorite_rounded,
             ),
           ],
         );
@@ -146,57 +145,324 @@ class _WeeklyReportSection extends ConsumerWidget {
   }
 }
 
-class _WeeklyInsightCard extends StatelessWidget {
-  final String title;
-  final String content;
-  final IconData icon;
+class _MoodSyncWave extends StatelessWidget {
+  final List<dynamic> data;
+  final UserProfile profile;
+
+  const _MoodSyncWave({required this.data, required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        // Legend with avatars
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _AvatarLegendItem(
+              name: 'You',
+              url: profile.avatarUrl,
+              color: ZunoTheme.primary,
+            ),
+            const SizedBox(width: 24),
+            _AvatarLegendItem(
+              name: profile.partnerName ?? 'Partner',
+              url: profile.partnerAvatarUrl,
+              color: ZunoTheme.tertiary,
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Expanded(
+          child: LineChart(
+            LineChartData(
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (value) => FlLine(
+                  color: ZunoTheme.outlineVariant.withOpacity(0.1),
+                  strokeWidth: 1,
+                ),
+              ),
+              minY: 0,
+              maxY: 5.5,
+              titlesData: FlTitlesData(
+                show: true,
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 1,
+                    reservedSize: 36,
+                    getTitlesWidget: (val, meta) {
+                      String label = '';
+                      switch (val.toInt()) {
+                        case 1: label = 'Sad'; break;
+                        case 3: label = 'Calm'; break;
+                        case 5: label = 'Great'; break;
+                      }
+                      if (label.isEmpty) return const SizedBox.shrink();
+                      return Text(
+                        label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (val, meta) {
+                      if (val < 0 || val >= data.length) return const SizedBox.shrink();
+                      final rawDay = data[val.toInt()]['day'] ?? '';
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          _formatDayLabel(rawDay),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    },
+                    reservedSize: 24,
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              lineBarsData: [
+                _buildLine(isPartnerA: true),
+                _buildLine(isPartnerA: false),
+              ],
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (spot) => ZunoTheme.surfaceContainerHigh.withOpacity(0.9),
+                  getTooltipItems: (touchedSpots) {
+                    return touchedSpots.map((spot) {
+                      return LineTooltipItem(
+                        spot.y.toStringAsFixed(1),
+                        GoogleFonts.plusJakartaSans(
+                          color: spot.bar.color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      );
+                    }).toList();
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  LineChartBarData _buildLine({required bool isPartnerA}) {
+    final color = isPartnerA ? ZunoTheme.primary : ZunoTheme.tertiary;
+    return LineChartBarData(
+      spots: data.asMap().entries.map((e) {
+        final val = isPartnerA 
+            ? (e.value['partnerA'] as num).toDouble() 
+            : (e.value['partnerB'] as num).toDouble();
+        return FlSpot(e.key.toDouble(), val);
+      }).toList(),
+      isCurved: true,
+      barWidth: 3,
+      color: color,
+      dotData: const FlDotData(show: false),
+      belowBarData: BarAreaData(
+        show: true,
+        color: color.withOpacity(0.1),
+      ),
+    );
+  }
+
+  String _formatDayLabel(String input) {
+    if (input.isEmpty) return '';
+    
+    // If it's already a 3-letter string, assume it's the short day name (e.g., "Mon")
+    if (input.length == 3) return input;
+
+    try {
+      // Try to parse as a full date (e.g., "2024-04-11")
+      final date = DateTime.parse(input);
+      switch (date.weekday) {
+        case 1: return 'Mon';
+        case 2: return 'Tue';
+        case 3: return 'Wed';
+        case 4: return 'Thu';
+        case 5: return 'Fri';
+        case 6: return 'Sat';
+        case 7: return 'Sun';
+      }
+    } catch (_) {
+      // If parsing fails, it might be "Monday", "Tuesday", etc.
+      if (input.toLowerCase().startsWith('mon')) return 'Mon';
+      if (input.toLowerCase().startsWith('tue')) return 'Tue';
+      if (input.toLowerCase().startsWith('wed')) return 'Wed';
+      if (input.toLowerCase().startsWith('thu')) return 'Thu';
+      if (input.toLowerCase().startsWith('fri')) return 'Fri';
+      if (input.toLowerCase().startsWith('sat')) return 'Sat';
+      if (input.toLowerCase().startsWith('sun')) return 'Sun';
+      
+      // Last resort: just take 3 chars but avoid known month prefixes if possible
+      if (input.length > 3) return input.substring(0, 3);
+    }
+    return input;
+  }
+}
+
+class _SharedValuesRadar extends StatelessWidget {
+  final Map<String, dynamic> data;
+
+  const _SharedValuesRadar({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = data.keys.toList();
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      height: 240,
+      margin: const EdgeInsets.only(top: 24),
+      child: RadarChart(
+        RadarChartData(
+          radarShape: RadarShape.circle,
+          getTitle: (index, angle) {
+            return RadarChartTitle(
+              text: categories[index],
+              angle: angle,
+            );
+          },
+          titleTextStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+          ),
+          tickCount: 5,
+          ticksTextStyle: const TextStyle(color: Colors.transparent),
+          gridBorderData: BorderSide(color: ZunoTheme.outlineVariant.withOpacity(0.1)),
+          dataSets: [
+            _buildRadarSet(isPartnerA: true, categories: categories),
+            _buildRadarSet(isPartnerA: false, categories: categories),
+          ],
+        ),
+      ),
+    );
+  }
+
+  RadarDataSet _buildRadarSet({required bool isPartnerA, required List<String> categories}) {
+    final color = isPartnerA ? ZunoTheme.primary : ZunoTheme.tertiary;
+    return RadarDataSet(
+      fillColor: color.withOpacity(0.2),
+      borderColor: color,
+      entryRadius: 3,
+      dataEntries: categories.map((cat) {
+        final val = isPartnerA 
+            ? (data[cat]['partnerA'] as num).toDouble() 
+            : (data[cat]['partnerB'] as num).toDouble();
+        return RadarEntry(value: val);
+      }).toList(),
+    );
+  }
+}
+
+class _AvatarLegendItem extends StatelessWidget {
+  final String name;
+  final String? url;
   final Color color;
 
-  const _WeeklyInsightCard({
-    required this.title,
-    required this.content,
-    required this.icon,
+  const _AvatarLegendItem({
+    required this.name,
+    this.url,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+          child: ProfileAvatar(url: url, radius: 10, name: name),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          name,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AIInsightContainer extends StatelessWidget {
+  final String content;
+  final Color color;
+  final IconData icon;
+
+  const _AIInsightContainer({
+    required this.content,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: color.withOpacity(0.12)),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
+                margin: const EdgeInsets.only(top: 4),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(width: 12),
-              Text(
-                title.toUpperCase(),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                  color: color,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  content,
+                  style: GoogleFonts.notoSerif(
+                    fontSize: 16,
+                    height: 1.6,
+                    color: ZunoTheme.onSurface.withOpacity(0.9),
+                    fontWeight: FontWeight.w500,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            content,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              height: 1.6,
-              color: ZunoTheme.onSurface.withOpacity(0.9),
-              fontWeight: FontWeight.w500,
-            ),
           ),
         ],
       ),
@@ -204,18 +470,7 @@ class _WeeklyInsightCard extends StatelessWidget {
   }
 }
 
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Divider(
-        color: ZunoTheme.outlineVariant.withOpacity(0.1),
-        height: 1,
-      ),
-    );
-  }
-}
+
 
 class _InsightsAppBar extends StatelessWidget {
   @override
@@ -274,206 +529,6 @@ class _MoodTrendHeader extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-class _MoodChartSection extends StatelessWidget {
-  final AsyncValue<List<MoodTrendPoint>> moodTrendAsync;
-  final Color mainColor;
-  final String emptyMessage;
-
-  const _MoodChartSection({
-    required this.moodTrendAsync,
-    required this.mainColor,
-    this.emptyMessage = 'No logs found for this week.\nKeep checking in to see your trends! ✨',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 320,
-      padding: const EdgeInsets.fromLTRB(16, 32, 24, 16),
-      decoration: BoxDecoration(
-        color: ZunoTheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
-      ),
-      child: moodTrendAsync.when(
-        data: (points) {
-          if (points.isEmpty) {
-            return Center(
-              child: Text(
-                emptyMessage,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
-                ),
-              ),
-            );
-          }
-          return LineChart(_buildChartData(points));
-        },
-        loading: () => Center(
-          child: CircularProgressIndicator(color: mainColor),
-        ),
-        error: (err, _) => Center(child: Text('Error: $err')),
-      ),
-    );
-  }
-
-  LineChartData _buildChartData(List<MoodTrendPoint> points) {
-    // Generate dates for the last 7 days for the X-axis labels
-    final now = DateTime.now();
-    final List<DateTime> last7Days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
-
-    return LineChartData(
-      gridData: FlGridData(
-        show: true,
-        drawVerticalLine: false,
-        getDrawingHorizontalLine: (value) => FlLine(
-          color: ZunoTheme.outlineVariant.withOpacity(0.1),
-          strokeWidth: 1,
-        ),
-      ),
-      titlesData: FlTitlesData(
-        show: true,
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            interval: 1,
-            reservedSize: 42,
-            getTitlesWidget: (value, meta) {
-              String label = '';
-              switch (value.toInt()) {
-                case 1: label = 'Sad'; break;
-                case 3: label = 'Calm'; break;
-                case 5: label = 'Great'; break;
-              }
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  label,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 32,
-            getTitlesWidget: (value, meta) {
-              if (value < 0 || value >= 7) return const SizedBox.shrink();
-              final date = last7Days[value.toInt()];
-              final label = _getWeekdayLabel(date.weekday);
-              final isToday = date.day == now.day && date.month == now.month;
-
-              return Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  label,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
-                    color: isToday
-                        ? ZunoTheme.primary
-                        : ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-      borderData: FlBorderData(show: false),
-      minX: 0,
-      maxX: 6,
-      minY: 0,
-      maxY: 5.5,
-      lineBarsData: [
-        LineChartBarData(
-          spots: points.map((p) {
-              // Map date to index 0-6
-              final dayIndex = 6 - now.difference(p.date).inDays;
-              return FlSpot(dayIndex.toDouble(), p.value);
-          }).toList(),
-          isCurved: true,
-          curveSmoothness: 0.35,
-          gradient: LinearGradient(
-            colors: [mainColor, mainColor.withOpacity(0.7)],
-          ),
-          barWidth: 4,
-          isStrokeCapRound: true,
-          dotData: FlDotData(
-            show: true,
-            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-              radius: 4,
-              color: mainColor,
-              strokeWidth: 2,
-              strokeColor: Colors.white,
-            ),
-          ),
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                mainColor.withOpacity(0.2),
-                mainColor.withOpacity(0.0),
-              ],
-            ),
-          ),
-        ),
-      ],
-      lineTouchData: LineTouchData(
-        touchTooltipData: LineTouchTooltipData(
-          getTooltipColor: (spot) => mainColor.withOpacity(0.8),
-          getTooltipItems: (touchedSpots) {
-            return touchedSpots.map((spot) {
-              return LineTooltipItem(
-                _getMoodLabel(spot.y),
-                GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              );
-            }).toList();
-          },
-        ),
-      ),
-    );
-  }
-
-
-  String _getWeekdayLabel(int weekday) {
-    switch (weekday) {
-      case 1: return 'Mon';
-      case 2: return 'Tue';
-      case 3: return 'Wed';
-      case 4: return 'Thu';
-      case 5: return 'Fri';
-      case 6: return 'Sat';
-      case 7: return 'Sun';
-      default: return '';
-    }
-  }
-
-  String _getMoodLabel(double val) {
-    if (val >= 4.5) return '✨ Amazing';
-    if (val >= 3.5) return '😊 Happy';
-    if (val >= 2.5) return '😌 Calm';
-    if (val >= 1.5) return '😕 Meh';
-    return '😔 Sad';
   }
 }
 

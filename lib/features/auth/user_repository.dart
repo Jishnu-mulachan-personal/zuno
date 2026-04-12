@@ -34,6 +34,7 @@ class UserRepository {
           'gender': gender,
           'date_of_birth': dateOfBirth.toIso8601String(),
           'occupation': occupation,
+          'relationship_status': relationshipStatus, // Persistent status
         });
 
     // 2. Insert relationship details into `relationships`
@@ -75,6 +76,16 @@ class UserRepository {
       if (relationshipDistance != null) 'distance': relationshipDistance,
       if (usPhotoUrl != null) 'us_photo_url': usPhotoUrl,
     }).eq('id', relationshipId);
+
+    // Sync status back to users table if provided
+    if (status != null) {
+      final sbUser = _supabase.auth.currentUser;
+      if (sbUser != null) {
+        await _supabase
+            .from('users')
+            .update({'relationship_status': status}).eq('id', sbUser.id);
+      }
+    }
   }
 
   Future<void> updateUserProfile({
