@@ -28,11 +28,41 @@ class UsScreen extends ConsumerStatefulWidget {
 
 class _UsScreenState extends ConsumerState<UsScreen> {
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _dreamsKey = GlobalKey();
+  final GlobalKey _chatKey = GlobalKey();
+  final GlobalKey _feedKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    // Handle deep-link scrolling
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleDeeplinkScroll();
+    });
+  }
+
+  void _handleDeeplinkScroll() {
+    if (!mounted) return;
+    
+    final section = GoRouterState.of(context).uri.queryParameters['section'];
+    if (section == null) return;
+
+    debugPrint('[UsScreen] Handling deeplink scroll to section: $section');
+
+    GlobalKey? targetKey;
+    if (section == 'dreams') targetKey = _dreamsKey;
+    else if (section == 'chat') targetKey = _chatKey;
+    else if (section == 'feed') targetKey = _feedKey;
+
+    if (targetKey != null && targetKey.currentContext != null) {
+      Scrollable.ensureVisible(
+        targetKey.currentContext!,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutQuart,
+      );
+    }
   }
 
   @override
@@ -84,10 +114,11 @@ class _UsScreenState extends ConsumerState<UsScreen> {
                             if (isPaired) ...[
                               _PairedHeader(profile: profile),
                               const SizedBox(height: 24),
-                              const OurDreamsSection(),
+                              OurDreamsSection(key: _dreamsKey),
                               const SizedBox(height: 28),
-                              const DailyQuestionsWidget(),
+                              DailyQuestionsWidget(key: _chatKey),
                               const DailyQuestionsHistory(),
+                              SizedBox(key: _feedKey, height: 1),
                             ] else ...[
 
                             _PairCard(),

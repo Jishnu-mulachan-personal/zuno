@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
 import '../router.dart';
 import '../features/pairing/us_state.dart';
 import 'package:go_router/go_router.dart';
@@ -78,14 +79,14 @@ class NotificationService {
     // 4. Handle notification clicks when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('Notification clicked (background): ${message.data}');
-      _handleNotificationClick(message.data['type']);
+      _handleNotificationClick(message.data);
     });
 
     // 5. Check if app was opened from a terminated state via notification
     _firebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
         debugPrint('App opened from terminated state via notification: ${message.data}');
-        _handleNotificationClick(message.data['type']);
+        _handleNotificationClick(message.data);
       }
     });
 
@@ -130,13 +131,27 @@ class NotificationService {
 
   void _onDidReceiveNotificationResponse(NotificationResponse response) {
     debugPrint('Notification clicked: ${response.payload}');
-    _handleNotificationClick(response.payload);
+    if (response.payload != null) {
+      try {
+        // We'll try to parse the payload as a JSON map if it looks like one
+        if (response.payload!.startsWith('{')) {
+          final Map<String, dynamic> data = jsonDecode(response.payload!);
+          _handleNotificationClick(data);
+        } else {
+          // Fallback for simple string types
+          _handleNotificationClick({'type': response.payload});
+        }
+      } catch (e) {
+        _handleNotificationClick({'type': response.payload});
+      }
+    }
   }
 
-  void _handleNotificationClick(String? type) {
+  void _handleNotificationClick(Map<String, dynamic> data) {
+    final type = data['type'];
     if (type == null) return;
 
-    debugPrint('Handling notification click of type: $type');
+    debugPrint('Handling notification click of type: $type with data: $data');
 
     final context = rootNavigatorKey.currentContext;
     if (context == null) {
@@ -144,11 +159,40 @@ class NotificationService {
       return;
     }
 
-    if (type == 'shared_post') {
-      _container.read(sharedPostsProvider.notifier).refresh();
-      context.push('/us');
-    } else if (type == 'partner_checkin') {
-      context.push('/dashboard');
+    switch (type) {
+      case 'shared_post':
+      case 'shared_journal':
+        _container.read(sharedPostsProvider.notifier).refresh();
+        context.go('/us?section=feed');
+        break;
+      case 'partner_checkin':
+        context.go('/dashboard');
+        break;
+      case 'daily_insight':
+        context.go('/insights');
+        break;
+      case 'gentle_reminder':
+        context.go('/dashboard');
+        break;
+      case 'daily_question':
+      case 'daily_question_answer':
+      case 'partner_review_submitted':
+        context.go('/us?section=chat');
+        break;
+      case 'cycle_reminder':
+        context.go('/cycle_calendar');
+        break;
+      case 'dream_update':
+        final dreamId = data['dream_id'] ?? data['id'];
+        if (dreamId != null) {
+          context.push('/us/dream/$dreamId');
+        } else {
+          context.go('/us?section=dreams');
+        }
+        break;
+      default:
+        debugPrint('Unknown notification type: $type');
+        context.go('/dashboard');
     }
   }
 

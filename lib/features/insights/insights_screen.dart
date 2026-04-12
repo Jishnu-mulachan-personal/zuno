@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../app_theme.dart';
@@ -10,11 +11,41 @@ import 'insights_provider.dart';
 
 import '../../shared/widgets/profile_avatar.dart';
 
-class InsightsScreen extends ConsumerWidget {
+class InsightsScreen extends ConsumerStatefulWidget {
   const InsightsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InsightsScreen> createState() => _InsightsScreenState();
+}
+
+class _InsightsScreenState extends ConsumerState<InsightsScreen> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _reportKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleDeeplinkScroll();
+    });
+  }
+
+  void _handleDeeplinkScroll() {
+    if (!mounted) return;
+    final section = GoRouterState.of(context).uri.queryParameters['section'];
+    if (section == 'report') {
+      if (_reportKey.currentContext != null) {
+        Scrollable.ensureVisible(
+          _reportKey.currentContext!,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutQuart,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(themeProvider);
     final profileAsync = ref.watch(userProfileProvider);
     final weeklyInsightAsync = ref.watch(weeklyInsightProvider);
@@ -36,6 +67,7 @@ class InsightsScreen extends ConsumerWidget {
               return Stack(
                 children: [
                   CustomScrollView(
+                    controller: _scrollController,
                     physics: const BouncingScrollPhysics(),
                     slivers: [
                       _InsightsAppBar(),
@@ -49,7 +81,9 @@ class InsightsScreen extends ConsumerWidget {
                             const SizedBox(height: 32),
                             if (insight != null) ...[
                               _WeeklyReportSection(
-                                  profile: profile, insight: insight),
+                                  key: _reportKey,
+                                  profile: profile, 
+                                  insight: insight),
                             ] else ...[
                               _ComingSoonSection(),
                             ],
@@ -200,7 +234,11 @@ class _WeeklyReportSection extends ConsumerStatefulWidget {
   final UserProfile profile;
   final WeeklyInsight insight;
 
-  const _WeeklyReportSection({required this.profile, required this.insight});
+  const _WeeklyReportSection({
+    super.key,
+    required this.profile,
+    required this.insight,
+  });
 
   @override
   ConsumerState<_WeeklyReportSection> createState() =>
