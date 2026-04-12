@@ -1207,51 +1207,152 @@ class _InsightsAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 // ── Coming Soon Section ──────────────────────────────────────────────────────
 
-class _ComingSoonSection extends StatelessWidget {
+class _ComingSoonSection extends ConsumerStatefulWidget {
+  const _ComingSoonSection({super.key});
+
+  @override
+  ConsumerState<_ComingSoonSection> createState() => _ComingSoonSectionState();
+}
+
+class _ComingSoonSectionState extends ConsumerState<_ComingSoonSection> {
+  bool _isGenerating = false;
+
+  Future<void> _handleGenerate() async {
+    setState(() => _isGenerating = true);
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Analyzing your connection... ✨',
+              style: GoogleFonts.plusJakartaSans(),
+            ),
+            backgroundColor: ZunoTheme.tertiary,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+      
+      await regenerateWeeklyInsight(ref);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Your first report is ready! 🌸',
+              style: GoogleFonts.plusJakartaSans(),
+            ),
+            backgroundColor: ZunoTheme.tertiary,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate: $e',
+                style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: ZunoTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: ZunoTheme.onSurface.withOpacity(0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: ZunoTheme.primary.withOpacity(0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.auto_awesome_rounded,
-                color: ZunoTheme.primary, size: 26),
+                color: ZunoTheme.primary, size: 28),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Text(
             'Your Insight is Coming',
             style: GoogleFonts.notoSerif(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.w600,
               color: ZunoTheme.onSurface,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
-            'Keep logging your daily check-ins. Your first weekly report will be ready at the end of the week.',
+            'Keep logging your daily check-ins. Your first weekly report will be ready at the end of the week, or you can try generating it now if you have enough data.',
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
+              fontSize: 14,
               color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
               height: 1.6,
             ),
           ),
+          const SizedBox(height: 32),
+          
+          // GENERATE NOW BUTTON
+          TextButton.icon(
+            onPressed: _isGenerating ? null : _handleGenerate,
+            icon: _isGenerating
+                ? SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: ZunoTheme.primary))
+                : Icon(Icons.bolt_rounded,
+                    size: 16, color: ZunoTheme.primary),
+            label: Text(
+              _isGenerating ? 'ANALYZING...' : 'GENERATE ANALYSIS NOW',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: ZunoTheme.primary,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              backgroundColor: ZunoTheme.primary.withOpacity(0.05),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(99),
+                side: BorderSide(
+                    color: ZunoTheme.primary.withOpacity(0.2)),
+              ),
+            ),
+          ),
+          
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: ZunoTheme.surfaceContainerHigh,
+              color: ZunoTheme.surfaceContainerHigh.withOpacity(0.5),
               borderRadius: BorderRadius.circular(99),
             ),
             child: Text(
@@ -1260,7 +1361,7 @@ class _ComingSoonSection extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
-                color: ZunoTheme.primary.withOpacity(0.6),
+                color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
               ),
             ),
           ),
