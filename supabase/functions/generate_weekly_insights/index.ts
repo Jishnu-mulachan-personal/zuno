@@ -165,7 +165,7 @@ serve(async (req) => {
       3. "alignment_text": (LEGACY) Brief Q&A alignment summary.
       4. "alignment_data": Object with Support, Connection, Energy, Romance scores (1-5) for both partners.
       5. "theme_text": The overall emotional theme of the week.
-      6. "mood_harmony_insight": A warm, poetic observation about their synced moods (serif font style message). Mention specific days if relevant (e.g. "peaceful peak on Tuesday").
+      6. "mood_harmony_insight": A warm, simple observation about their synced moods. Mention specific days if relevant (e.g. "peaceful peak on Tuesday").
       7. "vibe_title": A short, evocative title for their current shared state (e.g., "Reflective & Quiet", "High Energy & Fun").
       8. "vibe_text": A paragraph describing the energy between them.
       9. "recommendation": A specific weekend activity suggestion based on their vibe.
@@ -174,7 +174,7 @@ serve(async (req) => {
           - "partner_peaks": Array of Object { "name": string, "peak_moment": string } identifying the happiest moment for each partner.
           - "looking_ahead": A note about a future plan identified from their context (shared posts or answers).
       
-      Tone: Warm, empathetic, premium, supportive. Use simple vocabulary (8th-grade level).
+      Tone: Warm, empathetic, premium, supportive. Use extremely simple, clear, and direct language that anyone can easily read. Avoid complex words or poetic metaphors.
       
       [OUTPUT LANGUAGE]
       IMPORTANT: You must write the entire report (all text fields in JSON) in ${language}.

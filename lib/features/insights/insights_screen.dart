@@ -116,14 +116,14 @@ class _InsightsHeaderSection extends StatelessWidget {
           decoration: BoxDecoration(
             color: ZunoTheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+            border:
+                Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
           ),
           child: Column(
             children: [
               _StatusItem(
                 icon: Icons.calendar_today_rounded,
-                label: 'REPORT GENERATED: $reportDateStr',
+                label: 'INSIGHT GENERATED: $reportDateStr',
                 color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
               ),
               const SizedBox(height: 10),
@@ -134,7 +134,7 @@ class _InsightsHeaderSection extends StatelessWidget {
               const SizedBox(height: 10),
               _StatusItem(
                 icon: Icons.event_repeat_rounded,
-                label: 'NEXT REPORT: $nextDateStr',
+                label: 'NEXT INSIGHT: $nextDateStr',
                 color: ZunoTheme.primary.withOpacity(0.8),
               ),
             ],
@@ -306,8 +306,7 @@ class _WeeklyReportSectionState extends ConsumerState<_WeeklyReportSection> {
               ),
             ),
             style: TextButton.styleFrom(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(99),
                 side: BorderSide(
@@ -396,8 +395,8 @@ class _MoodHarmonyGraph extends StatelessWidget {
           decoration: BoxDecoration(
             color: ZunoTheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+            border:
+                Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
             boxShadow: [
               BoxShadow(
                 color: ZunoTheme.onSurface.withOpacity(0.04),
@@ -427,8 +426,7 @@ class _AITrendInsightCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: ZunoTheme.primary.withOpacity(0.15)),
+        border: Border.all(color: ZunoTheme.primary.withOpacity(0.15)),
         boxShadow: [
           BoxShadow(
             color: ZunoTheme.onSurface.withOpacity(0.04),
@@ -454,8 +452,8 @@ class _AITrendInsightCard extends StatelessWidget {
             child: Text(
               content ??
                   'Your weekly patterns are being analyzed. Keep checking in daily to unlock more insights.',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
+              style: GoogleFonts.notoSerifAhom(
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 height: 1.6,
                 color: ZunoTheme.onSurface,
@@ -590,7 +588,7 @@ class _MoodSyncWave extends StatelessWidget {
       isCurved: true,
       curveSmoothness: 0.4,
       barWidth: isPartnerA ? 3.5 : 2.5,
-      color: isPartnerA ? color : color.withOpacity(0.7),
+      color: color.withOpacity(isPartnerA ? 0.8 : 0.5),
       dotData: const FlDotData(show: false),
       belowBarData: BarAreaData(
         show: true,
@@ -723,9 +721,9 @@ class _SharedVibeCard extends StatelessWidget {
                         insight.vibeTitle ?? 'Steady & Warm',
                         style: GoogleFonts.notoSerif(
                           fontSize: 22,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w400,
                           color: Colors.white,
-                          height: 1.2,
+                          height: 1.6,
                         ),
                       ),
                     ),
@@ -765,8 +763,7 @@ class _RecommendationCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: ZunoTheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+        border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
         boxShadow: [
           BoxShadow(
             color: ZunoTheme.onSurface.withOpacity(0.04),
@@ -801,13 +798,14 @@ class _RecommendationCard extends StatelessWidget {
                     color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   recommendation,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w400,
                     color: ZunoTheme.onSurface,
-                    height: 1.4,
+                    height: 1.6,
                   ),
                 ),
               ],
@@ -905,8 +903,8 @@ class _WeeklyHighlightsSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: ZunoTheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: ZunoTheme.outlineVariant.withOpacity(0.12)),
+              border:
+                  Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.12)),
             ),
             child: Column(
               children: [
@@ -944,7 +942,7 @@ class _WeeklyHighlightsSection extends StatelessWidget {
               subtitle: cycleNote,
               icon: Icons.water_drop_rounded,
               color: ZunoTheme.primary,
-              label: 'NOTED',
+              labelIcon: Icons.check_circle_rounded,
             ),
             const SizedBox(height: 12),
           ],
@@ -979,7 +977,7 @@ class _HighlightCard extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final Color color;
-  final String? label;
+  final IconData? labelIcon;
   final IconData? trailingIcon;
 
   const _HighlightCard({
@@ -987,7 +985,7 @@ class _HighlightCard extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.color,
-    this.label,
+    this.labelIcon,
     this.trailingIcon,
   });
 
@@ -1018,7 +1016,7 @@ class _HighlightCard extends StatelessWidget {
             ),
             child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1032,26 +1030,24 @@ class _HighlightCard extends StatelessWidget {
                     color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w400,
                     color: ZunoTheme.onSurface,
-                    height: 1.4,
+                    height: 1.6,
                   ),
                 ),
               ],
             ),
           ),
-          if (label != null)
-            Text(
-              label!,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: color.withOpacity(0.6),
-              ),
+          if (labelIcon != null)
+            Icon(
+              labelIcon,
+              size: 20,
+              color: color.withOpacity(0.4),
             ),
           if (trailingIcon != null)
             Icon(trailingIcon, color: ZunoTheme.outlineVariant, size: 14),
@@ -1099,7 +1095,7 @@ class _PeakHighlightCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           ProfileAvatar(url: avatarUrl, radius: 19, name: name),
-          const SizedBox(width: 14),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1113,19 +1109,21 @@ class _PeakHighlightCard extends StatelessWidget {
                     color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   moment,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w400,
                     color: ZunoTheme.onSurface,
-                    height: 1.4,
+                    height: 1.6,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(Icons.favorite_rounded, color: color.withOpacity(0.25), size: 20),
+          Icon(Icons.favorite_rounded,
+              color: color.withOpacity(0.25), size: 20),
         ],
       ),
     );
@@ -1153,14 +1151,14 @@ class _InsightsAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       centerTitle: false,
       actions: [
-        IconButton(
-          icon: Icon(Icons.notifications_none_rounded,
-              color: ZunoTheme.onSurfaceVariant),
-          onPressed: () {},
-        ),
-        const SizedBox(width: 8),
-        const ProfileAvatar(radius: 16, name: 'You'),
-        const SizedBox(width: 16),
+        // IconButton(
+        //   icon: Icon(Icons.notifications_none_rounded,
+        //       color: ZunoTheme.onSurfaceVariant),
+        //   onPressed: () {},
+        // ),
+        // const SizedBox(width: 8),
+        // const ProfileAvatar(radius: 16, name: 'You'),
+        // const SizedBox(width: 16),
       ],
     );
   }
@@ -1213,8 +1211,7 @@ class _ComingSoonSection extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: ZunoTheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(99),
