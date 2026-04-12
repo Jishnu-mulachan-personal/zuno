@@ -32,7 +32,7 @@ serve(async (req) => {
 
     const { data: partners, error: partnersError } = await supabaseClient
       .from('users')
-      .select('id, display_name')
+      .select('id, display_name, user_settings(preferred_language)')
       .eq('relationship_id', relationship_id);
 
     if (partnersError || !partners || partners.length < 2) {
@@ -41,13 +41,14 @@ serve(async (req) => {
 
     const partnerIds = partners.map(p => p.id);
     const partnerNames = partners.reduce((acc, p) => ({ ...acc, [p.id]: p.display_name }), {} as Record<string, string>);
+    const language = (partners?.[0] as any)?.user_settings?.preferred_language || 'English';
 
     // 2. Define Date Range (Last 7 Days)
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     // 3. Fetch Data in Parallel
-    const [logsReq, answersReq] = await Promise.all([
+    const [logsReq, answersReq, cyclesReq, periodsReq, postsReq] = await Promise.all([
       // Fetch daily logs (moods & journals)
       supabaseClient
         .from('daily_logs')
@@ -62,6 +63,27 @@ serve(async (req) => {
         .select('*, couple_daily_questions(assigned_date, daily_questions(question_text))')
         .in('user_id', partnerIds)
         .gte('created_at', sevenDaysAgo)
+        .order('created_at', { ascending: true }),
+
+      // Fetch cycle configuration
+      supabaseClient
+        .from('cycle_data')
+        .select('*')
+        .in('user_id', partnerIds),
+
+      // Fetch historical periods
+      supabaseClient
+        .from('cycle_periods')
+        .select('*')
+        .in('user_id', partnerIds)
+        .gte('start_date', sevenDaysAgo.split('T')[0]),
+
+      // Fetch shared posts for context
+      supabaseClient
+        .from('shared_posts')
+        .select('*')
+        .eq('relationship_id', relationship_id)
+        .gte('created_at', sevenDaysAgo)
         .order('created_at', { ascending: true })
     ]);
 
@@ -70,6 +92,9 @@ serve(async (req) => {
 
     const logs = logsReq.data || [];
     const answers = answersReq.data || [];
+    const cycleData = cyclesReq.data || [];
+    const cyclePeriods = periodsReq.data || [];
+    const sharedPosts = postsReq.data || [];
 
     // 4. Process Logs (Decrypt Journals & Structure Moods)
     const processedLogs = await Promise.all(logs.map(async (log) => {
@@ -121,31 +146,38 @@ serve(async (req) => {
 
     const systemPrompt = `
       You are Zuno, a premium relationship psychologist and AI companion. 
-      Your task is to analyze a couple's data from the last 7 days and generate a Weekly Relationship Report.
+      Analyze the couple's data from the last 7 days and generate a Weekly Relationship Report.
       
       [DATA PROVIDED]
       - Daily Moods & Journals: ${JSON.stringify(processedLogs)}
       - Daily Question Answers: ${JSON.stringify(processedAnswers)}
+      - Cycle Info: ${JSON.stringify(cycleData)}
+      - Recent Period Entries: ${JSON.stringify(cyclePeriods)}
+      - Shared Moments (Timeline): ${JSON.stringify(sharedPosts.map((p: any) => ({ caption: p.caption, date: p.created_at })))}
 
       [STRICT PRIVACY DIRECTIVE]
-      CRITICAL: You must NEVER disclose or repeat a partner's private journal content using the exact words they used. 
-      Instead, understand the core sentiment and emotion (e.g., "feeling overwhelmed with work" or "seeking more quality time") 
-      and translate it into a gentle, supportive observation or suggestion that builds connection without violating privacy.
+      NEVER repeat private journal content verbatim. Use it to understand the core sentiment and translate it into supportive observations.
 
       [OUTPUT FORMAT]
       Return a JSON object with exactly these fields:
-      1. "pattern_text": A structural observation of their week (e.g., moods tied to specific days).
-      2. "pattern_data": An array of 7 objects representing the days of the week. 
-         CRITICAL: "day" MUST be only the 3-letter day name (e.g., "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"). 
-         DO NOT use dates or month names.
-         Example: [{"day": "Mon", "partnerA": 4, "partnerB": 3}, ...]
-      3. "alignment_text": How their daily question answers aligned or conflicted.
-      4. "alignment_data": An object with 4 categories (Support, Connection, Energy, Romance) containing a score (1-5) for each partner based on their Q&A.
-         Example: {"Support": {"partnerA": 4, "partnerB": 5}, "Connection": {"partnerA": 3, "partnerB": 3}, ...}
-      5. "theme_text": The underlying emotional theme of the week.
-      6. SIMPLICITY (CRITICAL): Speak like a normal, supportive friend. Use highly simple, everyday vocabulary (8th-grade reading level). Absolutely NO poetic metaphors, complex phrasing, or therapist jargon.
-
-      Tone: Empathetic, insightful, professional yet warm, like a world-class relationship therapist.
+      1. "pattern_text": (LEGACY) General week observation.
+      2. "pattern_data": Array of 7 objects. "day" (3-letter name), "partnerA" (score 1-5), "partnerB" (score 1-5).
+      3. "alignment_text": (LEGACY) Brief Q&A alignment summary.
+      4. "alignment_data": Object with Support, Connection, Energy, Romance scores (1-5) for both partners.
+      5. "theme_text": The overall emotional theme of the week.
+      6. "mood_harmony_insight": A warm, poetic observation about their synced moods (serif font style message). Mention specific days if relevant (e.g. "peaceful peak on Tuesday").
+      7. "vibe_title": A short, evocative title for their current shared state (e.g., "Reflective & Quiet", "High Energy & Fun").
+      8. "vibe_text": A paragraph describing the energy between them.
+      9. "recommendation": A specific weekend activity suggestion based on their vibe.
+      10. "highlights": An object containing:
+          - "cycle_note": If a period was recorded, mention it naturally (e.g., "Luteal phase support needed" or "Period recorded Mon-Wed").
+          - "partner_peaks": Array of Object { "name": string, "peak_moment": string } identifying the happiest moment for each partner.
+          - "looking_ahead": A note about a future plan identified from their context (shared posts or answers).
+      
+      Tone: Warm, empathetic, premium, supportive. Use simple vocabulary (8th-grade level).
+      
+      [OUTPUT LANGUAGE]
+      IMPORTANT: You must write the entire report (all text fields in JSON) in ${language}.
     `;
 
     const result = await model.generateContent(systemPrompt);
@@ -161,7 +193,12 @@ serve(async (req) => {
         pattern_data: insights.pattern_data,
         alignment_text: insights.alignment_text,
         alignment_data: insights.alignment_data,
-        theme_text: insights.theme_text
+        theme_text: insights.theme_text,
+        mood_harmony_insight: insights.mood_harmony_insight,
+        vibe_title: insights.vibe_title,
+        vibe_text: insights.vibe_text,
+        recommendation: insights.recommendation,
+        highlights: insights.highlights
       });
 
     if (insertError) throw insertError;

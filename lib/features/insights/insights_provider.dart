@@ -18,6 +18,11 @@ class WeeklyInsight {
   final Map<String, dynamic>? alignmentData;
   final String theme;
   final List<dynamic>? patternData;
+  final String? moodHarmonyInsight;
+  final String? vibeTitle;
+  final String? vibeText;
+  final String? recommendation;
+  final Map<String, dynamic>? highlights;
   final DateTime createdAt;
 
   WeeklyInsight({
@@ -28,6 +33,11 @@ class WeeklyInsight {
     required this.alignment,
     required this.theme,
     this.patternData,
+    this.moodHarmonyInsight,
+    this.vibeTitle,
+    this.vibeText,
+    this.recommendation,
+    this.highlights,
     required this.createdAt,
   });
 
@@ -40,6 +50,11 @@ class WeeklyInsight {
       alignment: map['alignment_text'],
       alignmentData: map['alignment_data'] as Map<String, dynamic>?,
       theme: map['theme_text'],
+      moodHarmonyInsight: map['mood_harmony_insight'],
+      vibeTitle: map['vibe_title'],
+      vibeText: map['vibe_text'],
+      recommendation: map['recommendation'],
+      highlights: map['highlights'] as Map<String, dynamic>?,
       createdAt: DateTime.parse(map['created_at']),
     );
   }
@@ -127,6 +142,24 @@ Future<List<MoodTrendPoint>> _fetchMoodTrendData(String userId) async {
     return [];
   }
 }
+
+Future<void> regenerateWeeklyInsight(WidgetRef ref) async {
+  try {
+    final profile = await ref.read(userProfileProvider.future);
+    final relId = profile.relationshipId;
+    if (relId == null) throw Exception('No relationship found');
+
+    await Supabase.instance.client.functions.invoke(
+      'generate_weekly_insights', 
+      body: {'relationship_id': relId}
+    );
+    ref.invalidate(weeklyInsightProvider);
+  } catch (e) {
+    print('Error regenerating insight: $e');
+    rethrow;
+  }
+}
+
 
 double _mapMoodToValue(String emoji) {
   switch (emoji) {
