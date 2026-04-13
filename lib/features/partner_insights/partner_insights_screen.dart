@@ -279,11 +279,12 @@ class _PartnerInsightsBody extends ConsumerWidget {
         const SizedBox(height: 8),
 
         // ── Card 1: Phase Navigator ──────────────────────────────────────
-        _CardLabel(label: 'CYCLE STATUS'),
-        const SizedBox(height: 12),
-        _PhaseNavigatorCard(insights: insights),
-
-        const SizedBox(height: 20),
+        if (insights.phase != 'None') ...[
+          _CardLabel(label: 'CYCLE STATUS'),
+          const SizedBox(height: 12),
+          _PhaseNavigatorCard(insights: insights),
+          const SizedBox(height: 20),
+        ],
 
         // ── Card 2: PMS Alert (conditional) ─────────────────────────────
         if (insights.pmsAlert) ...[
@@ -654,7 +655,7 @@ class _TodaysPulseCard extends StatelessWidget {
                 child: Text(
                   partnerName != null
                       ? 'How ${partnerName} feels today'
-                      : 'Her inner weather today',
+                      : 'Their inner weather today',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -946,42 +947,48 @@ class _ObservationCheckInCardState
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: _options.map((opt) {
               final isSelected = _selectedEmoji == opt.emoji;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedEmoji = opt.emoji),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 54,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? ZunoTheme.tertiary.withOpacity(0.12)
-                        : ZunoTheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected
-                          ? ZunoTheme.tertiary
-                          : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(opt.emoji,
-                          style: TextStyle(
-                              fontSize: isSelected ? 26 : 22)),
-                      const SizedBox(height: 4),
-                      Text(
-                        opt.label,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedEmoji = opt.emoji),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? ZunoTheme.tertiary.withOpacity(0.12)
+                            : ZunoTheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
                           color: isSelected
                               ? ZunoTheme.tertiary
-                              : ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                              : Colors.transparent,
+                          width: 1.5,
                         ),
                       ),
-                    ],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(opt.emoji,
+                              style: TextStyle(
+                                  fontSize: isSelected ? 26 : 22)),
+                          const SizedBox(height: 4),
+                          Text(
+                            opt.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? ZunoTheme.tertiary
+                                  : ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               );

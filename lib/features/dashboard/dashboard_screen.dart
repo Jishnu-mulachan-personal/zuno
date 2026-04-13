@@ -949,8 +949,8 @@ class _DynamicCardsSection extends ConsumerWidget {
             padding: EdgeInsets.only(top: 16),
             child: _LoadingSmartCard(),
           ),
-        // ── Partner Insights Card (male users with paired partner) ───────
-        if (gender == 'Male' && hasPartner) ..._buildPartnerInsightsEntries(context, ref),
+        // ── Partner Insights Card (available if paired) ──────────────────
+        if (hasPartner) ..._buildPartnerInsightsEntries(context, ref),
         const SizedBox(height: 16),
         GestureDetector(
           onTap: () {
@@ -1040,7 +1040,7 @@ class _PartnerInsightsDashboardCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Her world today',
+                      'Partner\'s world today',
                       style: GoogleFonts.notoSerif(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -1073,7 +1073,7 @@ class _PartnerInsightsDashboardCard extends StatelessWidget {
             data: (insights) {
               if (insights == null) {
                 return Text(
-                  'Partner has not set up cycle tracking yet.',
+                  'No context from your partner today.',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),

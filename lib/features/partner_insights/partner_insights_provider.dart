@@ -36,8 +36,8 @@ class PartnerInsightsData {
     }
 
     return PartnerInsightsData(
-      cycleDay:        (map['cycle_day'] as num?)?.toInt()       ?? 1,
-      phase:           (map['phase']     as String?)             ?? 'Unknown',
+      cycleDay:        (map['cycle_day'] as num?)?.toInt()       ?? 0,
+      phase:           (map['phase']     as String?)             ?? 'None',
       pmsAlert:        (map['pms_alert'] as bool?)               ?? false,
       daysUntilPeriod: (map['days_until_period'] as num?)?.toInt(),
       summary:         (map['summary']   as String?)             ?? '',
@@ -56,6 +56,7 @@ class PartnerInsightsData {
       case 'Ovulation':    return 'Ovulatory';
       case 'Luteal':       return 'Luteal';
       case 'Delayed':      return 'Delayed';
+      case 'None':         return 'None';
       default:             return phase;
     }
   }
@@ -79,8 +80,8 @@ final partnerInsightsProvider =
     FutureProvider<PartnerInsightsData?>((ref) async {
   final profile = await ref.watch(userProfileProvider.future);
 
-  // Only show for paired male users
-  if (profile.gender != 'Male' || profile.relationshipId == null) return null;
+  // Requirement: Relationship must exist
+  if (profile.relationshipId == null) return null;
 
   debugPrint('[partnerInsightsProvider] Fetching for relationship: ${profile.relationshipId}');
 
