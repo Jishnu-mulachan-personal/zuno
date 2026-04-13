@@ -400,3 +400,6 @@ verify_jwt = false
 
 [functions.unpair_partner]
 verify_jwt = false
+
+[functions.generate_partner_insights]
+verify_jwt = false

@@ -9,6 +9,7 @@ import 'dashboard_state.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
 import '../../shared/widgets/loading_overlay.dart';
 import '../../core/tts_service.dart';
+import '../partner_insights/partner_insights_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -123,6 +124,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     gender: gender,
                     cycleData: cycleData,
                     isLoading: isLoading,
+                    partnerId: partnerId,
+                    hasPartner: hasPartner,
                   ),
                   if (error != null) ...[
                     const SizedBox(height: 20),
@@ -804,12 +807,16 @@ class _DynamicCardsSection extends ConsumerWidget {
   final String? gender;
   final CycleData? cycleData;
   final bool isLoading;
+  final String? partnerId;
+  final bool hasPartner;
 
   const _DynamicCardsSection({
     this.userId,
     this.gender,
     this.cycleData,
     this.isLoading = false,
+    this.partnerId,
+    this.hasPartner = false,
   });
 
   @override
@@ -942,6 +949,8 @@ class _DynamicCardsSection extends ConsumerWidget {
             padding: EdgeInsets.only(top: 16),
             child: _LoadingSmartCard(),
           ),
+        // ── Partner Insights Card (male users with paired partner) ───────
+        if (gender == 'Male' && hasPartner) ..._buildPartnerInsightsEntries(context, ref),
         const SizedBox(height: 16),
         GestureDetector(
           onTap: () {
@@ -964,6 +973,176 @@ class _DynamicCardsSection extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  List<Widget> _buildPartnerInsightsEntries(
+      BuildContext context, WidgetRef ref) {
+    final insightsAsync = ref.watch(partnerInsightsProvider);
+    return [
+      const SizedBox(height: 16),
+      GestureDetector(
+        onTap: () => context.push('/partner-insights'),
+        child: _PartnerInsightsDashboardCard(insightsAsync: insightsAsync),
+      ),
+    ];
+  }
+}
+
+// ── Partner Insights Dashboard Card ─────────────────────────────────────────
+
+class _PartnerInsightsDashboardCard extends StatelessWidget {
+  final AsyncValue<PartnerInsightsData?> insightsAsync;
+  const _PartnerInsightsDashboardCard({required this.insightsAsync});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: ZunoTheme.outlineVariant.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: ZunoTheme.onSurface.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: ZunoTheme.tertiary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.spa_rounded,
+                    color: ZunoTheme.tertiary, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PARTNER INSIGHTS',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: ZunoTheme.tertiary,
+                      ),
+                    ),
+                    Text(
+                      'Her world today',
+                      style: GoogleFonts.notoSerif(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: ZunoTheme.onSurface,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.4), size: 22),
+            ],
+          ),
+          const SizedBox(height: 16),
+          insightsAsync.when(
+            loading: () => LinearProgressIndicator(
+              color: ZunoTheme.tertiary,
+              backgroundColor: ZunoTheme.tertiary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+              minHeight: 3,
+            ),
+            error: (_, __) => Text(
+              'Could not load insights. Tap to retry.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: ZunoTheme.error.withOpacity(0.7),
+              ),
+            ),
+            data: (insights) {
+              if (insights == null) {
+                return Text(
+                  'Partner has not set up cycle tracking yet.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      _DashPhaseChip(
+                        label: insights.phaseLabel,
+                        color: ZunoTheme.tertiary,
+                      ),
+                      if (insights.pmsAlert) ...[
+                        const SizedBox(width: 6),
+                        const _DashPhaseChip(
+                            label: '⚠ PMS', color: Color(0xFFFFB300)),
+                      ],
+                      const Spacer(),
+                      if (insights.lastMoodEmoji != null)
+                        Text(insights.lastMoodEmoji!,
+                            style: const TextStyle(fontSize: 20)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    insights.summary,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: ZunoTheme.onSurfaceVariant.withOpacity(0.75),
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashPhaseChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _DashPhaseChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }
