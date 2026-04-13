@@ -701,106 +701,96 @@ class _SupportAvoidCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Left — Support
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: ZunoTheme.primary.withOpacity(0.06),
-                borderRadius: const BorderRadius.only(
-                  topLeft:     Radius.circular(20),
-                  bottomLeft:  Radius.circular(20),
-                ),
-                border: Border(
-                  top:    BorderSide(
-                      color: ZunoTheme.primary.withOpacity(0.15)),
-                  left:   BorderSide(
-                      color: ZunoTheme.primary.withOpacity(0.15)),
-                  bottom: BorderSide(
-                      color: ZunoTheme.primary.withOpacity(0.15)),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      children: [
+        // Support Block
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: ZunoTheme.primary.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: ZunoTheme.primary.withOpacity(0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.favorite_rounded,
-                          color: ZunoTheme.primary, size: 14),
-                      const SizedBox(width: 6),
-                      Text(
-                        'HOW TO SUPPORT',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          color: ZunoTheme.primary,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: ZunoTheme.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.favorite_rounded,
+                        color: ZunoTheme.primary, size: 16),
                   ),
-                  const SizedBox(height: 12),
-                  ...insights.actionItems.map((item) =>
-                      _BulletItem(text: item, color: ZunoTheme.primary)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'HOW TO SUPPORT',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                      color: ZunoTheme.primary,
+                    ),
+                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 20),
+              ...insights.actionItems.map((item) =>
+                  _BulletItem(text: item, color: ZunoTheme.primary)),
+            ],
           ),
-          const SizedBox(width: 2),
-          // Right — Avoid
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: ZunoTheme.error.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
-                  topRight:    Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-                border: Border(
-                  top:    BorderSide(
-                      color: ZunoTheme.error.withOpacity(0.15)),
-                  right:  BorderSide(
-                      color: ZunoTheme.error.withOpacity(0.15)),
-                  bottom: BorderSide(
-                      color: ZunoTheme.error.withOpacity(0.15)),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        const SizedBox(height: 16),
+        // Avoid Block
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: ZunoTheme.error.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: ZunoTheme.error.withOpacity(0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.block_rounded,
-                          color: ZunoTheme.error, size: 14),
-                      const SizedBox(width: 6),
-                      Text(
-                        'WHAT TO AVOID',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          color: ZunoTheme.error,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: ZunoTheme.error.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.block_rounded,
+                        color: ZunoTheme.error, size: 16),
                   ),
-                  const SizedBox(height: 12),
-                  ...insights.avoidItems.map((item) =>
-                      _BulletItem(text: item, color: ZunoTheme.error)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'WHAT TO AVOID',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                      color: ZunoTheme.error,
+                    ),
+                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 20),
+              ...insights.avoidItems.map((item) =>
+                  _BulletItem(text: item, color: ZunoTheme.error)),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
+
 
 class _BulletItem extends StatelessWidget {
   final String text;
@@ -811,28 +801,28 @@ class _BulletItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 5),
+            padding: const EdgeInsets.only(top: 6),
             child: Container(
-              width: 5,
-              height: 5,
+              width: 6,
+              height: 6,
               decoration:
-                  BoxDecoration(color: color.withOpacity(0.7), shape: BoxShape.circle),
+                  BoxDecoration(color: color.withOpacity(0.4), shape: BoxShape.circle),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               text,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: ZunoTheme.onSurface,
-                height: 1.45,
+                height: 1.5,
               ),
             ),
           ),
@@ -841,6 +831,7 @@ class _BulletItem extends StatelessWidget {
     );
   }
 }
+
 
 // ── Card 5: Observation Check-in ──────────────────────────────────────────────
 
