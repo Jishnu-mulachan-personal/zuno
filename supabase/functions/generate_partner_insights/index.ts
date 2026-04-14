@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+import { generateContentWithFallback } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -178,12 +179,9 @@ serve(async (req) => {
 `;
       }
 
-      // ── Generate with Gemini ──────────────────────────────────────────
-      const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite-preview",
-        generationConfig: { temperature: 0.75, responseMimeType: "application/json" },
-      });
+      // ── Generate with Gemini using fallback logic ────────────────────
+      const temperature = 0.75;
+      const responseMimeType = "application/json";
 
       const prompt = `
 You are Zuno, an empathetic relationship AI. Generate a support guide for a user about their partner, ${partner.display_name} (${partner.gender}).
@@ -214,7 +212,11 @@ Generate a JSON object with these exact fields:
 - Output ONLY valid JSON.
 `;
 
-      const result     = await model.generateContent(prompt);
+      const result = await generateContentWithFallback(
+        Deno.env.get('GEMINI_API_KEY')!,
+        prompt,
+        { temperature, responseMimeType }
+      );
       const rawText    = result.response.text().trim();
       let insightData: Record<string, any>;
       try {

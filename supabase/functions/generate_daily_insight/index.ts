@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
 import { decryptFernet } from "../_shared/fernet.ts";
+import { generateContentWithFallback } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -163,14 +164,8 @@ serve(async (req) => {
       }
     }
 
-    // 5. Generate Insight
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
-    
-    // 🔥 FIX: Set standard Flash model and configure temperature for empathy
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.1-flash-lite-preview",
-      generationConfig: { temperature: 0.7 } 
-    });
+    // 5. Generate Insight using fallback logic
+    const temperature = 0.7;
 
    const insightPrompt = `
       You are Zuno, an empathetic AI relationship companion. 
@@ -201,7 +196,11 @@ serve(async (req) => {
 
       CRITICAL: Be concise and avoid "bot-speak." Output ONLY the 3 sentences.
     `;
-    const insightResult = await model.generateContent(insightPrompt);
+    const insightResult = await generateContentWithFallback(
+      Deno.env.get('GEMINI_API_KEY')!,
+      insightPrompt,
+      { temperature }
+    );
     const insightText = insightResult.response.text().trim().replace(/^"/, "").replace(/"$/, "");
 
     // Persist for "one per day" caching
