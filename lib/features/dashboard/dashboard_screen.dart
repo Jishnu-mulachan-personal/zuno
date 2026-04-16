@@ -214,18 +214,16 @@ class _DashboardAppBar extends StatelessWidget {
 class _MoodOption {
   final String emoji;
   final String label;
-  final Color color;
-  const _MoodOption(this.emoji, this.label, this.color);
+  final IconData icon;
+
+  const _MoodOption(this.emoji, this.label, this.icon);
 }
 
-final _moods = [
-  _MoodOption('✨', 'Amazing', const Color(0xFFF9A825)),
-  _MoodOption('😌', 'Calm', const Color(0xFF26A69A)),
-  _MoodOption('😊', 'Happy', const Color(0xFF43A047)),
-  _MoodOption('😕', 'Meh', const Color(0xFF9E9E9E)),
-  _MoodOption('😔', 'Sad', const Color(0xFF7B8CC8)),
-  _MoodOption('😤', 'Frustrated', const Color(0xFFE64A19)),
-  _MoodOption('😡', 'Angry', const Color(0xFFD32F2F)),
+final _spectrumMoods = [
+  const _MoodOption('😤', 'FRUSTRATED', Icons.cloud_rounded),
+  const _MoodOption('😔', 'TIRED', Icons.nightlight_round),
+  const _MoodOption('😊', 'STEADY', Icons.eco_rounded),
+  const _MoodOption('✨', 'PEACEFUL', Icons.wb_sunny_rounded),
 ];
 
 // ── Daily Check-In ──────────────────────────────────────────────────────────
@@ -248,6 +246,7 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
   late TextEditingController _journalController;
   late FocusNode _journalFocusNode;
   final GlobalKey _saveButtonKey = GlobalKey();
+  double _sliderValue = 3.0; // Default to peaceful
 
   @override
   void initState() {
@@ -290,98 +289,26 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
     });
 
     final state = widget.state;
-    final partnerName = widget.partnerName;
 
-    final tags = [
-      'Work',
-      'Partner',
-      'Health',
-      'Home',
-      'Social',
-      'Family',
-      'Tired',
-      'Grateful'
-    ];
+    // Sync slider value using state if explicitly set from outside
+    if (state.selectedMood != null) {
+      final index = _spectrumMoods.indexWhere((m) => m.emoji == state.selectedMood);
+      if (index != -1 && _sliderValue.round() != index) {
+        _sliderValue = index.toDouble();
+      }
+    } else {
+      // Intialize state.selectedMood to default value
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+         if (mounted && state.selectedMood == null) {
+           ref.read(dashboardProvider.notifier).setMood(_spectrumMoods[_sliderValue.toInt()].emoji);
+         }
+      });
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'DAILY CHECK-IN',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 2.2,
-            color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'How is your heart today?',
-          style: GoogleFonts.notoSerif(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            color: ZunoTheme.onSurface,
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 20),
-        // Scrollable mood row
-        SizedBox(
-          height: 82,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _moods.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final m = _moods[i];
-              final isSelected = state.selectedMood == m.emoji;
-              return GestureDetector(
-                onTap: () =>
-                    ref.read(dashboardProvider.notifier).setMood(m.emoji),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 60,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? m.color.withOpacity(0.12)
-                        : ZunoTheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected ? m.color : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        m.emoji,
-                        style: TextStyle(
-                          fontSize: isSelected ? 28 : 24,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        m.label,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? m.color
-                              : ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 24),
-        // Connection & Tags Card
+        // Mood Spectrum
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -391,87 +318,107 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (partnerName != null) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Feeling connected to $partnerName?',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: ZunoTheme.onSurface,
-                        ),
-                      ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Mood Spectrum',
+                    style: GoogleFonts.notoSerif(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      fontStyle: FontStyle.italic,
+                      color: ZunoTheme.onSurface,
                     ),
-                    const SizedBox(width: 12),
-                    _ToggleButton(
-                      value: state.isConnected,
-                      onChanged:
-                          ref.read(dashboardProvider.notifier).toggleConnection,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-              ],
-              Text(
-                'CONTEXT TAGS',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-                ),
+                  ),
+                  Icon(Icons.monitor_heart_outlined, color: ZunoTheme.primary, size: 24),
+                ],
               ),
-              const SizedBox(height: 10),
-              // Horizontally scrollable tags
-              SizedBox(
-                height: 36,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: tags.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) {
-                    final t = tags[i];
-                    final isSelected = state.selectedTags.contains(t);
-                    return GestureDetector(
-                      onTap: () =>
-                          ref.read(dashboardProvider.notifier).toggleTag(t),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
+              const SizedBox(height: 32),
+              // Icons and labels
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(_spectrumMoods.length, (index) {
+                  final m = _spectrumMoods[index];
+                  final isSelected = _sliderValue.round() == index;
+                  return SizedBox(
+                    width: 64,
+                    child: Column(
+                      children: [
+                        Icon(
+                          m.icon,
                           color: isSelected
-                              ? ZunoTheme.tertiaryFixed
-                              : ZunoTheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(99),
-                          border: Border.all(
-                            color: isSelected
-                                ? ZunoTheme.tertiary.withOpacity(0.15)
-                                : Colors.transparent,
-                          ),
+                              ? ZunoTheme.primary
+                              : ZunoTheme.onSurfaceVariant.withOpacity(0.3),
+                          size: isSelected ? 32 : 28,
                         ),
-                        child: Text(
-                          t,
+                        const SizedBox(height: 8),
+                        Text(
+                          m.label,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
+                            fontSize: 9,
                             fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                                isSelected ? FontWeight.w700 : FontWeight.w600,
                             color: isSelected
-                                ? ZunoTheme.onTertiaryFixedVariant
-                                : ZunoTheme.onSurfaceVariant,
+                                ? ZunoTheme.primary
+                                : ZunoTheme.onSurfaceVariant.withOpacity(0.3),
+                            letterSpacing: 0.5,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                  );
+                }),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              // Slider
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          ZunoTheme.surfaceContainerHighest,
+                          ZunoTheme.primary.withOpacity(0.3),
+                          ZunoTheme.primary,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  SliderTheme(
+                    data: SliderThemeData(
+                      trackHeight: 6,
+                      activeTrackColor: Colors.transparent,
+                      inactiveTrackColor: Colors.transparent,
+                      thumbColor: ZunoTheme.primary,
+                      overlayColor: ZunoTheme.primary.withOpacity(0.12),
+                      tickMarkShape: SliderTickMarkShape.noTickMark,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 12,
+                        elevation: 4,
+                      ),
+                    ),
+                    child: Slider(
+                      value: _sliderValue,
+                      min: 0,
+                      max: 3,
+                      divisions: 3,
+                      onChanged: (val) {
+                        setState(() => _sliderValue = val);
+                        final m = _spectrumMoods[val.toInt()];
+                        ref.read(dashboardProvider.notifier).setMood(m.emoji);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
               // Journal note
               Text(
-                'JOURNAL NOTE',
+                'JOURNAL NOTE (OPTIONAL)',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -1568,76 +1515,6 @@ class _PromoCard extends StatelessWidget {
   }
 }
 
-// ── Toggle ──────────────────────────────────────────────────────────────────
-
-class _ToggleButton extends StatelessWidget {
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _ToggleButton({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: ZunoTheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ToggleItem(
-              label: 'Yes', selected: value, onTap: () => onChanged(true)),
-          _ToggleItem(
-              label: 'No', selected: !value, onTap: () => onChanged(false)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ToggleItem extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ToggleItem(
-      {required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? ZunoTheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(99),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                      color: ZunoTheme.primary.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected
-                ? Colors.white
-                : ZunoTheme.onSurfaceVariant.withOpacity(0.6),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 
 class _TtsButton extends ConsumerWidget {
