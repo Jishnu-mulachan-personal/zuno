@@ -214,16 +214,16 @@ class _DashboardAppBar extends StatelessWidget {
 class _MoodOption {
   final String emoji;
   final String label;
-  final IconData icon;
 
-  const _MoodOption(this.emoji, this.label, this.icon);
+  const _MoodOption(this.emoji, this.label);
 }
 
 final _spectrumMoods = [
-  const _MoodOption('😤', 'FRUSTRATED', Icons.cloud_rounded),
-  const _MoodOption('😔', 'TIRED', Icons.nightlight_round),
-  const _MoodOption('😊', 'STEADY', Icons.eco_rounded),
-  const _MoodOption('✨', 'PEACEFUL', Icons.wb_sunny_rounded),
+  const _MoodOption('😡', 'MAD'),
+  const _MoodOption('😔', 'SAD'),
+  const _MoodOption('😴', 'TIRED'),
+  const _MoodOption('😌', 'CALM'),
+  const _MoodOption('✨', 'PEACEFUL'),
 ];
 
 // ── Daily Check-In ──────────────────────────────────────────────────────────
@@ -246,7 +246,7 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
   late TextEditingController _journalController;
   late FocusNode _journalFocusNode;
   final GlobalKey _saveButtonKey = GlobalKey();
-  double _sliderValue = 3.0; // Default to peaceful
+  double _sliderValue = 4.0; // Default to peaceful (index 4)
 
   @override
   void initState() {
@@ -340,16 +340,17 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
                 children: List.generate(_spectrumMoods.length, (index) {
                   final m = _spectrumMoods[index];
                   final isSelected = _sliderValue.round() == index;
-                  return SizedBox(
-                    width: 64,
+                  return Expanded(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          m.icon,
-                          color: isSelected
-                              ? ZunoTheme.primary
-                              : ZunoTheme.onSurfaceVariant.withOpacity(0.3),
-                          size: isSelected ? 32 : 28,
+                        Text(
+                          m.emoji,
+                          style: TextStyle(
+                            fontSize: isSelected ? 32 : 28,
+                            // Lower opacity for unselected emojis to match the previous icon style
+                            color: isSelected ? null : Colors.white.withOpacity(0.3),
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -402,10 +403,10 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
                       ),
                     ),
                     child: Slider(
-                      value: _sliderValue,
+                      value: _sliderValue.clamp(0.0, 4.0),
                       min: 0,
-                      max: 3,
-                      divisions: 3,
+                      max: 4,
+                      divisions: 4,
                       onChanged: (val) {
                         setState(() => _sliderValue = val);
                         final m = _spectrumMoods[val.toInt()];
