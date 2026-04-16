@@ -830,6 +830,15 @@ class _DynamicCardsSection extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
+                if (state.dailyQuestions.isNotEmpty) ...[
+                  ...state.dailyQuestions.map((q) => _DailyQuestionItem(
+                        question: q,
+                        onSelect: (option) => ref
+                            .read(dashboardProvider.notifier)
+                            .submitQuestionOption(q.id, option),
+                      )),
+                  const SizedBox(height: 20),
+                ],
                 GestureDetector(
                   onTap: () =>
                       ref.read(dashboardProvider.notifier).refreshInsights(),
@@ -1553,6 +1562,113 @@ class _TtsButton extends ConsumerWidget {
             size: 18,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DailyQuestionItem extends StatelessWidget {
+  final InsightQuestion question;
+  final Function(String) onSelect;
+
+  const _DailyQuestionItem({
+    required this.question,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAnswered = question.selectedOption != null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  question.text,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              if (!isAnswered)
+                const Icon(Icons.help_outline_rounded,
+                    color: Colors.white70, size: 16),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: question.options.map((option) {
+              final isSelected = question.selectedOption == option;
+              return GestureDetector(
+                onTap: isAnswered ? null : () => onSelect(option),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white
+                        : Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.15),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    option,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? ZunoTheme.primary : Colors.white,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          if (isAnswered) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.check_circle_outline_rounded,
+                    color: Colors.white70, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  'Saved to your journal',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

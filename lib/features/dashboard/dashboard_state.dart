@@ -419,6 +419,38 @@ String _getMonthName(int month) {
   return months[month - 1];
 }
 
+class InsightQuestion {
+  final String id;
+  final String text;
+  final List<String> options;
+  final String? selectedOption;
+
+  const InsightQuestion({
+    required this.id,
+    required this.text,
+    required this.options,
+    this.selectedOption,
+  });
+
+  factory InsightQuestion.fromMap(Map<String, dynamic> map) {
+    return InsightQuestion(
+      id: map['id'] as String? ?? '',
+      text: map['text'] as String? ?? map['question_text'] as String? ?? '',
+      options: List<String>.from(map['options'] ?? []),
+      selectedOption: map['selected_option'] as String?,
+    );
+  }
+
+  InsightQuestion copyWith({String? selectedOption}) {
+    return InsightQuestion(
+      id: id,
+      text: text,
+      options: options,
+      selectedOption: selectedOption ?? this.selectedOption,
+    );
+  }
+}
+
 // ── Dashboard interaction state ─────────────────────────────────────────────
 
 class DashboardState {
@@ -435,6 +467,7 @@ class DashboardState {
   final String? cycleInsight;
   final bool isLoadingCycleInsight;
   final bool isCycleActionLoading;
+  final List<InsightQuestion> dailyQuestions;
 
   const DashboardState({
     this.selectedMood,
@@ -450,6 +483,7 @@ class DashboardState {
     this.cycleInsight,
     this.isLoadingCycleInsight = false,
     this.isCycleActionLoading = false,
+    this.dailyQuestions = const [],
   });
 
   DashboardState copyWith({
@@ -466,6 +500,7 @@ class DashboardState {
     String? cycleInsight,
     bool? isLoadingCycleInsight,
     bool? isCycleActionLoading,
+    List<InsightQuestion>? dailyQuestions,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
@@ -482,6 +517,7 @@ class DashboardState {
       isLoadingCycleInsight:
           isLoadingCycleInsight ?? this.isLoadingCycleInsight,
       isCycleActionLoading: isCycleActionLoading ?? this.isCycleActionLoading,
+      dailyQuestions: dailyQuestions ?? this.dailyQuestions,
     );
   }
 }
@@ -528,7 +564,14 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         },
       );
       final insight = response.data['insight'] as String?;
-      state = state.copyWith(isLoadingInsight: false, dailyInsight: insight);
+      final questionsData = response.data['questions'] as List? ?? [];
+      final questions = questionsData.map((q) => InsightQuestion.fromMap(Map<String, dynamic>.from(q))).toList();
+
+      state = state.copyWith(
+        isLoadingInsight: false, 
+        dailyInsight: insight,
+        dailyQuestions: questions,
+      );
     } catch (e) {
       debugPrint('[fetchDailyInsight] Error: $e');
       state = state.copyWith(isLoadingInsight: false);
@@ -567,6 +610,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     state = state.copyWith(
       dailyInsight: null,
       cycleInsight: null,
+      dailyQuestions: const [],
       isLoadingInsight: true,
       isLoadingCycleInsight: true,
     );
@@ -596,6 +640,44 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   }
   
   void toggleShareWithPartner(bool val) => state = state.copyWith(shareWithPartner: val);
+
+  Future<void> submitQuestionOption(String questionId, String option) async {
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase
+          .from('daily_insight_questions')
+          .update({'selected_option': option})
+          .eq('id', questionId);
+
+      // Local update
+      final updatedQuestions = state.dailyQuestions.map((q) {
+        if (q.id == questionId) {
+          return q.copyWith(selectedOption: option);
+        }
+        return q;
+      }).toList();
+
+      state = state.copyWith(dailyQuestions: updatedQuestions);
+
+      // (Optional) Mirror to daily check-in as a mini journal
+      final sbUser = supabase.auth.currentUser;
+      if (sbUser != null) {
+        final q = state.dailyQuestions.firstWhere((q) => q.id == questionId);
+        final note = 'Answered Daily Question: "${q.text}" -> "$option"';
+        final todayStr = DateTime.now().toIso8601String().split('T')[0];
+        
+        await supabase.from('daily_logs').insert({
+          'user_id': sbUser.id,
+          'log_date': todayStr,
+          'journal_note': EncryptionService.encrypt(note),
+          'is_note_private': true,
+          'share_with_partner': state.shareWithPartner,
+        });
+      }
+    } catch (e) {
+      debugPrint('[submitQuestionOption] Error: $e');
+    }
+  }
 
   Future<bool> saveLog() async {
     final sbUser = Supabase.instance.client.auth.currentUser;

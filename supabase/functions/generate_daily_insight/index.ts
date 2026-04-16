@@ -40,7 +40,22 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!force && lastInsightData?.last_generated_at === new Date().toISOString().split('T')[0]) {
-      return new Response(JSON.stringify({ insight: lastInsightData.insight_text }), {
+      // Also fetch today's questions to return them
+      const { data: existingQuestions } = await supabaseClient
+        .from('daily_insight_questions')
+        .select('id, question_text, options, selected_option')
+        .eq('user_id', userData.id)
+        .eq('created_at', lastInsightData.last_generated_at);
+
+      return new Response(JSON.stringify({ 
+        insight: lastInsightData.insight_text,
+        questions: existingQuestions?.map((q: any) => ({
+          id: q.id,
+          text: q.question_text,
+          options: q.options,
+          selected_option: q.selected_option
+        })) || []
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -181,29 +196,45 @@ serve(async (req) => {
       Biological Energy: ${cycleContext.length > 0 ? cycleContext.join('\n') : 'Typical energy levels.'}
 
       [GUIDELINES]
-      1. PARTNER FOCUS: If the partner is struggling (stress, health, cycle, or mood), prioritize acknowledgment of their burden.
-      2. SYNERGY: Connect how the user's current energy can best complement the partner's needs.
-      3. BIOLOGICAL NUANCE: Use cycle data to suggest "low-battery" vs "high-battery" activities (e.g., nesting vs. going out).
-      4. Privacy & Paraphrasing: DO NOT repeat the partner's words or specific journal entries. Interpret the "vibe" (e.g., stress, fatigue, or joy) and speak to that feeling generally.
-      5. TEMPORAL WEIGHTING: Give significantly higher weight to the most recent logs (where date matches Today's Date) over older ones when interpreting their current state.
-      6. SIMPLICITY (CRITICAL): Speak like a normal, supportive friend. Use highly simple, everyday vocabulary (8th-grade reading level). Absolutely NO poetic metaphors, complex phrasing, or therapist jargon.
+      - Speak like a supportive friend. Simple, everyday vocabulary. No therapist jargon.
+      - PARTNER FOCUS: If partner is struggling, acknowledge it.
+      - BIOLOGICAL NUANCE: Use cycle data for activity suggestions.
 
       [TASK]
-      Write a warm, 3-sentence insight in ${language}:
-      - Sentence 1 (The Mirror): Acknowledge the user's current internal state or energy.
-      - Sentence 2 (The Window): Gently highlight what ${partnerData.display_name} might be feeling or carrying right now.
-      - Sentence 3 (The Bridge): Suggest a specific, low-friction action to nurture the connection based on the above.
+      Return a JSON object with:
+      1. "insight": A warm, 3-sentence relationship insight in ${language}. 
+         - Sentence 1: Mirror user's state. 
+         - Sentence 2: Window into partner's vibe. 
+         - Sentence 3: Bridge to connection (low-friction action).
+      2. "questions": A list of 1-2 personalized questions in ${language} based on the context above (moods, journals, or special day vibes).
+         Each question should have:
+         - "text": The question string.
+         - "options": A list of 3-4 possible answers (multiple choice options).
 
-      CRITICAL: Be concise and avoid "bot-speak." Output ONLY the 3 sentences.
+      Return ONLY the JSON.
     `;
     const insightResult = await generateContentWithFallback(
       Deno.env.get('GEMINI_API_KEY')!,
       insightPrompt,
-      { temperature }
+      { temperature, responseMimeType: 'application/json' }
     );
-    const insightText = insightResult.response.text().trim().replace(/^"/, "").replace(/"$/, "");
+    
+    let generatedData;
+    try {
+      generatedData = JSON.parse(insightResult.response.text());
+    } catch (e) {
+      console.error(`[ERROR] JSON parse failed: ${e.message}. Text: ${insightResult.response.text()}`);
+      // Fallback for malformed AI output
+      generatedData = {
+        insight: insightResult.response.text().substring(0, 300),
+        questions: []
+      };
+    }
 
-    // Persist for "one per day" caching
+    const insightText = generatedData.insight;
+    const questions = generatedData.questions || [];
+
+    // Persist Insight
     const today = new Date().toISOString().split('T')[0];
     await supabaseClient.from('daily_insights').upsert({
       user_id: userData.id,
@@ -211,7 +242,43 @@ serve(async (req) => {
       last_generated_at: today
     });
 
-    return new Response(JSON.stringify({ insight: insightText }), {
+    // Clear and Persist Questions
+    if (questions.length > 0) {
+      // Small cleanup: remove any of today's questions before re-inserting
+      await supabaseClient.from('daily_insight_questions')
+        .delete()
+        .eq('user_id', userData.id)
+        .eq('created_at', today);
+
+      const questionRows = questions.map((q: any) => ({
+        user_id: userData.id,
+        question_text: q.text,
+        options: q.options,
+        created_at: today
+      }));
+
+      const { data: insertedQuestions } = await supabaseClient
+        .from('daily_insight_questions')
+        .insert(questionRows)
+        .select();
+
+      return new Response(JSON.stringify({ 
+        insight: insightText,
+        questions: insertedQuestions?.map((q: any) => ({
+          id: q.id,
+          text: q.question_text,
+          options: q.options,
+          selected_option: q.selected_option
+        })) || []
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ 
+      insight: insightText,
+      questions: []
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
