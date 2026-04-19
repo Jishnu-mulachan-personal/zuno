@@ -19,12 +19,47 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  void _showDailyQuestionBottomSheet(
+      BuildContext context, WidgetRef ref, List<InsightQuestion> questions) {
+    final unanswered =
+        questions.where((q) => q.selectedOption == null).toList();
+    if (unanswered.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _DailyQuestionModalContent(
+        questions: unanswered,
+        onSelect: (q, option) {
+          ref
+              .read(dashboardProvider.notifier)
+              .submitQuestionOption(q.id, option);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardProvider);
     final profileAsync = ref.watch(userProfileProvider);
     // Watch theme changes to trigger rebuild
     ref.watch(themeProvider);
+
+    ref.listen<DashboardState>(dashboardProvider, (previous, next) {
+      final hasUnanswered = next.dailyQuestions.any((q) => q.selectedOption == null);
+      if (next.dailyQuestions.isNotEmpty &&
+          !next.hasShownQuestionPopup &&
+          hasUnanswered) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            _showDailyQuestionBottomSheet(context, ref, next.dailyQuestions);
+            ref.read(dashboardProvider.notifier).setHasShownQuestionPopup(true);
+          }
+        });
+      }
+    });
 
     return Scaffold(
       backgroundColor: ZunoTheme.surface,
@@ -830,15 +865,6 @@ class _DynamicCardsSection extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (state.dailyQuestions.isNotEmpty) ...[
-                  ...state.dailyQuestions.map((q) => _DailyQuestionItem(
-                        question: q,
-                        onSelect: (option) => ref
-                            .read(dashboardProvider.notifier)
-                            .submitQuestionOption(q.id, option),
-                      )),
-                  const SizedBox(height: 20),
-                ],
                 GestureDetector(
                   onTap: () =>
                       ref.read(dashboardProvider.notifier).refreshInsights(),
@@ -1567,32 +1593,238 @@ class _TtsButton extends ConsumerWidget {
   }
 }
 
+class _DailyQuestionModalContent extends StatefulWidget {
+  final List<InsightQuestion> questions;
+  final Function(InsightQuestion, String) onSelect;
+
+  const _DailyQuestionModalContent({
+    required this.questions,
+    required this.onSelect,
+  });
+
+  @override
+  State<_DailyQuestionModalContent> createState() =>
+      _DailyQuestionModalContentState();
+}
+
+class _DailyQuestionModalContentState
+    extends State<_DailyQuestionModalContent> {
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 32,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+      ),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 40,
+            offset: const Offset(0, -10),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: ZunoTheme.onSurface.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: ZunoTheme.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.auto_awesome_rounded,
+                      color: ZunoTheme.primary, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PRACTICE REFLECTION',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: ZunoTheme.primary,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      Text(
+                        'Daily Check-in',
+                        style: GoogleFonts.notoSerif(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          color: ZunoTheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              height: 320, // Increased height to prevent overflow
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: widget.questions.length,
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                physics: const BouncingScrollPhysics(),
+                itemBuilder: (ctx, i) {
+                  final q = widget.questions[i];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _DailyQuestionItem(
+                      question: q,
+                      onSelect: (option) {
+                        widget.onSelect(q, option);
+                        if (i < widget.questions.length - 1) {
+                          Future.delayed(const Duration(milliseconds: 400), () {
+                            if (mounted) {
+                              _pageController.nextPage(
+                                duration: const Duration(milliseconds: 500),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                          });
+                        } else {
+                          Future.delayed(const Duration(milliseconds: 800), () {
+                            if (mounted && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+                          });
+                        }
+                      },
+                      useLightStyle: true,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Custom Indicators
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.questions.length, (index) {
+                final isSelected = _currentPage == index;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 8,
+                  width: isSelected ? 24 : 8,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? ZunoTheme.primary
+                        : ZunoTheme.onSurface.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Text(
+                  'Maybe Later',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DailyQuestionItem extends StatelessWidget {
   final InsightQuestion question;
   final Function(String) onSelect;
+  final bool useLightStyle;
 
   const _DailyQuestionItem({
     required this.question,
     required this.onSelect,
+    this.useLightStyle = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isAnswered = question.selectedOption != null;
+    final backgroundColor = useLightStyle
+        ? ZunoTheme.surfaceContainerLow
+        : Colors.white.withOpacity(0.12);
+    final borderColor = useLightStyle
+        ? ZunoTheme.outlineVariant.withOpacity(0.3)
+        : Colors.white.withOpacity(0.1);
+    final textColor = useLightStyle ? ZunoTheme.onSurface : Colors.white;
+    final secondaryTextColor = useLightStyle
+        ? ZunoTheme.onSurfaceVariant.withOpacity(0.6)
+        : Colors.white70;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: borderColor,
           width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1603,14 +1835,14 @@ class _DailyQuestionItem extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: textColor,
                     height: 1.4,
                   ),
                 ),
               ),
               if (!isAnswered)
-                const Icon(Icons.help_outline_rounded,
-                    color: Colors.white70, size: 16),
+                Icon(Icons.help_outline_rounded,
+                    color: secondaryTextColor, size: 16),
             ],
           ),
           const SizedBox(height: 16),
@@ -1619,6 +1851,15 @@ class _DailyQuestionItem extends StatelessWidget {
             runSpacing: 8,
             children: question.options.map((option) {
               final isSelected = question.selectedOption == option;
+              final optionBgColor = isSelected
+                  ? (useLightStyle ? ZunoTheme.primary : Colors.white)
+                  : (useLightStyle
+                      ? ZunoTheme.surfaceContainerHighest.withOpacity(0.5)
+                      : Colors.white.withOpacity(0.08));
+              final optionTextColor = isSelected
+                  ? (useLightStyle ? Colors.white : ZunoTheme.primary)
+                  : textColor;
+
               return GestureDetector(
                 onTap: isAnswered ? null : () => onSelect(option),
                 child: AnimatedContainer(
@@ -1626,14 +1867,12 @@ class _DailyQuestionItem extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.08),
+                    color: optionBgColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.15),
+                          ? (useLightStyle ? ZunoTheme.primary : Colors.white)
+                          : borderColor,
                       width: 1,
                     ),
                   ),
@@ -1643,7 +1882,7 @@ class _DailyQuestionItem extends StatelessWidget {
                       fontSize: 12,
                       fontWeight:
                           isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? ZunoTheme.primary : Colors.white,
+                      color: optionTextColor,
                     ),
                   ),
                 ),
@@ -1654,15 +1893,15 @@ class _DailyQuestionItem extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.check_circle_outline_rounded,
-                    color: Colors.white70, size: 14),
+                Icon(Icons.check_circle_outline_rounded,
+                    color: secondaryTextColor, size: 14),
                 const SizedBox(width: 6),
                 Text(
                   'Saved to your journal',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white70,
+                    color: secondaryTextColor,
                   ),
                 ),
               ],
@@ -1670,6 +1909,7 @@ class _DailyQuestionItem extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

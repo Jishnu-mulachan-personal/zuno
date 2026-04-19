@@ -468,6 +468,7 @@ class DashboardState {
   final bool isLoadingCycleInsight;
   final bool isCycleActionLoading;
   final List<InsightQuestion> dailyQuestions;
+  final bool hasShownQuestionPopup;
 
   const DashboardState({
     this.selectedMood,
@@ -484,6 +485,7 @@ class DashboardState {
     this.isLoadingCycleInsight = false,
     this.isCycleActionLoading = false,
     this.dailyQuestions = const [],
+    this.hasShownQuestionPopup = false,
   });
 
   DashboardState copyWith({
@@ -501,6 +503,7 @@ class DashboardState {
     bool? isLoadingCycleInsight,
     bool? isCycleActionLoading,
     List<InsightQuestion>? dailyQuestions,
+    bool? hasShownQuestionPopup,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
@@ -518,6 +521,8 @@ class DashboardState {
           isLoadingCycleInsight ?? this.isLoadingCycleInsight,
       isCycleActionLoading: isCycleActionLoading ?? this.isCycleActionLoading,
       dailyQuestions: dailyQuestions ?? this.dailyQuestions,
+      hasShownQuestionPopup:
+          hasShownQuestionPopup ?? this.hasShownQuestionPopup,
     );
   }
 }
@@ -613,6 +618,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       dailyQuestions: const [],
       isLoadingInsight: true,
       isLoadingCycleInsight: true,
+      hasShownQuestionPopup: false,
     );
 
     // Call both concurrently to speed up refresh
@@ -640,6 +646,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   }
   
   void toggleShareWithPartner(bool val) => state = state.copyWith(shareWithPartner: val);
+
+  void setHasShownQuestionPopup(bool val) => state = state.copyWith(hasShownQuestionPopup: val);
 
   Future<void> submitQuestionOption(String questionId, String option) async {
     try {
