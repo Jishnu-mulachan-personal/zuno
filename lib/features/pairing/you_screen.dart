@@ -233,14 +233,6 @@ class _TimelineCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      log.connectionFelt ? 'Felt connected' : 'Felt disconnected',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: log.connectionFelt ? ZunoTheme.tertiary : ZunoTheme.error,
-                      ),
-                    ),
                   ],
                 ),
               ),

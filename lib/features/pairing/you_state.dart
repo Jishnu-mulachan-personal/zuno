@@ -7,7 +7,6 @@ class DailyLog {
   final String date;
   final String createdTime;
   final String moodEmoji;
-  final bool connectionFelt;
   final List<String> contextTags;
   final String? journalNote;
   final bool shareWithPartner;
@@ -16,7 +15,6 @@ class DailyLog {
     required this.date,
     required this.createdTime,
     required this.moodEmoji,
-    required this.connectionFelt,
     required this.contextTags,
     this.journalNote,
     this.shareWithPartner = false,
@@ -104,7 +102,6 @@ final userLogsProvider = FutureProvider<List<DailyLog>>((ref) async {
       date: row['log_date'] as String? ?? '',
       createdTime: timeStr,
       moodEmoji: row['mood_emoji'] as String? ?? '😊',
-      connectionFelt: row['connection_felt'] as bool? ?? true,
       contextTags: List<String>.from(row['context_tags'] ?? []),
       journalNote: noteStr,
       shareWithPartner: row['share_with_partner'] as bool? ?? false,

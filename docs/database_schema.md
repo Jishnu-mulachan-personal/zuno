@@ -41,7 +41,6 @@ CREATE TABLE daily_logs (
     user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     log_date         DATE NOT NULL DEFAULT CURRENT_DATE,
     mood_emoji       TEXT,
-    connection_felt  BOOLEAN,
     context_tags     TEXT[],
     journal_note     BYTEA,               -- Fernet-encrypted
     is_note_private  BOOLEAN DEFAULT TRUE,

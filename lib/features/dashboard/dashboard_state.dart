@@ -455,7 +455,6 @@ class InsightQuestion {
 
 class DashboardState {
   final String? selectedMood;
-  final bool isConnected;
   final List<String> selectedTags;
   final String partnerMood;
   final bool isSaving;
@@ -472,7 +471,6 @@ class DashboardState {
 
   const DashboardState({
     this.selectedMood,
-    this.isConnected = true,
     this.selectedTags = const [],
     this.partnerMood = '😊',
     this.isSaving = false,
@@ -507,7 +505,6 @@ class DashboardState {
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
-      isConnected: isConnected ?? this.isConnected,
       selectedTags: selectedTags ?? this.selectedTags,
       partnerMood: partnerMood ?? this.partnerMood,
       isSaving: isSaving ?? this.isSaving,
@@ -630,9 +627,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
   void setMood(String mood) => state = state.copyWith(selectedMood: mood);
 
-  void toggleConnection(bool connected) =>
-      state = state.copyWith(isConnected: connected);
-
   void setJournalNote(String note) => state = state.copyWith(journalNote: note);
 
   void toggleTag(String tag) {
@@ -712,7 +706,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       await supabase.from('daily_logs').insert({
         'user_id': userId,
         'mood_emoji': state.selectedMood,
-        'connection_felt': state.isConnected,
         'context_tags': state.selectedTags,
         'log_date': todayStr,
         'is_note_private': isNotePrivate,
