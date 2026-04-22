@@ -48,7 +48,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.watch(themeProvider);
 
     ref.listen<DashboardState>(dashboardProvider, (previous, next) {
-      final hasUnanswered = next.dailyQuestions.any((q) => q.selectedOption == null);
+      final hasUnanswered =
+          next.dailyQuestions.any((q) => q.selectedOption == null);
       if (next.dailyQuestions.isNotEmpty &&
           !next.hasShownQuestionPopup &&
           hasUnanswered) {
@@ -131,61 +132,62 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       isLoading: state.isCycleActionLoading,
       child: Stack(
         children: [
-        CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            _DashboardAppBar(
-              userName: userName,
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _DailyCheckInSection(
-                    key: const ValueKey('daily_check_in_section'),
-                    state: state,
-                    partnerName: partnerName,
-                  ),
-                  const SizedBox(height: 32),
-                  _StatusGrid(
-                    state: state,
-                    streakDays: streakDays,
-                    partnerId: partnerId,
-                    partnerName: partnerName,
-                  ),
-                  const SizedBox(height: 32),
-                  _DynamicCardsSection(
-                    userId: userId,
-                    gender: gender,
-                    cycleData: cycleData,
-                    isLoading: isLoading,
-                    partnerId: partnerId,
-                    hasPartner: hasPartner,
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Text(
-                        'Unable to load full profile data.',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: ZunoTheme.error.withOpacity(0.7),
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _DashboardAppBar(
+                userName: userName,
+              ),
+              SliverPadding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _DailyCheckInSection(
+                      key: const ValueKey('daily_check_in_section'),
+                      state: state,
+                      partnerName: partnerName,
+                    ),
+                    const SizedBox(height: 32),
+                    _StatusGrid(
+                      state: state,
+                      streakDays: streakDays,
+                      partnerId: partnerId,
+                      partnerName: partnerName,
+                    ),
+                    const SizedBox(height: 32),
+                    _DynamicCardsSection(
+                      userId: userId,
+                      gender: gender,
+                      cycleData: cycleData,
+                      isLoading: isLoading,
+                      partnerId: partnerId,
+                      hasPartner: hasPartner,
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 20),
+                      Center(
+                        child: Text(
+                          'Unable to load full profile data.',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: ZunoTheme.error.withOpacity(0.7),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 120),
-                ]),
+                    ],
+                    const SizedBox(height: 120),
+                  ]),
+                ),
               ),
-            ),
-          ],
-        ),
-        ZunoBottomNavBar(
-          activeTab: ZunoTab.today,
-          relationshipStatus: relationshipStatus,
-        ),
-      ],
-    ),
+            ],
+          ),
+          ZunoBottomNavBar(
+            activeTab: ZunoTab.today,
+            relationshipStatus: relationshipStatus,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -258,7 +260,7 @@ final _spectrumMoods = [
   const _MoodOption('😔', 'SAD'),
   const _MoodOption('😴', 'TIRED'),
   const _MoodOption('😌', 'CALM'),
-  const _MoodOption('✨', 'PEACEFUL'),
+  const _MoodOption('✨', 'HAPPY'),
 ];
 
 // ── Daily Check-In ──────────────────────────────────────────────────────────
@@ -274,7 +276,8 @@ class _DailyCheckInSection extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_DailyCheckInSection> createState() => _DailyCheckInSectionState();
+  ConsumerState<_DailyCheckInSection> createState() =>
+      _DailyCheckInSectionState();
 }
 
 class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
@@ -327,16 +330,19 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
 
     // Sync slider value using state if explicitly set from outside
     if (state.selectedMood != null) {
-      final index = _spectrumMoods.indexWhere((m) => m.emoji == state.selectedMood);
+      final index =
+          _spectrumMoods.indexWhere((m) => m.emoji == state.selectedMood);
       if (index != -1 && _sliderValue.round() != index) {
         _sliderValue = index.toDouble();
       }
     } else {
       // Intialize state.selectedMood to default value
       WidgetsBinding.instance.addPostFrameCallback((_) {
-         if (mounted && state.selectedMood == null) {
-           ref.read(dashboardProvider.notifier).setMood(_spectrumMoods[_sliderValue.toInt()].emoji);
-         }
+        if (mounted && state.selectedMood == null) {
+          ref
+              .read(dashboardProvider.notifier)
+              .setMood(_spectrumMoods[_sliderValue.toInt()].emoji);
+        }
       });
     }
 
@@ -365,7 +371,8 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
                       color: ZunoTheme.onSurface,
                     ),
                   ),
-                  Icon(Icons.monitor_heart_outlined, color: ZunoTheme.primary, size: 24),
+                  // Icon(Icons.monitor_heart_outlined,
+                  //     color: ZunoTheme.primary, size: 24),
                 ],
               ),
               const SizedBox(height: 32),
@@ -384,7 +391,9 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
                           style: TextStyle(
                             fontSize: isSelected ? 32 : 28,
                             // Lower opacity for unselected emojis to match the previous icon style
-                            color: isSelected ? null : Colors.white.withOpacity(0.3),
+                            color: isSelected
+                                ? null
+                                : Colors.white.withOpacity(0.3),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -507,7 +516,8 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: ZunoTheme.tertiary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
@@ -559,9 +569,12 @@ class _DailyCheckInSectionState extends ConsumerState<_DailyCheckInSection> {
               const SizedBox(height: 24),
               _SaveCheckInButton(
                 key: _saveButtonKey,
-                enabled: state.selectedMood != null || state.journalNote.trim().isNotEmpty,
+                enabled: state.selectedMood != null ||
+                    state.journalNote.trim().isNotEmpty,
                 isSaving: state.isSaving,
-                onTap: (state.selectedMood == null && state.journalNote.trim().isEmpty) || state.isSaving
+                onTap: (state.selectedMood == null &&
+                            state.journalNote.trim().isEmpty) ||
+                        state.isSaving
                     ? null
                     : () async {
                         final success = await ref
@@ -912,8 +925,8 @@ class _DynamicCardsSection extends ConsumerWidget {
               child: _DashboardSmartCard(
                 icon: Icons.calendar_month_rounded,
                 tag: 'CYCLE TRACKER',
-                title: cycleData!.isPeriodDelayed 
-                    ? 'Cycle Delayed' 
+                title: cycleData!.isPeriodDelayed
+                    ? 'Cycle Delayed'
                     : 'Day ${cycleData!.currentCycleDay}',
                 subtitle: cycleData!.phaseSubtitle,
                 insight: state.cycleInsight,
@@ -921,7 +934,9 @@ class _DynamicCardsSection extends ConsumerWidget {
                 accentColor: ZunoTheme.tertiary,
                 showChevron: true,
                 onRegenerate: () {
-                  ref.read(dashboardProvider.notifier).fetchCycleInsight(force: true);
+                  ref
+                      .read(dashboardProvider.notifier)
+                      .fetchCycleInsight(force: true);
                 },
               ),
             ),
@@ -1245,7 +1260,8 @@ class _DashboardSmartCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Icon(Icons.refresh_rounded, color: accentColor, size: 14),
+                          Icon(Icons.refresh_rounded,
+                              color: accentColor, size: 14),
                         ],
                       ),
                     ),
@@ -1543,15 +1559,12 @@ class _PromoCard extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded,
-              color: ZunoTheme.outlineVariant),
+          Icon(Icons.chevron_right_rounded, color: ZunoTheme.outlineVariant),
         ],
       ),
     );
   }
 }
-
-
 
 class _TtsButton extends ConsumerWidget {
   final String text;
@@ -1825,91 +1838,91 @@ class _DailyQuestionItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  question.text,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              if (!isAnswered)
-                Icon(Icons.help_outline_rounded,
-                    color: secondaryTextColor, size: 16),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: question.options.map((option) {
-              final isSelected = question.selectedOption == option;
-              final optionBgColor = isSelected
-                  ? (useLightStyle ? ZunoTheme.primary : Colors.white)
-                  : (useLightStyle
-                      ? ZunoTheme.surfaceContainerHighest.withOpacity(0.5)
-                      : Colors.white.withOpacity(0.08));
-              final optionTextColor = isSelected
-                  ? (useLightStyle ? Colors.white : ZunoTheme.primary)
-                  : textColor;
-
-              return GestureDetector(
-                onTap: isAnswered ? null : () => onSelect(option),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: optionBgColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? (useLightStyle ? ZunoTheme.primary : Colors.white)
-                          : borderColor,
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    option,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: optionTextColor,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          if (isAnswered) ...[
-            const SizedBox(height: 12),
+          children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_circle_outline_rounded,
-                    color: secondaryTextColor, size: 14),
-                const SizedBox(width: 6),
-                Text(
-                  'Saved to your journal',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: secondaryTextColor,
+                Expanded(
+                  child: Text(
+                    question.text,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                      height: 1.4,
+                    ),
                   ),
                 ),
+                if (!isAnswered)
+                  Icon(Icons.help_outline_rounded,
+                      color: secondaryTextColor, size: 16),
               ],
             ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: question.options.map((option) {
+                final isSelected = question.selectedOption == option;
+                final optionBgColor = isSelected
+                    ? (useLightStyle ? ZunoTheme.primary : Colors.white)
+                    : (useLightStyle
+                        ? ZunoTheme.surfaceContainerHighest.withOpacity(0.5)
+                        : Colors.white.withOpacity(0.08));
+                final optionTextColor = isSelected
+                    ? (useLightStyle ? Colors.white : ZunoTheme.primary)
+                    : textColor;
+
+                return GestureDetector(
+                  onTap: isAnswered ? null : () => onSelect(option),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: optionBgColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? (useLightStyle ? ZunoTheme.primary : Colors.white)
+                            : borderColor,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      option,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: optionTextColor,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            if (isAnswered) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.check_circle_outline_rounded,
+                      color: secondaryTextColor, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Saved to your journal',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: secondaryTextColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
