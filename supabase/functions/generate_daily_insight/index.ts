@@ -209,7 +209,7 @@ serve(async (req) => {
       2. "questions": A list of 1-2 personalized questions in ${language} based on the context above (moods, journals, or special day vibes).
          Each question should have:
          - "text": The question string.
-         - "options": A list of 3-4 possible answers (multiple choice options).
+         - "options": A list of 4-5 possible answers. The last option MUST always be a contextual "Not relevant" or "None of these match" choice in ${language}, phrased naturally to fit the question (e.g., "This doesn't describe me today", "Not applicable", etc.).
 
       Return ONLY the JSON.
     `;
