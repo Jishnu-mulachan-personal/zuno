@@ -55,20 +55,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   void _showDailyQuestionBottomSheet(
       BuildContext context, WidgetRef ref, List<InsightQuestion> questions) {
-    final unanswered =
-        questions.where((q) => q.selectedOption == null).toList();
-    if (unanswered.isEmpty) return;
+    final initialUnansweredIds = questions
+        .where((q) => q.selectedOption == null)
+        .map((q) => q.id)
+        .toList();
+        
+    if (initialUnansweredIds.isEmpty) return;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _DailyQuestionModalContent(
-        questions: unanswered,
-        onSelect: (q, option) {
-          ref
-              .read(dashboardProvider.notifier)
-              .submitQuestionOption(q.id, option);
+      builder: (context) => Consumer(
+        builder: (context, ref, child) {
+          final state = ref.watch(dashboardProvider);
+          // Map the initial IDs to their current state to reflect selections instantly
+          final sessionQuestions = initialUnansweredIds.map((id) {
+            return state.dailyQuestions.firstWhere(
+              (q) => q.id == id,
+              orElse: () => questions.firstWhere((oq) => oq.id == id),
+            );
+          }).toList();
+
+          return _DailyQuestionModalContent(
+            questions: sessionQuestions,
+            onSelect: (q, option) {
+              ref
+                  .read(dashboardProvider.notifier)
+                  .submitQuestionOption(q.id, option);
+            },
+          );
         },
       ),
     );
