@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +20,38 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _isStartupPhase = true;
+  Timer? _startupTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startupTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() => _isStartupPhase = false);
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = ref.read(dashboardProvider);
+      final hasUnanswered =
+          state.dailyQuestions.any((q) => q.selectedOption == null);
+      if (state.dailyQuestions.isNotEmpty &&
+          !state.hasShownQuestionPopup &&
+          hasUnanswered) {
+        _showDailyQuestionBottomSheet(context, ref, state.dailyQuestions);
+        ref.read(dashboardProvider.notifier).setHasShownQuestionPopup(true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _startupTimer?.cancel();
+    super.dispose();
+  }
+
   void _showDailyQuestionBottomSheet(
       BuildContext context, WidgetRef ref, List<InsightQuestion> questions) {
     final unanswered =
@@ -48,6 +81,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.watch(themeProvider);
 
     ref.listen<DashboardState>(dashboardProvider, (previous, next) {
+      if (!_isStartupPhase) return;
+
       final hasUnanswered =
           next.dailyQuestions.any((q) => q.selectedOption == null);
       if (next.dailyQuestions.isNotEmpty &&
