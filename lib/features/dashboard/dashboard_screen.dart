@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1749,7 +1750,7 @@ class _DailyQuestionModalContentState
             ),
             const SizedBox(height: 32),
             SizedBox(
-              height: 320, // Increased height to prevent overflow
+              height: 480, // Increased height for vertical options
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: widget.questions.length,
@@ -1757,36 +1758,33 @@ class _DailyQuestionModalContentState
                 physics: const BouncingScrollPhysics(),
                 itemBuilder: (ctx, i) {
                   final q = widget.questions[i];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _DailyQuestionItem(
-                      question: q,
-                      onSelect: (option) {
-                        widget.onSelect(q, option);
-                        if (i < widget.questions.length - 1) {
-                          Future.delayed(const Duration(milliseconds: 400), () {
-                            if (mounted) {
-                              _pageController.nextPage(
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeInOut,
-                              );
-                            }
-                          });
-                        } else {
-                          Future.delayed(const Duration(milliseconds: 800), () {
-                            if (mounted && Navigator.canPop(context)) {
-                              Navigator.pop(context);
-                            }
-                          });
-                        }
-                      },
-                      useLightStyle: true,
-                    ),
+                  return _DailyQuestionItem(
+                    question: q,
+                    onSelect: (option) {
+                      widget.onSelect(q, option);
+                      if (i < widget.questions.length - 1) {
+                        Future.delayed(const Duration(milliseconds: 800), () {
+                          if (mounted) {
+                            _pageController.nextPage(
+                              duration: const Duration(milliseconds: 700),
+                              curve: Curves.easeInOutCubic,
+                            );
+                          }
+                        });
+                      } else {
+                        Future.delayed(const Duration(milliseconds: 1200), () {
+                          if (mounted && Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                    },
+                    useLightStyle: true,
                   );
                 },
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
             // Custom Indicators
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1795,13 +1793,13 @@ class _DailyQuestionModalContentState
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.symmetric(horizontal: 4),
-                  height: 8,
-                  width: isSelected ? 24 : 8,
+                  height: 6,
+                  width: isSelected ? 20 : 6,
                   decoration: BoxDecoration(
                     color: isSelected
                         ? ZunoTheme.primary
                         : ZunoTheme.onSurface.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 );
               }),
@@ -1847,114 +1845,164 @@ class _DailyQuestionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAnswered = question.selectedOption != null;
-    final backgroundColor = useLightStyle
-        ? ZunoTheme.surfaceContainerLow
-        : Colors.white.withOpacity(0.12);
-    final borderColor = useLightStyle
-        ? ZunoTheme.outlineVariant.withOpacity(0.3)
-        : Colors.white.withOpacity(0.1);
     final textColor = useLightStyle ? ZunoTheme.onSurface : Colors.white;
     final secondaryTextColor = useLightStyle
-        ? ZunoTheme.onSurfaceVariant.withOpacity(0.6)
+        ? ZunoTheme.onSurfaceVariant.withOpacity(0.5)
         : Colors.white70;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: borderColor,
-          width: 1,
-        ),
-      ),
-      child: SingleChildScrollView(
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    question.text,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-                if (!isAnswered)
-                  Icon(Icons.help_outline_rounded,
-                      color: secondaryTextColor, size: 16),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              question.text,
+              style: GoogleFonts.notoSerif(
+                fontSize: 22,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+                height: 1.3,
+                letterSpacing: -0.2,
+              ),
             ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            const SizedBox(height: 28),
+            Column(
               children: question.options.map((option) {
                 final isSelected = question.selectedOption == option;
-                final optionBgColor = isSelected
-                    ? (useLightStyle ? ZunoTheme.primary : Colors.white)
-                    : (useLightStyle
-                        ? ZunoTheme.surfaceContainerHighest.withOpacity(0.5)
-                        : Colors.white.withOpacity(0.08));
-                final optionTextColor = isSelected
-                    ? (useLightStyle ? Colors.white : ZunoTheme.primary)
-                    : textColor;
-
-                return GestureDetector(
-                  onTap: isAnswered ? null : () => onSelect(option),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: optionBgColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? (useLightStyle ? ZunoTheme.primary : Colors.white)
-                            : borderColor,
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      option,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: optionTextColor,
-                      ),
-                    ),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _QuestionOptionButton(
+                    option: option,
+                    isSelected: isSelected,
+                    isAnswered: isAnswered,
+                    onTap: isAnswered ? null : () => onSelect(option),
                   ),
                 );
               }).toList(),
             ),
             if (isAnswered) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.check_circle_outline_rounded,
-                      color: secondaryTextColor, size: 14),
-                  const SizedBox(width: 6),
+                      color: ZunoTheme.tertiary, size: 16),
+                  const SizedBox(width: 8),
                   Text(
                     'Saved to your journal',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: secondaryTextColor,
                     ),
                   ),
                 ],
               ),
             ],
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuestionOptionButton extends StatefulWidget {
+  final String option;
+  final bool isSelected;
+  final bool isAnswered;
+  final VoidCallback? onTap;
+
+  const _QuestionOptionButton({
+    required this.option,
+    required this.isSelected,
+    required this.isAnswered,
+    this.onTap,
+  });
+
+  @override
+  State<_QuestionOptionButton> createState() => _QuestionOptionButtonState();
+}
+
+class _QuestionOptionButtonState extends State<_QuestionOptionButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = widget.isSelected
+        ? ZunoTheme.tertiary
+        : ZunoTheme.surfaceContainerHighest.withOpacity(0.4);
+    final textColor = widget.isSelected ? Colors.white : ZunoTheme.onSurface;
+    final borderColor = widget.isSelected
+        ? ZunoTheme.tertiary
+        : ZunoTheme.outlineVariant.withOpacity(0.4);
+
+    return GestureDetector(
+      onTapDown: widget.isAnswered ? null : (_) => setState(() => _isPressed = true),
+      onTapUp: widget.isAnswered ? null : (_) => setState(() => _isPressed = false),
+      onTapCancel: widget.isAnswered ? null : () => setState(() => _isPressed = false),
+      onTap: widget.isAnswered
+          ? null
+          : () {
+              HapticFeedback.lightImpact();
+              widget.onTap?.call();
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.identity()..scale(_isPressed ? 0.98 : 1.0),
+        transformAlignment: Alignment.center,
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: borderColor, 
+            width: widget.isSelected ? 2.5 : 1.5,
+          ),
+          boxShadow: widget.isSelected
+              ? [
+                  BoxShadow(
+                    color: ZunoTheme.tertiary.withOpacity(0.3),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 8),
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.option,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: textColor,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            if (widget.isSelected)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_rounded,
+                  color: ZunoTheme.tertiary,
+                  size: 16,
+                ),
+              ),
           ],
         ),
       ),

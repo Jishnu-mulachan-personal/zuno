@@ -644,6 +644,17 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   void setHasShownQuestionPopup(bool val) => state = state.copyWith(hasShownQuestionPopup: val);
 
   Future<void> submitQuestionOption(String questionId, String option) async {
+    final originalQuestions = state.dailyQuestions;
+    
+    // 1. Instant Local Update (Optimistic UI)
+    final updatedQuestions = state.dailyQuestions.map((q) {
+      if (q.id == questionId) {
+        return q.copyWith(selectedOption: option);
+      }
+      return q;
+    }).toList();
+    state = state.copyWith(dailyQuestions: updatedQuestions);
+
     try {
       final supabase = Supabase.instance.client;
       await supabase
@@ -651,20 +662,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           .update({'selected_option': option})
           .eq('id', questionId);
 
-      // Local update
-      final updatedQuestions = state.dailyQuestions.map((q) {
-        if (q.id == questionId) {
-          return q.copyWith(selectedOption: option);
-        }
-        return q;
-      }).toList();
-
-      state = state.copyWith(dailyQuestions: updatedQuestions);
-
-      // (Optional) Mirror to daily check-in as a mini journal
+      // 2. Mirror to daily check-in as a mini journal
       final sbUser = supabase.auth.currentUser;
       if (sbUser != null) {
-        final q = state.dailyQuestions.firstWhere((q) => q.id == questionId);
+        final q = updatedQuestions.firstWhere((q) => q.id == questionId);
         final note = 'Answered Daily Question: "${q.text}" -> "$option"';
         final todayStr = DateTime.now().toIso8601String().split('T')[0];
         
@@ -678,6 +679,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       }
     } catch (e) {
       debugPrint('[submitQuestionOption] Error: $e');
+      // Revert state on error
+      state = state.copyWith(dailyQuestions: originalQuestions);
     }
   }
 
