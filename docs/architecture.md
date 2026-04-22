@@ -6,101 +6,64 @@
 | Layer | Technology |
 |---|---|
 | Framework | Flutter (Dart) |
-| State Management | Riverpod (preferred) or BLoC |
-| Local Storage | Hive / Flutter Secure Storage |
-| HTTP Client | Dio (with auth interceptors) |
-| Charts | fl_chart |
+| State Management | Riverpod |
+| Navigation | GoRouter |
+| Local Storage | `flutter_secure_storage` / `shared_preferences` |
+| AI Integration | Supabase Edge Functions (Deno/TypeScript) |
+| Charts | `fl_chart` |
 
-### Backend (Python)
+### Backend (Supabase)
 | Layer | Technology |
 |---|---|
-| Language | Python 3.12+ |
-| Framework | FastAPI |
-| Hosting | Google Cloud Run (Dockerized, serverless) |
-| Async Tasks | Celery + Redis |
-| Encryption | `cryptography` (Fernet symmetric encryption) |
-
-### Data & Auth
-| Layer | Technology |
-|---|---|
-| Platform | Supabase |
+| Platform | Supabase (Serverless) |
+| Functions | Supabase Edge Functions (Deno / TypeScript) |
 | Database | PostgreSQL |
-| Auth | Firebase Phone number based and social login|
+| Auth | Supabase Auth (Phone OTP, Google/Apple OAuth) |
 | Security | Row Level Security (RLS) |
+| Encryption | Fernet (Symmetric encryption for journal notes) |
 
 ### AI Engine
 | Layer | Technology |
 |---|---|
-| Model | Google Gemini 2.5 Flash |
-| SDK | `google-genai` Python SDK |
-| Scheduling | Celery + Redis (Sunday cron for Tier 3 summaries) |
+| Model | Google Gemini 1.5 Flash |
+| Fallback | Automatic fallback to secondary provider/model |
+| Integration | `@google/generative-ai` via Edge Functions |
+| Tasks | Daily insights, partner observations, cycle health tips |
 
 ---
 
 ## 3-Tier Memory Architecture
 
+Zuno uses a hierarchical memory system to provide contextually aware insights:
+
 ```
-Tier 1 — Today's Context        → daily_logs table         (every request)
-Tier 2 — Last 7 Days            → daily_logs (aggregated)  (daily refresh)
-Tier 3 — Long-term Patterns     → ai_summaries table       (Sunday cron)
+Tier 1 — Immediate Context     → daily_logs table (last 48 hours)
+Tier 2 — Short-term Patterns   → ai_summary_user_session (last 7-14 days)
+Tier 3 — Relationship Context  → ai_summary_relationship_session (Long-term dynamics)
 ```
 
-The `/api/v1/dashboard/today` endpoint combines all three tiers into a single Gemini prompt context.
+The `generate_daily_insight` function aggregates these tiers into a structured prompt for Gemini.
 
 ---
 
-## Core API Endpoints
+## Core Edge Functions
 
-### Auth & Onboarding
-| Method | Endpoint | Description |
+| Function Name | Description | Trigger |
 |---|---|---|
-| POST | `/api/v1/auth/register` | Creates user in Supabase + `users` table |
-| POST | `/api/v1/couple/invite` | Generates secure invite link for Partner B |
-| POST | `/api/v1/couple/join` | Links Partner B to Partner A's `relationship_id` |
-
-### Daily Logging
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/v1/logs/daily` | Encrypt & save daily log, return streak update |
-| GET | `/api/v1/logs/history?days=7` | Fetch last N days for both users (privacy filtered) |
-
-#### POST `/api/v1/logs/daily` — Payload
-```json
-{
-  "mood_emoji": "😔",
-  "connection_felt": false,
-  "context_tags": ["Work"],
-  "journal_note": "Long day",
-  "is_note_private": true
-}
-```
-
-### Dashboard & AI
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/v1/dashboard/today` | Fetch 3-tier context → call Gemini → return dynamic UI state |
-| POST | `/api/v1/insights/generate-weekly-summary` | Internal cron — batch-process Tier 3 memories |
-
-#### GET `/api/v1/dashboard/today` — Response
-```json
-{
-  "partner_status": {
-    "logged_today": true,
-    "mood": "🙂"
-  },
-  "dynamic_cards": [
-    {"type": "insight", "content": "You both logged high stress today. Consider a quiet night in."},
-    {"type": "cycle", "content": "Day 14. Approaching fertile window."}
-  ]
-}
-```
+| `generate_daily_insight` | Generates a warm insight + 2 swipable personalized questions | App Dashboard Load (or force refresh) |
+| `generate_partner_insights` | Processes partner observations and mood trends | Weekly / On-demand |
+| `generate_weekly_insights` | Summarizes the week's highs/lows for Tier 3 memory | Sunday Cron |
+| `notify_partner` | Sends real-time Push Notifications for partner activity | Database Webhook / Manual Trigger |
+| `generate_cycle_insight` | Analyzes cycle data to provide health and connection tips | Daily check-in / Cycle phase change |
 
 ---
 
-## Backend Constraints
+## Backend Constraints & Security
 
 | # | Rule | Implementation |
 |---|---|---|
-| **Privacy Gate** | Never return `journal_note` or `cycle_data` to partner unless `is_note_private = False` | Django ORM queryset filter |
-| **Encryption** | Fernet encrypt sensitive fields before save | Django pre-save signal or custom model field |
-| **Prompt Construction** | Dynamically compile `users` + `daily_logs` + `ai_summaries` into prompt | `AI_SERV` context manager module |
+| **Privacy Gate** | Partner A cannot see Partner B's private `journal_note` or detailed `cycle_data` | PostgreSQL RLS Policies |
+| **Encryption** | `journal_note` is Fernet encrypted on the device before storage | `encrypt` (Dart) & `fernet` (Deno) |
+| **Data Isolation** | Users can only see data if they belong to the same `relationship_id` | RLS `EXISTS` check on `users` table |
+| **AI Fallback** | Insights must never fail to load if a specific AI model is down | `generateContentWithFallback` wrapper |
+

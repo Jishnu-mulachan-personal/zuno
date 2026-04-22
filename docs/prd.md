@@ -1,4 +1,4 @@
-# Zuno – Product Requirements Document (PRD) v3.0
+# Zuno – Product Requirements Document (PRD) v3.1
 
 ## 1. Product Vision
 
@@ -73,27 +73,27 @@ Bottom Tabs (3 only):
 ## 6. Home Screen (Today)
 
 ### 6.1 Core Inputs
-- Mood (emoji tap)
+- Mood (continuous "Mood Spectrum" slider)
 - Connection (Yes/No)
 - Context tags (Work, Partner, Health, etc.)
 
 ### 6.2 Partner Status
-- Show partner mood
+- Show partner mood/energy
 - Show if partner has logged
 
 ### 6.3 Smart Insight
-- One short insight per day
+- One short, warm relationship insight per day
+- **Daily Questions:** AI-generated, swipable personalized questions to deepen connection.
 
 ---
 
-## 7. Smart Dynamic Cards
+## 7. Smart AI Cards
 
 | Card | Trigger | Content |
 |---|---|---|
-| Cycle Tracking | Cycle data enabled | Day of cycle, fertile window, log period |
-| Pregnancy Planning | Goal = "Trying for a baby" | High fertility days, suggested intimacy timing |
+| Cycle Tracking | Cycle data enabled | Day of cycle, phase (Menstruation, Follicular, Ovulation, Luteal) |
 | Mood + Cycle Insight | Correlation detected | "Mood drops before cycle" pattern |
-| Couple Sync Card | Both users logged | Compare moods, suggest communication prompts |
+| Couple Sync Card | Both users logged | Compare moods, suggest connection actions |
 
 > **RULE:** Show max 2–3 cards per day.
 
@@ -104,50 +104,27 @@ Bottom Tabs (3 only):
 ### Weekly Summary
 - Mood trend chart
 - Connection frequency
+- AI-generated long-term patterns
 
-### AI Insights
-- Behavioral patterns
-- Emotional trends
-
-### Suggestions
-- Simple actionable tips
+### Partner Observations
+- Structured check-ins on partner vibe and energy levels
+- Shared reflections
 
 ---
 
-## 9. Profile (You Tab)
+## 9. AI Personalization Engine
 
-### Sections
-- Partner connection status
-- Privacy settings (per-field controls)
-- Reminder settings
-- Journal (private notes)
+**Inputs:** Mood logs · Cycle data · User responses · Partner observations
 
----
-
-## 10. Continuous Learning Questions
-
-Delivered over time (not in onboarding). Format: one question at a time, tap-based answers.
-
-Examples:
-- How often do you meet?
-- What causes stress?
-- Cycle-related mood patterns
-
----
-
-## 11. AI Personalization Engine
-
-**Inputs:** Mood logs · Cycle data · User responses · Partner data
-
-**Outputs:** Daily insights · Weekly summaries · Suggestions
+**Outputs:** Daily insights · Weekly summaries · Personalized questions
 
 ### 3-Tier Memory Architecture
 
 | Tier | Scope | Source Table | Refresh |
 |---|---|---|---|
 | Tier 1 | Today's context | `daily_logs` | Every request |
-| Tier 2 | Last 7 days | `daily_logs` (aggregated) | Daily |
-| Tier 3 | Long-term patterns | `ai_summaries` | Every Sunday (cron) |
+| Tier 2 | Last 7-14 days | `ai_summary_user_session` | Daily |
+| Tier 3 | Long-term patterns | `ai_summary_relationship_session` | Weekly (Sunday) |
 
 ---
 
@@ -193,9 +170,9 @@ After logging, show:
 
 | # | Constraint | Detail |
 |---|---|---|
-| 1 | Privacy Gate | Django ORM must NEVER return `journal_note` or `cycle_data` to a partner query unless `is_note_private = False` |
-| 2 | Encryption | Pre-save signal or custom model field runs Fernet encryption on sensitive fields before `model.save()` |
-| 3 | Prompt Construction | Backend dynamically compiles AI prompt using `users`, `daily_logs`, `ai_summaries` tables for 3-tier context |
+| 1 | Privacy Gate | PostgreSQL RLS must NEVER return `journal_note` or `cycle_data` to a partner query unless `is_note_private = False` |
+| 2 | Encryption | Fernet encryption on `journal_note` before storing in Supabase |
+| 3 | AI Fallback | Edge Functions utilize a fallback provider to ensure insights are always available |
 
 ---
 
