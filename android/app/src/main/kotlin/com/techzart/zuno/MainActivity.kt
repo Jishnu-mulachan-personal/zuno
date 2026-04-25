@@ -1,4 +1,4 @@
-package com.zuno.zuno
+package com.techzart.zuno
 
 import io.flutter.embedding.android.FlutterActivity
 
