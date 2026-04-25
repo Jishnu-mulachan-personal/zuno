@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 
 import '../../core/theme_provider.dart';
@@ -26,8 +25,12 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     final cycleData = profile?.cycleData;
     final state = ref.watch(dashboardProvider);
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF7F2), // Light warm background
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: profile == null
           ? const Center(child: CircularProgressIndicator())
           : cycleData == null
@@ -35,27 +38,29 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               : CustomScrollView(
                   physics: const BouncingScrollPhysics(),
                   slivers: [
-                    _buildAppBar(profile),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: 16),
-                            _buildPhaseCard(cycleData),
-                            const SizedBox(height: 32),
-                            _buildHorizontalCalendar(cycleData),
-                            const SizedBox(height: 32),
-                            _buildEnergyCard(),
-                            const SizedBox(height: 32),
-                            _buildLogQuickActions(),
-                            const SizedBox(height: 32),
-                            _buildAIInsight(state.cycleInsight),
-                            const SizedBox(height: 32),
-                            _buildUpcomingSection(cycleData),
-                            const SizedBox(height: 120),
-                          ],
+                    SliverSafeArea(
+                      sliver: SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildHeader(profile, textTheme),
+                              const SizedBox(height: 16),
+                              _buildPhaseCard(cycleData, colorScheme, textTheme),
+                              const SizedBox(height: 32),
+                              _buildHorizontalCalendar(cycleData, colorScheme, textTheme),
+                              const SizedBox(height: 32),
+                              _buildEnergyCard(colorScheme, textTheme),
+                              const SizedBox(height: 32),
+                              _buildLogQuickActions(colorScheme, textTheme),
+                              const SizedBox(height: 32),
+                              _buildAIInsight(state.cycleInsight, colorScheme, textTheme),
+                              const SizedBox(height: 32),
+                              _buildUpcomingSection(cycleData, colorScheme, textTheme),
+                              const SizedBox(height: 120),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -64,95 +69,69 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  SliverAppBar _buildAppBar(UserProfile profile) {
-    return SliverAppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      pinned: true, // Keep "Zuno" visible on scroll if desired
-      surfaceTintColor: Colors.transparent,
-      leading: IconButton(
-        icon: const Icon(Icons.menu, color: Colors.black87),
-        onPressed: () {},
-      ),
-      title: Text(
-        'Zuno',
-        style: GoogleFonts.notoSerif(
-          fontSize: 26,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFFC04A3C), // Terracotta
-          fontStyle: FontStyle.italic,
+  Widget _buildHeader(UserProfile profile, TextTheme textTheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: Icon(Icons.menu, color: textTheme.bodyLarge?.color?.withOpacity(0.8)),
+              onPressed: () {},
+              padding: EdgeInsets.zero,
+              alignment: Alignment.centerLeft,
+            ),
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: textTheme.bodyLarge?.color?.withOpacity(0.1),
+              backgroundImage: profile.avatarUrl != null
+                  ? NetworkImage(profile.avatarUrl!)
+                  : null,
+              child: profile.avatarUrl == null
+                  ? Icon(Icons.person, color: textTheme.bodyLarge?.color?.withOpacity(0.5))
+                  : null,
+            ),
+          ],
         ),
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 24.0),
-          child: CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.grey.shade300,
-            backgroundImage: profile.avatarUrl != null
-                ? NetworkImage(profile.avatarUrl!)
-                : null,
-            child: profile.avatarUrl == null
-                ? const Icon(Icons.person, color: Colors.white)
-                : null,
+        const SizedBox(height: 16),
+        Text(
+          'Hello, ${profile.displayName.split(' ').first}',
+          style: textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w400,
           ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Let's tune into your body's rhythm",
+          style: textTheme.bodySmall,
         ),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hello, ${profile.displayName.split(' ').first}',
-                style: GoogleFonts.notoSerif(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "Let's tune into your body's rhythm",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.black54,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _buildPhaseCard(CycleData cycle) {
+  Widget _buildPhaseCard(CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
     final phase = cycle.currentPhase;
 
     String displayName = 'Follicular Phase';
-    Color mainColor = const Color(0xFF4DB6AC);
-    Color gradientStart = const Color(0xFFF3C0A4);
+    Color mainColor = colorScheme.secondary;
+    Color gradientStart = colorScheme.secondaryContainer;
     String badgeText = "Potential Fertility";
 
     if (phase == 'Ovulation') {
       displayName = 'Ovulation Window';
-      mainColor = const Color(0xFF2C7475); // Dark teal
-      gradientStart = const Color(0xFFE27C65); // Terracotta/Orange
+      mainColor = colorScheme.tertiary; // Dark teal in Hearth
+      gradientStart = colorScheme.primaryContainer; // Terracotta/Orange
       badgeText = "High Fertility";
     } else if (phase == 'Menstruation') {
       displayName = 'Menstruation';
-      mainColor = const Color(0xFFC04A3C);
-      gradientStart = const Color(0xFFD68A81);
+      mainColor = colorScheme.primary;
+      gradientStart = colorScheme.primaryFixed;
       badgeText = "Self Care";
     } else if (phase == 'Luteal') {
       displayName = 'Luteal Phase';
-      gradientStart = const Color(0xFF759D9E);
-      mainColor = const Color(0xFF4DB6AC);
+      gradientStart = colorScheme.tertiaryFixed;
+      mainColor = colorScheme.tertiary;
       badgeText = "Rest & Reset";
     }
 
@@ -163,11 +142,11 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: colorScheme.shadow.withOpacity(0.03),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -182,18 +161,12 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               children: [
                 Text(
                   'You are in your',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black54,
-                  ),
+                  style: textTheme.bodySmall,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   displayName,
-                  style: GoogleFonts.notoSerif(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w400,
+                  style: textTheme.headlineSmall?.copyWith(
                     color: mainColor,
                     height: 1.2,
                   ),
@@ -201,10 +174,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'Day $dayProgress  •  ${_getMonthName(DateTime.now().month)} ${DateTime.now().day}',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
+                  style: textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: Colors.black54,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -223,10 +194,9 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                       const SizedBox(width: 4),
                       Text(
                         badgeText,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                        style: textTheme.labelSmall?.copyWith(
                           color: mainColor,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -246,6 +216,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                     progress: progress,
                     gradientStart: gradientStart,
                     gradientEnd: mainColor,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
                   ),
                 ),
                 Center(
@@ -254,20 +225,15 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                     children: [
                       Text(
                         '$dayProgress',
-                        style: GoogleFonts.notoSerif(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w500,
+                        style: textTheme.headlineMedium?.copyWith(
                           color: mainColor,
                           height: 1.1,
+                          fontSize: 26,
                         ),
                       ),
                       Text(
                         'of $totalDays',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black54,
-                        ),
+                        style: textTheme.labelSmall,
                       ),
                     ],
                   ),
@@ -280,9 +246,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildHorizontalCalendar(CycleData cycle) {
+  Widget _buildHorizontalCalendar(CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
     final today = DateTime.now();
-    // Build list representing standard view (~21 days)
     final dates = List.generate(21,
         (i) => today.subtract(const Duration(days: 4)).add(Duration(days: i)));
 
@@ -307,17 +272,16 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                 'SAT',
                 'SUN'
               ];
-              // DateTime.weekday is 1 (Mon) to 7 (Sun)
               final dayName = dayNames[date.weekday - 1];
 
               final phase = cycle.getDayType(date);
               Color dotColor = Colors.transparent;
               if (phase == 'period') {
-                dotColor = const Color(0xFFC04A3C);
+                dotColor = colorScheme.primary;
               } else if (phase == 'fertile' || phase == 'maybe_fertile') {
-                dotColor = const Color(0xFF4DB6AC);
+                dotColor = colorScheme.tertiary;
               } else {
-                dotColor = Colors.black12;
+                dotColor = colorScheme.onSurfaceVariant.withOpacity(0.2);
               }
 
               return GestureDetector(
@@ -326,44 +290,59 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                     _selectedDate = date;
                   });
                 },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 50,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: isSelected
-                      ? BoxDecoration(
-                          color: const Color(0xFF2C7475),
-                          borderRadius: BorderRadius.circular(24),
-                        )
-                      : null,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                child: SizedBox(
+                  width: 58,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      Text(
-                        dayName,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white70 : Colors.black45,
+                      Positioned(
+                        bottom: 16,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 1,
+                          color: colorScheme.outlineVariant,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${date.day}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.white : dotColor,
-                          shape: BoxShape.circle,
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 50,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: isSelected
+                            ? BoxDecoration(
+                                color: colorScheme.tertiary,
+                                borderRadius: BorderRadius.circular(24),
+                              )
+                            : null,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              dayName,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: isSelected ? colorScheme.onTertiary : colorScheme.onSurfaceVariant,
+                                fontSize: 10,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${date.day}',
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isSelected ? colorScheme.onTertiary : colorScheme.onSurface,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: isSelected ? colorScheme.onTertiary : dotColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -373,32 +352,44 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             },
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.only(top: 10, bottom: 0),
-          child: Divider(color: Colors.black12, height: 1),
+        Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 0),
+          child: Divider(color: colorScheme.outlineVariant, height: 1),
         ),
       ],
     );
   }
 
-  Widget _buildEnergyCard() {
+  Widget _buildEnergyCard(ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF9E8DE), // Beige
+        color: colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(24),
+        image: const DecorationImage(
+          image: AssetImage('assets/images/energy_bg.png'),
+          fit: BoxFit.cover,
+          opacity: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
           Positioned(
-            right: -20,
-            bottom: 0,
+            right: -10,
+            bottom: -10,
             child: SizedBox(
-              height: 200,
+              height: 190,
               child: Image.asset(
-                'assets/images/radiant_energy.png',
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, err, stack) => const SizedBox(), // fallback
+                'assets/images/energy_character.png',
+                fit: BoxFit.contain,
+                errorBuilder: (ctx, err, stack) => const SizedBox(),
               ),
             ),
           ),
@@ -411,40 +402,30 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                   children: [
                     Text(
                       "Today's Energy",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                      style: textTheme.labelMedium,
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.info_outline,
-                        size: 14, color: Colors.black54),
+                    Icon(Icons.info_outline,
+                        size: 14, color: colorScheme.onSurfaceVariant),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Text(
                   "Radiant",
-                  style: GoogleFonts.notoSerif(
-                    fontSize: 32,
-                    color: const Color(0xFFC04A3C),
+                  style: textTheme.headlineLarge?.copyWith(
+                    color: colorScheme.primary,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Icon(Icons.wb_sunny_outlined,
-                    color: Color(0xFFC04A3C), size: 30),
+                Icon(Icons.wb_sunny_outlined,
+                    color: colorScheme.primary, size: 30),
                 const SizedBox(height: 48),
                 SizedBox(
                   width: MediaQuery.of(context).size.width * 0.55,
                   child: Text(
                     "High energy and sociability.\nA great day for connection and creativity.",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                      height: 1.4,
-                    ),
+                    style: textTheme.bodyMedium,
                   ),
                 ),
               ],
@@ -455,7 +436,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildLogQuickActions() {
+  Widget _buildLogQuickActions(ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -464,20 +445,14 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           children: [
             Text(
               "Log how you feel",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: textTheme.titleMedium,
             ),
             TextButton(
               onPressed: () {},
               child: Text(
                 "View all",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2C7475),
+                style: textTheme.labelMedium?.copyWith(
+                  color: colorScheme.tertiary,
                 ),
               ),
             ),
@@ -488,13 +463,13 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildActionItem(Icons.water_drop_outlined, "Body",
-                const Color(0xFFFCEBE8), const Color(0xFFC04A3C)),
+                colorScheme.primaryContainer.withOpacity(0.2), colorScheme.primary, textTheme),
             _buildActionItem(Icons.sentiment_satisfied_outlined, "Mood",
-                const Color(0xFFE2EFEF), const Color(0xFF2C7475)),
+                colorScheme.tertiaryContainer.withOpacity(0.2), colorScheme.tertiary, textTheme),
             _buildActionItem(Icons.vaccines_outlined, "Flow",
-                const Color(0xFFFCEBE8), const Color(0xFFC04A3C)),
+                colorScheme.primaryContainer.withOpacity(0.2), colorScheme.primary, textTheme),
             _buildActionItem(Icons.edit_outlined, "Notes",
-                const Color(0xFFF4EEE5), const Color(0xFF7D7268)),
+                colorScheme.surfaceContainerHighest, colorScheme.onSurfaceVariant, textTheme),
           ],
         ),
       ],
@@ -502,7 +477,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   }
 
   Widget _buildActionItem(
-      IconData icon, String label, Color bgColor, Color iconColor) {
+      IconData icon, String label, Color bgColor, Color iconColor, TextTheme textTheme) {
     return Column(
       children: [
         Container(
@@ -519,25 +494,24 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         const SizedBox(height: 12),
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
+          style: textTheme.bodySmall?.copyWith(
             fontWeight: FontWeight.w500,
-            color: Colors.black87,
+            color: textTheme.bodyLarge?.color,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAIInsight(String? genericInsight) {
+  Widget _buildAIInsight(String? genericInsight, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: colorScheme.shadow.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -548,15 +522,13 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome,
-                  size: 16, color: Color(0xFF2C7475)),
+              Icon(Icons.auto_awesome,
+                  size: 16, color: colorScheme.tertiary),
               const SizedBox(width: 8),
               Text(
                 "AI Insight",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2C7475),
+                style: textTheme.labelMedium?.copyWith(
+                  color: colorScheme.tertiary,
                 ),
               ),
             ],
@@ -569,11 +541,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                 child: Text(
                   genericInsight ??
                       "Estrogen is rising, which may enhance your mood and energy. Stay hydrated and enjoy this vibrant phase!",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.black87,
-                    height: 1.5,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -581,10 +550,10 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               Container(
                 width: 60,
                 height: 60,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [Color(0xFFEF9C86), Color(0xFFD67362)],
+                    colors: [colorScheme.primaryContainer, colorScheme.primary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -599,7 +568,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildUpcomingSection(CycleData cycle) {
+  Widget _buildUpcomingSection(CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -608,20 +577,14 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           children: [
             Text(
               "Upcoming",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: textTheme.titleMedium,
             ),
             TextButton(
               onPressed: () {},
               child: Text(
                 "Next 7 days",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2C7475),
+                style: textTheme.labelMedium?.copyWith(
+                  color: colorScheme.tertiary,
                 ),
               ),
             ),
@@ -635,13 +598,13 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             clipBehavior: Clip.none,
             children: [
               _buildUpcomingCard(
-                  "Feb 11 – 12", "Peak Fertility", const Color(0xFF2C7475), true),
+                  "Feb 11 – 12", "Peak Fertility", colorScheme.tertiary, true, colorScheme, textTheme),
               const SizedBox(width: 12),
               _buildUpcomingCard(
-                  "Feb 13 – 15", "Ovulation", const Color(0xFFC04A3C), false),
+                  "Feb 13 – 15", "Ovulation", colorScheme.primary, false, colorScheme, textTheme),
               const SizedBox(width: 12),
               _buildUpcomingCard(
-                  "Feb 16 – 20", "Energy Shift", const Color(0xFFE27C65), true),
+                  "Feb 16 – 20", "Energy Shift", colorScheme.secondary, true, colorScheme, textTheme),
             ],
           ),
         ),
@@ -650,17 +613,17 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   }
 
   Widget _buildUpcomingCard(
-      String dateRange, String title, Color accentColor, bool isWave) {
+      String dateRange, String title, Color accentColor, bool isWave, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       width: 120,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.015),
+            color: colorScheme.shadow.withOpacity(0.015),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -670,20 +633,14 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         children: [
           Text(
             dateRange,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+            style: textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.black54,
-            ),
+            style: textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),
           const Spacer(),
@@ -697,18 +654,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
 
   String _getMonthName(int month) {
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return months[month - 1];
   }
@@ -718,11 +665,14 @@ class _RingPainter extends CustomPainter {
   final double progress;
   final Color gradientStart;
   final Color gradientEnd;
+  final Color backgroundColor;
 
-  _RingPainter(
-      {required this.progress,
-      required this.gradientStart,
-      required this.gradientEnd});
+  _RingPainter({
+    required this.progress,
+    required this.gradientStart,
+    required this.gradientEnd,
+    required this.backgroundColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -730,7 +680,7 @@ class _RingPainter extends CustomPainter {
     final radius = math.min(size.width / 2, size.height / 2) - 4;
 
     final bgPaint = Paint()
-      ..color = Colors.grey.shade300
+      ..color = backgroundColor
       ..strokeWidth = 6
       ..style = PaintingStyle.stroke;
 
@@ -756,8 +706,7 @@ class _RingPainter extends CustomPainter {
     );
 
     final highlightPaint = Paint()
-      ..shader =
-          gradient.createShader(Rect.fromCircle(center: center, radius: radius))
+      ..shader = gradient.createShader(Rect.fromCircle(center: center, radius: radius))
       ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
