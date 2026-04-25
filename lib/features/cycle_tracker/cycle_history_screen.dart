@@ -87,7 +87,7 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(
-              'Cycle Calendar',
+              'Cycle History',
               style: textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
@@ -126,10 +126,10 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildCalendarCard(profile, cycleData, allPeriods, colorScheme, textTheme),
+        const SizedBox(height: 20),
         _buildLegend(colorScheme, textTheme),
         const SizedBox(height: 24),
-        _buildCalendarCard(profile, cycleData, allPeriods, colorScheme, textTheme),
-        const SizedBox(height: 16),
         // Cycle stats strip for the displayed month
         _buildMonthStatsStrip(
             _displayedMonth, allPeriods, cycleData, colorScheme, textTheme),
@@ -144,34 +144,57 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
 
   Widget _buildLegend(ColorScheme colorScheme, TextTheme textTheme) {
     final items = [
-      (_legendDot(colorScheme.primary), 'Period'),
-      (_legendDot(colorScheme.tertiary), 'Fertile'),
-      (_legendDot(colorScheme.tertiary.withOpacity(0.4)), 'Maybe Fertile'),
-      (_legendDot(colorScheme.onSurfaceVariant.withOpacity(0.12)), 'Normal'),
+      ('Period', colorScheme.primary),
+      ('Fertile', colorScheme.tertiary),
+      ('Maybe Fertile', colorScheme.tertiaryContainer),
+      ('Predicted', colorScheme.primaryContainer),
     ];
+
     return Wrap(
-      spacing: 20,
-      runSpacing: 8,
+      spacing: 12,
+      runSpacing: 10,
       children: items
-          .map((e) => Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  e.$1,
-                  const SizedBox(width: 6),
-                  Text(e.$2,
-                      style: textTheme.labelSmall
-                          ?.copyWith(color: colorScheme.onSurfaceVariant)),
-                ],
+          .map((e) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: e.$2.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: e.$2.withOpacity(0.15)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: e.$2,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: e.$2.withOpacity(0.3),
+                            blurRadius: 4,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      e.$1,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
               ))
           .toList(),
     );
   }
-
-  Widget _legendDot(Color color) => Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      );
 
   // ── Calendar card ────────────────────────────────────────────────────────────
 

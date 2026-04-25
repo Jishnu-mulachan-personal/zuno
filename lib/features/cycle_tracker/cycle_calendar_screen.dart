@@ -91,6 +91,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                               _buildAIInsight(
                                   state.cycleInsight, colorScheme, textTheme),
                               const SizedBox(height: 32),
+                              _buildHistorySection(colorScheme, textTheme),
+                              const SizedBox(height: 32),
                               _buildUpcomingSection(
                                   cycleData, colorScheme, textTheme),
                               const SizedBox(height: 120),
@@ -207,48 +209,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: Icon(Icons.menu,
-                  color: textTheme.bodyLarge?.color?.withOpacity(0.8)),
-              onPressed: () {},
-              padding: EdgeInsets.zero,
-              alignment: Alignment.centerLeft,
-            ),
-            GestureDetector(
-              onTap: () => context.push('/cycle_history'),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color:
-                      textTheme.bodyLarge?.color?.withOpacity(0.06) ?? Colors.grey.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.calendar_month_rounded,
-                        size: 15,
-                        color: textTheme.bodyLarge?.color?.withOpacity(0.6)),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Full Calendar',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: textTheme.bodyLarge?.color?.withOpacity(0.6),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text(
           'Hello, ${profile.displayName.split(' ').first}',
           style: textTheme.headlineMedium?.copyWith(
@@ -921,6 +882,56 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHistorySection(ColorScheme colorScheme, TextTheme textTheme) {
+    return GestureDetector(
+      onTap: () => context.push('/cycle_history'),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.tertiary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(Icons.history_rounded,
+                  color: colorScheme.tertiary, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Cycle History",
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "View your past cycles and trends",
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 16, color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
+          ],
+        ),
       ),
     );
   }
