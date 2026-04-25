@@ -272,7 +272,6 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            flex: 6,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -282,12 +281,16 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                   style: textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  displayName,
-                  style: textTheme.headlineSmall?.copyWith(
-                    color: mainColor,
-                    height: 1.1,
-                    fontWeight: FontWeight.w500,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    displayName,
+                    style: textTheme.headlineSmall?.copyWith(
+                      color: mainColor,
+                      height: 1.1,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -326,44 +329,41 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           ),
           const SizedBox(width: 8),
           // Progress Indicator Unit
-          Flexible(
-            flex: 4,
-            child: Center(
-              child: SizedBox(
-                width: 90,
-                height: 90,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CustomPaint(
-                      size: const Size(90, 90),
-                      painter: _RingPainter(
-                        progress: progress,
-                        gradientStart: gradientStart,
-                        gradientEnd: mainColor,
-                        backgroundColor: colorScheme.surfaceContainerHighest,
+          Center(
+            child: SizedBox(
+              width: 90,
+              height: 90,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(90, 90),
+                    painter: _RingPainter(
+                      progress: progress,
+                      gradientStart: gradientStart,
+                      gradientEnd: mainColor,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$dayProgress',
+                        style: textTheme.headlineMedium?.copyWith(
+                          color: mainColor,
+                          height: 1.1,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$dayProgress',
-                          style: textTheme.headlineMedium?.copyWith(
-                            color: mainColor,
-                            height: 1.1,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          'of $totalDays',
-                          style: textTheme.labelSmall?.copyWith(fontSize: 10),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      Text(
+                        'of $totalDays',
+                        style: textTheme.labelSmall?.copyWith(fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
