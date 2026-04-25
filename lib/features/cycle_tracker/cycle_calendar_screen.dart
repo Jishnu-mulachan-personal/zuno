@@ -47,17 +47,21 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                             children: [
                               _buildHeader(profile, textTheme),
                               const SizedBox(height: 16),
-                              _buildPhaseCard(cycleData, colorScheme, textTheme),
+                              _buildPhaseCard(
+                                  cycleData, colorScheme, textTheme),
                               const SizedBox(height: 32),
-                              _buildHorizontalCalendar(cycleData, colorScheme, textTheme),
+                              _buildHorizontalCalendar(
+                                  cycleData, colorScheme, textTheme),
                               const SizedBox(height: 32),
                               _buildEnergyCard(colorScheme, textTheme),
                               const SizedBox(height: 32),
                               _buildLogQuickActions(colorScheme, textTheme),
                               const SizedBox(height: 32),
-                              _buildAIInsight(state.cycleInsight, colorScheme, textTheme),
+                              _buildAIInsight(
+                                  state.cycleInsight, colorScheme, textTheme),
                               const SizedBox(height: 32),
-                              _buildUpcomingSection(cycleData, colorScheme, textTheme),
+                              _buildUpcomingSection(
+                                  cycleData, colorScheme, textTheme),
                               const SizedBox(height: 120),
                             ],
                           ),
@@ -77,7 +81,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              icon: Icon(Icons.menu, color: textTheme.bodyLarge?.color?.withOpacity(0.8)),
+              icon: Icon(Icons.menu,
+                  color: textTheme.bodyLarge?.color?.withOpacity(0.8)),
               onPressed: () {},
               padding: EdgeInsets.zero,
               alignment: Alignment.centerLeft,
@@ -89,7 +94,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                   ? NetworkImage(profile.avatarUrl!)
                   : null,
               child: profile.avatarUrl == null
-                  ? Icon(Icons.person, color: textTheme.bodyLarge?.color?.withOpacity(0.5))
+                  ? Icon(Icons.person,
+                      color: textTheme.bodyLarge?.color?.withOpacity(0.5))
                   : null,
             ),
           ],
@@ -110,7 +116,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildPhaseCard(CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildPhaseCard(
+      CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
     final phase = cycle.currentPhase;
 
     String displayName = 'Follicular Phase';
@@ -246,117 +253,108 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildHorizontalCalendar(CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildHorizontalCalendar(
+      CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
     final today = DateTime.now();
     final dates = List.generate(21,
         (i) => today.subtract(const Duration(days: 4)).add(Duration(days: i)));
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 80,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: dates.length,
-            itemBuilder: (context, index) {
-              final date = dates[index];
-              final isSelected = date.day == _selectedDate.day &&
-                  date.month == _selectedDate.month;
+    return SizedBox(
+      height: 80,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: dates.length,
+        itemBuilder: (context, index) {
+          final date = dates[index];
+          final isSelected = date.day == _selectedDate.day &&
+              date.month == _selectedDate.month;
 
-              const dayNames = [
-                'MON',
-                'TUE',
-                'WED',
-                'THU',
-                'FRI',
-                'SAT',
-                'SUN'
-              ];
-              final dayName = dayNames[date.weekday - 1];
+          const dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+          final dayName = dayNames[date.weekday - 1];
 
-              final phase = cycle.getDayType(date);
-              Color dotColor = Colors.transparent;
-              if (phase == 'period') {
-                dotColor = colorScheme.primary;
-              } else if (phase == 'fertile' || phase == 'maybe_fertile') {
-                dotColor = colorScheme.tertiary;
-              } else {
-                dotColor = colorScheme.onSurfaceVariant.withOpacity(0.2);
-              }
+          final phase = cycle.getDayType(date);
+          Color dotColor = Colors.transparent;
+          if (phase == 'period') {
+            dotColor = colorScheme.primary;
+          } else if (phase == 'fertile' || phase == 'maybe_fertile') {
+            dotColor = colorScheme.tertiary;
+          } else {
+            dotColor = colorScheme.onSurfaceVariant.withOpacity(0.2);
+          }
 
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedDate = date;
-                  });
-                },
-                child: SizedBox(
-                  width: 58,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(
-                        bottom: 16,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          height: 1,
-                          color: colorScheme.outlineVariant,
-                        ),
-                      ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 50,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: isSelected
-                            ? BoxDecoration(
-                                color: colorScheme.tertiary,
-                                borderRadius: BorderRadius.circular(24),
-                              )
-                            : null,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              dayName,
-                              style: textTheme.labelSmall?.copyWith(
-                                color: isSelected ? colorScheme.onTertiary : colorScheme.onSurfaceVariant,
-                                fontSize: 10,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${date.day}',
-                              style: textTheme.titleMedium?.copyWith(
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                color: isSelected ? colorScheme.onTertiary : colorScheme.onSurface,
-                                fontSize: 18,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: isSelected ? colorScheme.onTertiary : dotColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedDate = date;
+              });
             },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 10, bottom: 0),
-          child: Divider(color: colorScheme.outlineVariant, height: 1),
-        ),
-      ],
+            child: SizedBox(
+              width: 58,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    bottom: 12, // Perfectly aligned through dot center
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 1,
+                      color: colorScheme.outlineVariant,
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 50,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: isSelected
+                        ? BoxDecoration(
+                            color: colorScheme.tertiary,
+                            borderRadius: BorderRadius.circular(24),
+                          )
+                        : null,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          dayName,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: isSelected
+                                ? colorScheme.onTertiary
+                                : colorScheme.onSurfaceVariant,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${date.day}',
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: isSelected
+                                ? colorScheme.onTertiary
+                                : colorScheme.onSurface,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color:
+                                isSelected ? colorScheme.onTertiary : dotColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -462,22 +460,38 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildActionItem(Icons.water_drop_outlined, "Body",
-                colorScheme.primaryContainer.withOpacity(0.2), colorScheme.primary, textTheme),
-            _buildActionItem(Icons.sentiment_satisfied_outlined, "Mood",
-                colorScheme.tertiaryContainer.withOpacity(0.2), colorScheme.tertiary, textTheme),
-            _buildActionItem(Icons.vaccines_outlined, "Flow",
-                colorScheme.primaryContainer.withOpacity(0.2), colorScheme.primary, textTheme),
-            _buildActionItem(Icons.edit_outlined, "Notes",
-                colorScheme.surfaceContainerHighest, colorScheme.onSurfaceVariant, textTheme),
+            _buildActionItem(
+                Icons.water_drop_outlined,
+                "Body",
+                colorScheme.primaryContainer.withOpacity(0.2),
+                colorScheme.primary,
+                textTheme),
+            _buildActionItem(
+                Icons.sentiment_satisfied_outlined,
+                "Mood",
+                colorScheme.tertiaryContainer.withOpacity(0.2),
+                colorScheme.tertiary,
+                textTheme),
+            _buildActionItem(
+                Icons.vaccines_outlined,
+                "Flow",
+                colorScheme.primaryContainer.withOpacity(0.2),
+                colorScheme.primary,
+                textTheme),
+            _buildActionItem(
+                Icons.edit_outlined,
+                "Notes",
+                colorScheme.surfaceContainerHighest,
+                colorScheme.onSurfaceVariant,
+                textTheme),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildActionItem(
-      IconData icon, String label, Color bgColor, Color iconColor, TextTheme textTheme) {
+  Widget _buildActionItem(IconData icon, String label, Color bgColor,
+      Color iconColor, TextTheme textTheme) {
     return Column(
       children: [
         Container(
@@ -503,7 +517,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildAIInsight(String? genericInsight, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildAIInsight(
+      String? genericInsight, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -522,8 +537,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome,
-                  size: 16, color: colorScheme.tertiary),
+              Icon(Icons.auto_awesome, size: 16, color: colorScheme.tertiary),
               const SizedBox(width: 8),
               Text(
                 "AI Insight",
@@ -568,7 +582,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildUpcomingSection(CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildUpcomingSection(
+      CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -597,14 +612,14 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.none,
             children: [
-              _buildUpcomingCard(
-                  "Feb 11 – 12", "Peak Fertility", colorScheme.tertiary, true, colorScheme, textTheme),
+              _buildUpcomingCard("Feb 11 – 12", "Peak Fertility",
+                  colorScheme.tertiary, true, colorScheme, textTheme),
               const SizedBox(width: 12),
-              _buildUpcomingCard(
-                  "Feb 13 – 15", "Ovulation", colorScheme.primary, false, colorScheme, textTheme),
+              _buildUpcomingCard("Feb 13 – 15", "Ovulation",
+                  colorScheme.primary, false, colorScheme, textTheme),
               const SizedBox(width: 12),
-              _buildUpcomingCard(
-                  "Feb 16 – 20", "Energy Shift", colorScheme.secondary, true, colorScheme, textTheme),
+              _buildUpcomingCard("Feb 16 – 20", "Energy Shift",
+                  colorScheme.secondary, true, colorScheme, textTheme),
             ],
           ),
         ),
@@ -612,8 +627,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildUpcomingCard(
-      String dateRange, String title, Color accentColor, bool isWave, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildUpcomingCard(String dateRange, String title, Color accentColor,
+      bool isWave, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       width: 120,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
@@ -654,8 +669,18 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
 
   String _getMonthName(int month) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return months[month - 1];
   }
@@ -706,7 +731,8 @@ class _RingPainter extends CustomPainter {
     );
 
     final highlightPaint = Paint()
-      ..shader = gradient.createShader(Rect.fromCircle(center: center, radius: radius))
+      ..shader =
+          gradient.createShader(Rect.fromCircle(center: center, radius: radius))
       ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
