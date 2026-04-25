@@ -163,7 +163,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
         opacity: _fadeAnim,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFFCF9F6), // Digital Hearth Cream
+            color: cs.surface, // Digital Hearth Cream
           ),
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
@@ -187,7 +187,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                         textAlign: TextAlign.center,
                         style: GoogleFonts.playfairDisplay(
                           textStyle: tt.headlineMedium?.copyWith(
-                            color: const Color(0xFF2D2D2D),
+                            color: cs.onSurface,
                             fontWeight: FontWeight.w400,
                             height: 1.2,
                           ),
@@ -198,7 +198,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                         width: 60,
                         height: 2,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFC05E44).withOpacity(0.5),
+                          color: cs.primary.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(1),
                         ),
                       ),
@@ -213,10 +213,10 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cs.surfaceContainerLowest,
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(
-                        color: const Color(0xFFE5E2DF).withOpacity(0.5),
+                        color: cs.outlineVariant.withOpacity(0.5),
                       ),
                     ),
                     padding: const EdgeInsets.all(20),
@@ -227,7 +227,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                         _buildSectionHeader(
                           'Physical',
                           Icons.favorite_border_rounded,
-                          const Color(0xFFC05E44),
+                          cs.primary,
                           tt,
                         ),
                         const SizedBox(height: 16),
@@ -243,19 +243,20 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                               }
                             });
                           },
-                          const Color(0xFFC05E44),
+                          cs.primary,
+                          cs,
                         ),
 
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Divider(height: 1, color: Color(0xFFF3F1EE)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Divider(height: 1, color: cs.surfaceContainer),
                         ),
 
                         // ── Flow Section ──
                         _buildSectionHeader(
                           'Flow',
                           Icons.water_drop_outlined,
-                          const Color(0xFFC05E44),
+                          cs.primary,
                           tt,
                         ),
                         const SizedBox(height: 16),
@@ -271,19 +272,20 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                               }
                             });
                           },
-                          const Color(0xFFC05E44),
+                          cs.primary,
+                          cs,
                         ),
 
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Divider(height: 1, color: Color(0xFFF3F1EE)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Divider(height: 1, color: cs.surfaceContainer),
                         ),
 
                         // ── Mood Section ──
                         _buildSectionHeader(
                           'Mood',
                           Icons.emoji_emotions_outlined,
-                          const Color(0xFF528A7A), // Teal
+                          cs.tertiary, // Teal
                           tt,
                         ),
                         const SizedBox(height: 16),
@@ -299,7 +301,8 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                               }
                             });
                           },
-                          const Color(0xFF528A7A),
+                          cs.tertiary,
+                          cs,
                         ),
 
                         const SizedBox(height: 32),
@@ -309,7 +312,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                           'Add a note (optional)',
                           style: tt.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF54433E),
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -355,6 +358,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
     Set<String> selection,
     Function(String) onToggle,
     Color activeColor,
+    ColorScheme cs,
   ) {
     return LayoutBuilder(builder: (context, constraints) {
       final width = (constraints.maxWidth - (3 * 12)) / 4;
@@ -363,7 +367,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
         runSpacing: 12,
         children: options.map((opt) {
           final isSelected = selection.contains(opt.id);
-          return _buildOptionCard(opt, isSelected, onToggle, activeColor, width);
+          return _buildOptionCard(opt, isSelected, onToggle, activeColor, width, cs);
         }).toList(),
       );
     });
@@ -375,6 +379,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
     Function(String) onToggle,
     Color activeColor,
     double size,
+    ColorScheme cs,
   ) {
     return GestureDetector(
       onTap: () {
@@ -384,15 +389,16 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: size,
-        height: size * 1.1,
+        constraints: BoxConstraints(minHeight: size * 1.2),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor : const Color(0xFFFCF9F6),
+          color: isSelected ? activeColor : cs.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? activeColor : const Color(0xFFE5E2DF).withOpacity(0.5),
+            color: isSelected ? activeColor : cs.outlineVariant.withOpacity(0.5),
             width: 1,
           ),
         ),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -402,7 +408,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
               children: [
                 IconTheme(
                   data: IconThemeData(
-                    color: isSelected ? Colors.white : const Color(0xFF54433E).withOpacity(0.7),
+                    color: isSelected ? Colors.white : cs.onSurfaceVariant.withOpacity(0.7),
                   ),
                   child: opt.customIcon ?? Icon(
                     opt.icon,
@@ -418,8 +424,10 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? Colors.white : const Color(0xFF54433E),
+                      color: isSelected ? Colors.white : cs.onSurfaceVariant,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -446,9 +454,9 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
   Widget _buildNotesField(ColorScheme cs, TextTheme tt) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFCF9F6),
+        color: cs.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E2DF).withOpacity(0.5)),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
       ),
       child: Stack(
         alignment: Alignment.bottomRight,
@@ -459,7 +467,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
             style: tt.bodyMedium,
             decoration: InputDecoration(
               hintText: 'Feeling super connected with myself...',
-              hintStyle: tt.bodyMedium?.copyWith(color: const Color(0xFF8B8B8B).withOpacity(0.6)),
+              hintStyle: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.6)),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.all(16),
             ),
@@ -469,7 +477,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
             child: Icon(
               Icons.eco_outlined,
               size: 20,
-              color: const Color(0xFFC05E44).withOpacity(0.3),
+              color: cs.primary.withOpacity(0.3),
             ),
           ),
         ],
@@ -483,7 +491,7 @@ class _LogFeelScreenState extends ConsumerState<LogFeelScreen>
       child: ElevatedButton(
         onPressed: _isSaving ? null : _saveLog,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFC05E44),
+          backgroundColor: cs.primary,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
