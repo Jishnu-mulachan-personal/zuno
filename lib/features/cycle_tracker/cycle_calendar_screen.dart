@@ -27,7 +27,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     // 90 days back, 90 forward. Today is index 90.
     // Item width is 58.
     _calendarController = ScrollController();
-    
+
     _calendarController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -46,7 +46,6 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     _calendarController.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -74,41 +73,49 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
                           child: Builder(builder: (context) {
-                            final historyState = ref.watch(cycleHistoryNotifierProvider(profile.id));
+                            final historyState = ref.watch(
+                                cycleHistoryNotifierProvider(profile.id));
                             final cycleWithHistory = cycleData.copyWith(
                               historicalPeriods: historyState.historicalPeriods,
                             );
-                            
+
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _buildHeader(profile, textTheme),
-                              const SizedBox(height: 16),
-                              _buildPhaseCard(
-                                  cycleWithHistory, colorScheme, textTheme),
-                              const SizedBox(height: 32),
-                              _buildPeriodConfirmationCard(
-                                  cycleWithHistory, colorScheme, textTheme, ref),
-                              _buildHorizontalCalendar(
-                                  cycleWithHistory, colorScheme, textTheme),
-                              _buildSelectedDayDetail(
-                                  cycleWithHistory, colorScheme, textTheme),
-                              const SizedBox(height: 32),
-                              _buildEnergyCard(colorScheme, textTheme),
-                              const SizedBox(height: 32),
-                              _buildLogQuickActions(colorScheme, textTheme),
-                              const SizedBox(height: 32),
-                              _buildAIInsight(
-                                  state.cycleInsight, colorScheme, textTheme),
-                              const SizedBox(height: 32),
-                              _buildHistorySection(colorScheme, textTheme),
-                              const SizedBox(height: 32),
-                              _buildUpcomingSection(
-                                  cycleWithHistory, colorScheme, textTheme),
-                              const SizedBox(height: 120),
-                            ],
-                          );
-                        }),
+                                const SizedBox(height: 16),
+                                _buildPhaseCard(
+                                    cycleWithHistory, colorScheme, textTheme),
+                                const SizedBox(height: 32),
+                                _buildPeriodConfirmationCard(cycleWithHistory,
+                                    colorScheme, textTheme, ref),
+                                _buildHorizontalCalendar(
+                                    cycleWithHistory, colorScheme, textTheme),
+                                _buildSelectedDayDetail(
+                                    cycleWithHistory, colorScheme, textTheme),
+                                const SizedBox(height: 32),
+                                _buildEnergyCard(
+                                  state.energyCategory,
+                                  state.energyMessage,
+                                  state.energyImageName,
+                                  state.energySignedUrl,
+                                  colorScheme,
+                                  textTheme,
+                                ),
+                                const SizedBox(height: 32),
+                                _buildLogQuickActions(colorScheme, textTheme),
+                                const SizedBox(height: 32),
+                                _buildAIInsight(
+                                    state.cycleInsight, colorScheme, textTheme),
+                                const SizedBox(height: 32),
+                                _buildHistorySection(colorScheme, textTheme),
+                                const SizedBox(height: 32),
+                                _buildUpcomingSection(
+                                    cycleWithHistory, colorScheme, textTheme),
+                                const SizedBox(height: 120),
+                              ],
+                            );
+                          }),
                         ),
                       ),
                     ),
@@ -383,8 +390,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
-  Widget _buildPeriodConfirmationCard(
-      CycleData cycle, ColorScheme colorScheme, TextTheme textTheme, WidgetRef ref) {
+  Widget _buildPeriodConfirmationCard(CycleData cycle, ColorScheme colorScheme,
+      TextTheme textTheme, WidgetRef ref) {
     if (!cycle.shouldShowConfirmationCard || _isDismissedPeriodCard) {
       return const SizedBox.shrink();
     }
@@ -402,7 +409,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1.5),
+          border: Border.all(
+              color: colorScheme.primary.withOpacity(0.2), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: colorScheme.primary.withOpacity(0.06),
@@ -419,7 +427,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
               decoration: BoxDecoration(
                 color: colorScheme.primary.withOpacity(0.07),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +483,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                           .read(dashboardProvider.notifier)
                           .updateCycleStartDate(cycle.userId, DateTime.now());
                     },
-                    icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                    icon: const Icon(Icons.check_circle_outline_rounded,
+                        size: 18),
                     label: const Text('Started Today'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorScheme.primary,
@@ -495,9 +505,12 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                     onPressed: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: DateTime.now().subtract(const Duration(days: 1)),
-                        firstDate: DateTime.now().subtract(const Duration(days: 14)),
-                        lastDate: DateTime.now().subtract(const Duration(days: 1)),
+                        initialDate:
+                            DateTime.now().subtract(const Duration(days: 1)),
+                        firstDate:
+                            DateTime.now().subtract(const Duration(days: 14)),
+                        lastDate:
+                            DateTime.now().subtract(const Duration(days: 1)),
                         builder: (context, child) => Theme(
                           data: Theme.of(context).copyWith(
                             colorScheme: colorScheme,
@@ -521,7 +534,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                           letterSpacing: 0.3,
                         )),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: colorScheme.primary.withOpacity(0.4)),
+                      side: BorderSide(
+                          color: colorScheme.primary.withOpacity(0.4)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16)),
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -561,20 +575,23 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     final dates = List.generate(181,
         (i) => today.subtract(const Duration(days: 90)).add(Duration(days: i)));
 
-    final scrollOffset = _calendarController.hasClients 
-        ? _calendarController.offset 
+    final scrollOffset = _calendarController.hasClients
+        ? _calendarController.offset
         : (90 * 58.0) - (MediaQuery.of(context).size.width / 2) + 29;
-    
+
     final visibleWidth = MediaQuery.of(context).size.width - 48;
     final leftIndex = (scrollOffset / 58.0).floor().clamp(0, dates.length - 1);
-    final rightIndex = ((scrollOffset + visibleWidth) / 58.0).floor().clamp(0, dates.length - 1);
-    
+    final rightIndex = ((scrollOffset + visibleWidth) / 58.0)
+        .floor()
+        .clamp(0, dates.length - 1);
+
     final leftDate = dates[leftIndex];
     final rightDate = dates[rightIndex];
 
     String headerText = _getMonthName(leftDate.month).toUpperCase();
     if (leftDate.month != rightDate.month) {
-      headerText = "${_getMonthName(leftDate.month).toUpperCase()} - ${_getMonthName(rightDate.month).toUpperCase()}";
+      headerText =
+          "${_getMonthName(leftDate.month).toUpperCase()} - ${_getMonthName(rightDate.month).toUpperCase()}";
     }
 
     return Column(
@@ -594,108 +611,127 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         SizedBox(
           height: 80,
           child: ListView.builder(
-        controller: _calendarController,
-        scrollDirection: Axis.horizontal,
-        itemCount: dates.length,
-        itemBuilder: (context, index) {
-          final date = dates[index];
-          final isSelected = date.day == _selectedDate.day &&
-              date.month == _selectedDate.month;
+            controller: _calendarController,
+            scrollDirection: Axis.horizontal,
+            itemCount: dates.length,
+            itemBuilder: (context, index) {
+              final date = dates[index];
+              final isSelected = date.day == _selectedDate.day &&
+                  date.month == _selectedDate.month;
 
-          const dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-          final dayName = dayNames[date.weekday - 1];
+              const dayNames = [
+                'MON',
+                'TUE',
+                'WED',
+                'THU',
+                'FRI',
+                'SAT',
+                'SUN'
+              ];
+              final dayName = dayNames[date.weekday - 1];
 
-          final phase = cycle.getDayType(date);
-          Color dotColor = Colors.transparent;
-          if (phase == 'period') {
-            dotColor = colorScheme.primary;
-          } else if (phase == 'fertile' || phase == 'maybe_fertile') {
-            dotColor = colorScheme.tertiary;
-          } else {
-            dotColor = colorScheme.onSurfaceVariant.withOpacity(0.2);
-          }
+              final phase = cycle.getDayType(date);
+              Color dotColor = Colors.transparent;
+              if (phase == 'period') {
+                dotColor = colorScheme.primary;
+              } else if (phase == 'fertile' || phase == 'maybe_fertile') {
+                dotColor = colorScheme.tertiary;
+              } else {
+                dotColor = colorScheme.onSurfaceVariant.withOpacity(0.2);
+              }
 
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              setState(() {
-                _selectedDate = date;
-              });
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() {
+                    _selectedDate = date;
+                  });
+                },
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  width: 58,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Positioned(
+                        bottom: 11, // Adjusted to perfectly bisect the 6px dot
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 1,
+                          color: colorScheme.outlineVariant,
+                        ),
+                      ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 50,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: isSelected
+                            ? BoxDecoration(
+                                color: colorScheme.tertiary,
+                                borderRadius: BorderRadius.circular(24),
+                              )
+                            : null,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              dayName,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: isSelected
+                                    ? colorScheme.onTertiary
+                                    : colorScheme.onSurfaceVariant,
+                                fontSize: 10,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${date.day}',
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? colorScheme.onTertiary
+                                    : colorScheme.onSurface,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? colorScheme.onTertiary
+                                    : dotColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             },
-            behavior: HitTestBehavior.opaque,
-            child: SizedBox(
-              width: 58,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned(
-                    bottom: 11, // Adjusted to perfectly bisect the 6px dot
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 1,
-                      color: colorScheme.outlineVariant,
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 50,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: isSelected
-                        ? BoxDecoration(
-                            color: colorScheme.tertiary,
-                            borderRadius: BorderRadius.circular(24),
-                          )
-                        : null,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          dayName,
-                          style: textTheme.labelSmall?.copyWith(
-                            color: isSelected
-                                ? colorScheme.onTertiary
-                                : colorScheme.onSurfaceVariant,
-                            fontSize: 10,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${date.day}',
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
-                            color: isSelected
-                                ? colorScheme.onTertiary
-                                : colorScheme.onSurface,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color:
-                                isSelected ? colorScheme.onTertiary : dotColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    ),
-  ],
-);
-}
+          ),
+        ),
+      ],
+    );
+  }
 
-  Widget _buildEnergyCard(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildEnergyCard(String? category, String? message, String? imageName,
+      String? signedUrl, ColorScheme colorScheme, TextTheme textTheme) {
+    if (signedUrl != null && signedUrl.isNotEmpty) {
+      debugPrint('[EnergyCard] Loading character from signed URL: $signedUrl');
+    }
+
+    final energyTitle = category ?? "Radiant";
+    final energyDesc = message ??
+        "High energy and sociability.\nA great day for connection and creativity.";
+
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainer,
@@ -721,11 +757,24 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             bottom: -10,
             child: SizedBox(
               height: 190,
-              child: Image.asset(
-                'assets/images/energy_character.png',
-                fit: BoxFit.contain,
-                errorBuilder: (ctx, err, stack) => const SizedBox(),
-              ),
+              child: signedUrl != null && signedUrl.isNotEmpty
+                  ? Image.network(
+                      signedUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (ctx, err, stack) {
+                        debugPrint(
+                            '[EnergyCard] Network image failed to load: $err');
+                        return Image.asset(
+                          'assets/images/energy_character.png',
+                          fit: BoxFit.contain,
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      'assets/images/energy_character.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (ctx, err, stack) => const SizedBox(),
+                    ),
             ),
           ),
           Padding(
@@ -745,21 +794,36 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  "Radiant",
-                  style: textTheme.headlineLarge?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w400,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      energyTitle,
+                      style: textTheme.headlineLarge?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    // const SizedBox(width: 12),
+                    // Icon(
+                    //     category == 'Unplugged'
+                    //         ? Icons.battery_charging_full_rounded
+                    //         : category == 'Calm'
+                    //             ? Icons.self_improvement_rounded
+                    //             : category == 'Balanced'
+                    //                 ? Icons.balance_rounded
+                    //                 : category == 'Sparkling'
+                    //                     ? Icons.auto_awesome
+                    //                     : Icons.wb_sunny_outlined,
+                    //     color: colorScheme.primary,
+                    //     size: 30),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Icon(Icons.wb_sunny_outlined,
-                    color: colorScheme.primary, size: 30),
                 const SizedBox(height: 48),
                 SizedBox(
                   width: MediaQuery.of(context).size.width * 0.55,
                   child: Text(
-                    "High energy and sociability.\nA great day for connection and creativity.",
+                    energyDesc,
                     style: textTheme.bodyMedium,
                   ),
                 ),
@@ -832,7 +896,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   }
 
   Widget _buildActionItem(IconData icon, String label, Color bgColor,
-      Color iconColor, TextTheme textTheme, {VoidCallback? onTap}) {
+      Color iconColor, TextTheme textTheme,
+      {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -937,7 +1002,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+          border:
+              Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
         ),
         child: Row(
           children: [

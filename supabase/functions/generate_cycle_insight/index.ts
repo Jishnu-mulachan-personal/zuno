@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+import { generateContentWithFallback } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,52 +22,44 @@ serve(async (req) => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // 1. Fetch Last Insight (for context)
+    // 1. Fetch Last Insight (for caching check)
     const { data: lastInsightData } = await supabaseClient
       .from('daily_cycle_insights')
-      .select('insight_text, last_generated_at')
+      .select('*')
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (!force && lastInsightData?.last_generated_at === today) {
+    if (!force && lastInsightData?.last_generated_at === today && lastInsightData?.energy_category) {
       console.log(`[generate_cycle_insight] Returning cached insight for today`);
-      return new Response(JSON.stringify({ insight: lastInsightData.insight_text }), {
+      return new Response(JSON.stringify({ 
+        insight: lastInsightData.insight_text,
+        energy_category: lastInsightData.energy_category,
+        energy_message: lastInsightData.energy_message,
+        energy_image_name: lastInsightData.energy_image_name
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const lastInsight = lastInsightData?.insight_text || "No previous insight available.";
-    const currentFullTime = new Date().toLocaleString();
-
-    // 2. Fetch User & Cycle Data
-    const { data: userData } = await supabaseClient
-      .from('users')
-      .select('display_name, gender, user_settings(preferred_language)')
-      .eq('id', userId)
-      .single();
-
-    console.log(`[generate_cycle_insight] User data: ${JSON.stringify(userData)}`);
-
-    const language = (userData?.user_settings as any)?.preferred_language || 'English';
-    console.log(`[generate_cycle_insight] Preferred Language: ${language}`);
+    // 2. Fetch User, Cycle Data, and Recent Logs
+    const [{ data: userData }, { data: cycleRow }, { data: recentLogs }] = await Promise.all([
+      supabaseClient.from('users').select('display_name, gender, user_settings(preferred_language)').eq('id', userId).single(),
+      supabaseClient.from('cycle_data').select('*').eq('user_id', userId).maybeSingle(),
+      supabaseClient.from('daily_logs').select('mood_emoji, journal_note, context_tags, log_date').eq('user_id', userId).order('log_date', { ascending: false }).limit(5)
+    ]);
 
     if (!userData || userData.gender !== 'Female') {
       throw new Error("Insight generation only available for female users.");
     }
 
-    const { data: cycleRow } = await supabaseClient
-      .from('cycle_data')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    console.log(`[generate_cycle_insight] Cycle row: ${JSON.stringify(cycleRow)}`);
-
     if (!cycleRow) {
       throw new Error("No cycle data found for user.");
     }
 
-    // 3. Calculate Cycle Phase (Helper consistent with generate_daily_insight)
+    const language = (userData?.user_settings as any)?.preferred_language || 'English';
+    const currentFullTime = new Date().toLocaleString();
+
+    // 3. Calculate Cycle Phase
     const getPhaseAndDay = (row: any) => {
       const lastP = new Date(row.last_period_date);
       const now = new Date();
@@ -78,7 +70,6 @@ serve(async (req) => {
       const dur = row.period_duration || 5;
       
       const day = diff >= 0 ? diff + 1 : 1;
-
       let phase = "Luteal";
       const isPeriodDelayed = day > length;
       
@@ -96,53 +87,68 @@ serve(async (req) => {
     };
 
     const { day, phase } = getPhaseAndDay(cycleRow);
-    console.log(`[generate_cycle_insight] Calculated Day: ${day}, Phase: ${phase}`);
-
-    // 4. Generate Insight with Gemini
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.1-flash-lite-preview", // Use standard flash model
-      generationConfig: { temperature: 0.8 } 
-    });
 
     const prompt = `
-      You are Zuno, a warm and perceptive companion. 
+      You are Zuno, a warm and perceptive health companion. 
       Today's Date: ${today}.
-      Current Time: ${currentFullTime}.
       User: ${userData.display_name}.
-      Current Status: ${phase === 'Delayed' ? `Cycle is delayed (Day ${day})` : `Day ${day} (${phase} phase)`}.
-      Last Insight: "${lastInsight}"
+      Cycle: Day ${day} (${phase} phase).
+      Recent Logs: ${JSON.stringify(recentLogs || [])}.
       
-      [GOAL]
-      Provide a 2-sentence "energy forecast" that helps ${userData.display_name} feel in sync with her body today.
-
-      [GUIDELINES]
-      1. NO JARGON: Never use terms like 'Luteal', 'Estrogen', or 'Menstruation'. Use 'quiet time', 'glow', 'low energy', or 'inner strength'.
-      2. PERSPECTIVE: 
-         - If ${phase === 'Delayed'}: Be a calming voice. Suggest gentle patience and checking in with how her body feels.
-         - If Regular: Match the "vibe" of the phase (e.g., high energy/social vs. cozy/reflective).
-      3. EMPATHY: Write as if you are a wise friend who knows her well.
-
       [TASK]
-      Write exactly 2 sentences in ${language} (under 25 words total).
-      Sentence 1: Acknowledge her current "inner weather."
-      Sentence 2: A tiny, kind suggestion for today.
+      Analyze the user's cycle phase and their recent daily logs to predict their "Energy Level" for today.
+      
+      [WEIGHTING RULES]
+      1. CRITICAL: The LATEST daily log (if available) should have the highest weight. If it shows low mood or symptoms, the energy level should reflect that, even if the cycle phase suggests otherwise.
+      2. Cycle Day: Use this as the baseline. (e.g., Follicular/Ovulation usually higher energy, Luteal/Menstruation usually lower).
+      
+      [ENERGY CATEGORIES]
+      - Radiant: Very high energy, social, glowing.
+      - Sparkling: Creative, inspired, energetic.
+      - Balanced: Steady, grounded, productive.
+      - Calm: Peaceful, reflective, low-intensity.
+      - Unplugged: Very low energy, needs rest, inward-facing.
 
-      CRITICAL: Output ONLY the 2 sentences.
+      [OUTPUT FORMAT - JSON]
+      {
+        "energy_category": "Predict one of [Radiant, Sparkling, Balanced, Calm, Unplugged]",
+        "energy_message": "A warm, 1-sentence insight (max 15 words) explaining why they feel this way based on logs/cycle.",
+        "insight": "A general, kind cycle tip for today (max 15 words). NO JARGON (don't say 'Luteal', 'Estrogen', etc).",
+        "energy_image_name": "the lowercase category name + .png (e.g., radiant.png)"
+      }
+
+      Write in ${language}.
     `;
 
-    const result = await model.generateContent(prompt);
-    const insightText = result.response.text().trim().replace(/^"/, "").replace(/"$/, "");
-    console.log(`[generate_cycle_insight] Gemini Result: ${insightText}`);
+    // 4. Generate Insight with Gemini Fallback Utility
+    const result = await generateContentWithFallback(
+      Deno.env.get('GEMINI_API_KEY')!,
+      prompt,
+      { 
+        temperature: 0.7,
+        responseMimeType: "application/json"
+      }
+    );
+
+    const responseText = result.response.text();
+    const data = JSON.parse(responseText);
+
+    const categoryLower = (data.energy_category || "radiant").toLowerCase();
+    const finalImageName = data.energy_image_name || `${categoryLower}.png`;
+
+    console.log(`[generate_cycle_insight] Prediction: ${data.energy_category}, Image: ${finalImageName}`);
 
     // 5. Upsert into Database
     await supabaseClient.from('daily_cycle_insights').upsert({
       user_id: userId,
-      insight_text: insightText,
+      insight_text: data.insight,
+      energy_category: data.energy_category,
+      energy_message: data.energy_message,
+      energy_image_name: finalImageName,
       last_generated_at: today
     });
 
-    return new Response(JSON.stringify({ insight: insightText }), {
+    return new Response(JSON.stringify({ ...data, energy_image_name: finalImageName }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

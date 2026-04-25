@@ -474,6 +474,10 @@ class DashboardState {
   final bool isLoadingInsight;
   final bool shareWithPartner;
   final String? cycleInsight;
+  final String? energyCategory;
+  final String? energyMessage;
+  final String? energyImageName;
+  final String? energySignedUrl;
   final bool isLoadingCycleInsight;
   final bool isCycleActionLoading;
   final List<InsightQuestion> dailyQuestions;
@@ -490,6 +494,10 @@ class DashboardState {
     this.isLoadingInsight = false,
     this.shareWithPartner = false,
     this.cycleInsight,
+    this.energyCategory,
+    this.energyMessage,
+    this.energyImageName,
+    this.energySignedUrl,
     this.isLoadingCycleInsight = false,
     this.isCycleActionLoading = false,
     this.dailyQuestions = const [],
@@ -511,6 +519,10 @@ class DashboardState {
     bool? isLoadingInsight,
     bool? shareWithPartner,
     String? cycleInsight,
+    String? energyCategory,
+    String? energyMessage,
+    String? energyImageName,
+    String? energySignedUrl,
     bool? isLoadingCycleInsight,
     bool? isCycleActionLoading,
     List<InsightQuestion>? dailyQuestions,
@@ -528,6 +540,10 @@ class DashboardState {
       isLoadingInsight: isLoadingInsight ?? this.isLoadingInsight,
       shareWithPartner: shareWithPartner ?? this.shareWithPartner,
       cycleInsight: cycleInsight ?? this.cycleInsight,
+      energyCategory: energyCategory ?? this.energyCategory,
+      energyMessage: energyMessage ?? this.energyMessage,
+      energyImageName: energyImageName ?? this.energyImageName,
+      energySignedUrl: energySignedUrl ?? this.energySignedUrl,
       isLoadingCycleInsight:
           isLoadingCycleInsight ?? this.isLoadingCycleInsight,
       isCycleActionLoading: isCycleActionLoading ?? this.isCycleActionLoading,
@@ -549,6 +565,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
   void _init() {
     fetchDailyInsight();
+    _fetchInitialCycleInsight();
 
     // Watch profile changes and trigger cycle insight when ready
     ref.listen<AsyncValue<UserProfile>>(userProfileProvider, (prev, next) {
@@ -564,6 +581,45 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     }, fireImmediately: true);
   }
 
+
+  Future<void> _fetchInitialCycleInsight() async {
+    final sbUser = Supabase.instance.client.auth.currentUser;
+    if (sbUser == null) return;
+
+    try {
+      final response = await Supabase.instance.client
+          .from('daily_cycle_insights')
+          .select('*')
+          .eq('user_id', sbUser.id)
+          .maybeSingle();
+
+      if (response != null && response['last_generated_at'] == DateTime.now().toIso8601String().split('T')[0]) {
+        if (!mounted) return;
+        state = state.copyWith(
+          cycleInsight: response['insight_text'],
+          energyCategory: response['energy_category'],
+          energyMessage: response['energy_message'],
+          energyImageName: response['energy_image_name'],
+        );
+        _fetchSignedEnergyUrl(response['energy_image_name']);
+      }
+    } catch (e) {
+      debugPrint('[_fetchInitialCycleInsight] Error: $e');
+    }
+  }
+
+  Future<void> _fetchSignedEnergyUrl(String? imageName) async {
+    if (imageName == null || imageName.isEmpty) return;
+    try {
+      final signedUrl = await Supabase.instance.client.storage
+          .from('cycle-energy')
+          .createSignedUrl(imageName, 60 * 60 * 24); // 24 hours
+      if (!mounted) return;
+      state = state.copyWith(energySignedUrl: signedUrl);
+    } catch (e) {
+      debugPrint('[_fetchSignedEnergyUrl] Error: $e');
+    }
+  }
 
   Future<void> fetchDailyInsight({bool force = false}) async {
     if (!force && state.dailyInsight != null) return;
@@ -618,12 +674,21 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         },
       );
       final insight = response.data['insight'] as String?;
-      debugPrint('[fetchCycleInsight] Result: $insight');
+      final energyCategory = response.data['energy_category'] as String?;
+      final energyMessage = response.data['energy_message'] as String?;
+      final energyImageName = response.data['energy_image_name'] as String?;
+      debugPrint('[fetchCycleInsight] Result: $insight ($energyCategory)');
       
       if (!mounted) return;
 
-      state =
-          state.copyWith(isLoadingCycleInsight: false, cycleInsight: insight);
+      state = state.copyWith(
+        isLoadingCycleInsight: false, 
+        cycleInsight: insight,
+        energyCategory: energyCategory,
+        energyMessage: energyMessage,
+        energyImageName: energyImageName,
+      );
+      _fetchSignedEnergyUrl(energyImageName);
     } catch (e) {
       debugPrint('[fetchCycleInsight] Error: $e');
       if (mounted) {
