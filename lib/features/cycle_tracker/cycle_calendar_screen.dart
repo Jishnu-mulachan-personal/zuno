@@ -28,6 +28,10 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     // Item width is 58.
     _calendarController = ScrollController();
     
+    _calendarController.addListener(() {
+      if (mounted) setState(() {});
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_calendarController.hasClients) {
         final screenWidth = MediaQuery.of(context).size.width;
@@ -69,20 +73,26 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                       sliver: SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildHeader(profile, textTheme),
+                          child: Builder(builder: (context) {
+                            final historyState = ref.watch(cycleHistoryNotifierProvider(profile.id));
+                            final cycleWithHistory = cycleData.copyWith(
+                              historicalPeriods: historyState.historicalPeriods,
+                            );
+                            
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildHeader(profile, textTheme),
                               const SizedBox(height: 16),
                               _buildPhaseCard(
-                                  cycleData, colorScheme, textTheme),
+                                  cycleWithHistory, colorScheme, textTheme),
                               const SizedBox(height: 32),
                               _buildPeriodConfirmationCard(
-                                  cycleData, colorScheme, textTheme, ref),
+                                  cycleWithHistory, colorScheme, textTheme, ref),
                               _buildHorizontalCalendar(
-                                  cycleData, colorScheme, textTheme),
+                                  cycleWithHistory, colorScheme, textTheme),
                               _buildSelectedDayDetail(
-                                  cycleData, colorScheme, textTheme),
+                                  cycleWithHistory, colorScheme, textTheme),
                               const SizedBox(height: 32),
                               _buildEnergyCard(colorScheme, textTheme),
                               const SizedBox(height: 32),
@@ -94,10 +104,11 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                               _buildHistorySection(colorScheme, textTheme),
                               const SizedBox(height: 32),
                               _buildUpcomingSection(
-                                  cycleData, colorScheme, textTheme),
+                                  cycleWithHistory, colorScheme, textTheme),
                               const SizedBox(height: 120),
                             ],
-                          ),
+                          );
+                        }),
                         ),
                       ),
                     ),
@@ -550,9 +561,39 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     final dates = List.generate(181,
         (i) => today.subtract(const Duration(days: 90)).add(Duration(days: i)));
 
-    return SizedBox(
-      height: 80,
-      child: ListView.builder(
+    final scrollOffset = _calendarController.hasClients 
+        ? _calendarController.offset 
+        : (90 * 58.0) - (MediaQuery.of(context).size.width / 2) + 29;
+    
+    final visibleWidth = MediaQuery.of(context).size.width - 48;
+    final leftIndex = (scrollOffset / 58.0).floor().clamp(0, dates.length - 1);
+    final rightIndex = ((scrollOffset + visibleWidth) / 58.0).floor().clamp(0, dates.length - 1);
+    
+    final leftDate = dates[leftIndex];
+    final rightDate = dates[rightIndex];
+
+    String headerText = _getMonthName(leftDate.month).toUpperCase();
+    if (leftDate.month != rightDate.month) {
+      headerText = "${_getMonthName(leftDate.month).toUpperCase()} - ${_getMonthName(rightDate.month).toUpperCase()}";
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4.0, bottom: 12.0),
+          child: Text(
+            headerText,
+            style: textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface.withOpacity(0.4),
+              letterSpacing: 1.5,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 80,
+          child: ListView.builder(
         controller: _calendarController,
         scrollDirection: Axis.horizontal,
         itemCount: dates.length,
@@ -649,8 +690,10 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
           );
         },
       ),
-    );
-  }
+    ),
+  ],
+);
+}
 
   Widget _buildEnergyCard(ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
