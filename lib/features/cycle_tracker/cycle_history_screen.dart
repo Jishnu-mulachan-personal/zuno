@@ -29,6 +29,21 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
       _displayedMonth =
           DateTime(_displayedMonth.year, _displayedMonth.month - 1);
     });
+    _checkAndLoadMoreHistory();
+  }
+
+  void _checkAndLoadMoreHistory() {
+    final profile = ref.read(userProfileProvider).value;
+    if (profile == null) return;
+
+    final historyState = ref.read(cycleHistoryNotifierProvider(profile.id));
+    if (historyState.isLoading || historyState.earliestLoaded == null) return;
+
+    // If displayed month is before or close to earliest loaded date, fetch more
+    if (_displayedMonth.isBefore(historyState.earliestLoaded!) ||
+        _displayedMonth.difference(historyState.earliestLoaded!).inDays < 60) {
+      ref.read(cycleHistoryNotifierProvider(profile.id).notifier).loadMore();
+    }
   }
 
   void _nextMonth() {
@@ -771,66 +786,78 @@ class _HistoryBarChart extends StatelessWidget {
     // Ensure at least 35 for scaling if all are short
     final scaleMax = (maxDays > 35 ? maxDays : 35).toDouble();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: data.history.map((item) {
-        final ratio = item.durationDays / scaleMax;
+    return LayoutBuilder(builder: (context, constraints) {
+      // Show exactly 6 bars per screen width (with some padding)
+      final double barWidth = (constraints.maxWidth - 24) / 6;
 
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Value label
-                Text(
-                  '${item.durationDays}',
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 9,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                // Bar
-                Expanded(
-                  child: FractionallySizedBox(
-                    heightFactor: ratio.clamp(0.01, 1.0),
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            colorScheme.tertiary,
-                            colorScheme.tertiary.withOpacity(0.4),
-                          ],
-                        ),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        // Start scrolled to the end (most recent cycles)
+        reverse: true,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: data.history.map((item) {
+            final ratio = item.durationDays / scaleMax;
+
+            return SizedBox(
+              width: barWidth,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Value label
+                    Text(
+                      '${item.durationDays}',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 9,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Bar
+                    Expanded(
+                      child: FractionallySizedBox(
+                        heightFactor: ratio.clamp(0.01, 1.0),
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                colorScheme.tertiary,
+                                colorScheme.tertiary.withOpacity(0.4),
+                              ],
+                            ),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    // Month Label
+                    Text(
+                      item.monthLabel,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 8,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                // Month Label
-                Text(
-                  item.monthLabel,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 8,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    });
   }
 }
 

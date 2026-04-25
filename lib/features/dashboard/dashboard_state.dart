@@ -276,7 +276,7 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
           .select('start_date')
           .eq('user_id', userId)
           .order('start_date', ascending: false)
-          .limit(10); // Start with ~10 months
+          .limit(30); // Start with ~30 months (2.5 years)
 
       final dates =
           (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
