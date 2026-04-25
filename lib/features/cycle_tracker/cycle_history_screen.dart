@@ -35,7 +35,10 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
     final now = DateTime.now();
     final nextMonth =
         DateTime(_displayedMonth.year, _displayedMonth.month + 1);
-    if (nextMonth.isAfter(DateTime(now.year, now.month))) return;
+    // Limit to 6 months forward
+    final maxFuture = DateTime(now.year, now.month + 6);
+    if (nextMonth.isAfter(maxFuture)) return;
+    
     HapticFeedback.lightImpact();
     setState(() {
       _displayedMonth = nextMonth;
@@ -192,10 +195,11 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December',
     ];
+    final now = DateTime.now();
+    final limitDate = DateTime(now.year, now.month + 1, 31); // End of next month roughly
     final canGoNext =
         DateTime(_displayedMonth.year, _displayedMonth.month + 1)
-            .isBefore(
-                DateTime(DateTime.now().year, DateTime.now().month + 1));
+            .isBefore(limitDate.add(const Duration(days: 150))); // Allow ~6 months total
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -278,10 +282,13 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
               final isToday = date.year == today.year &&
                   date.month == today.month &&
                   date.day == today.day;
-              final isFuture = date.isAfter(today);
+              
+              // End of the next calendar month
+              final markingLimit = DateTime(today.year, today.month + 2, 0);
+              final isBeyondLimit = date.isAfter(markingLimit);
 
               // Use enhanced historical phase detection
-              final phase = isFuture
+              final phase = isBeyondLimit
                   ? 'future'
                   : _getHistoricalDayType(date, cycle, allPeriods);
 
@@ -325,16 +332,42 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
       return cycle.getDayType(date);
     }
 
-    final dayOfCycle = t.difference(cycleStart).inDays + 1;
+    // If the date is in the future and beyond the current cycle, predict forward
+    DateTime currentCycleStart = cycleStart;
+    int currentCycleLength = nextCycleStart != null
+        ? nextCycleStart.difference(cycleStart).inDays
+        : cycle.cycleLength;
+
+    while (t.isAfter(currentCycleStart.add(Duration(days: currentCycleLength - 1)))) {
+      // If we have a real next cycle start, move to it
+      if (nextCycleStart != null) {
+        currentCycleStart = nextCycleStart;
+        // Check if there is an even further one
+        int idx = allPeriods.indexOf(nextCycleStart);
+        if (idx != -1 && idx + 1 < allPeriods.length) {
+          nextCycleStart = allPeriods[idx + 1];
+          currentCycleLength = nextCycleStart.difference(currentCycleStart).inDays;
+        } else {
+          nextCycleStart = null;
+          currentCycleLength = cycle.cycleLength;
+        }
+      } else {
+        // Predict the next one
+        currentCycleStart = currentCycleStart.add(Duration(days: currentCycleLength));
+        currentCycleLength = cycle.cycleLength;
+        // Once we start predicting, there are no more "real" next cycles
+        nextCycleStart = null;
+      }
+
+      // Safeguard against infinite loops (though shouldn't happen with future dates)
+      if (currentCycleStart.isAfter(t.add(const Duration(days: 365)))) break;
+    }
+
+    final dayOfCycle = t.difference(currentCycleStart).inDays + 1;
+    final effectiveCycleLength = currentCycleLength;
 
     // Period days
     if (dayOfCycle <= cycle.periodDuration) return 'period';
-
-    // Determine cycle length for this cycle:
-    // If we have a confirmed next period, use actual gap; else use typical length.
-    final effectiveCycleLength = nextCycleStart != null
-        ? nextCycleStart.difference(cycleStart).inDays
-        : cycle.cycleLength;
 
     // Ovulation is ~14 days before next period, fertile window is ±5 days
     final ovDay = effectiveCycleLength - 14;
@@ -553,66 +586,106 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
       List<DateTime> allPeriods,
       ColorScheme colorScheme,
       TextTheme textTheme) {
-    final historyState = ref.watch(cycleHistoryNotifierProvider(userId));
-    final notifier =
-        ref.read(cycleHistoryNotifierProvider(userId).notifier);
+    final historyAsync = ref.watch(cycleHistoryProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Period History',
+          'Cycle History',
           style:
               textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),
         Text(
-          'Your past cycle start dates',
+          'Your cycle lengths over time',
           style: textTheme.bodySmall
               ?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 16),
-        if (historyState.isLoading &&
-            historyState.historicalPeriods.isEmpty)
-          const Center(
-              child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator()))
-        else if (historyState.historicalPeriods.isEmpty)
-          _buildEmptyHistory(colorScheme, textTheme)
-        else ...[
-          ...historyState.historicalPeriods
-              .asMap()
-              .entries
-              .map((entry) => _buildHistoryItem(
-                  entry.key,
-                  entry.value,
-                  historyState.historicalPeriods,
-                  cycleData.cycleLength,
-                  colorScheme,
-                  textTheme))
-              .toList(),
-          if (!historyState.isLoading)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Center(
-                child: TextButton.icon(
-                  onPressed: () => notifier.loadMore(),
-                  icon: Icon(Icons.expand_more_rounded,
-                      color: colorScheme.primary, size: 18),
-                  label: Text('Load more',
-                      style: textTheme.labelMedium
-                          ?.copyWith(color: colorScheme.primary)),
-                ),
-              ),
-            )
-          else
-            const Center(
-                child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator())),
-        ],
+        const SizedBox(height: 24),
+        historyAsync.when(
+          data: (data) {
+            if (data.history.isEmpty) {
+              return _buildEmptyHistory(colorScheme, textTheme);
+            }
+            return _buildGraphView(data, colorScheme, textTheme);
+          },
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (e, __) => Center(
+            child: Text('Error loading history', style: textTheme.bodySmall),
+          ),
+        ),
         const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  Widget _buildGraphView(
+      HistoryData data, ColorScheme cs, TextTheme tt) {
+    return Column(
+      children: [
+        // Average summary card
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: cs.tertiary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: cs.tertiary.withOpacity(0.2)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: cs.tertiary.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.analytics_outlined, color: cs.tertiary, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Average Cycle',
+                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  Text(
+                    '${data.averageDays.toStringAsFixed(1)} days',
+                    style: tt.titleMedium?.copyWith(
+                      color: cs.tertiary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        // The Chart
+        Container(
+          height: 240,
+          padding: const EdgeInsets.fromLTRB(12, 24, 12, 12),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _HistoryBarChart(data: data, colorScheme: cs, textTheme: tt),
+        ),
       ],
     );
   }
@@ -641,109 +714,90 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
       ),
     );
   }
+}
 
-  Widget _buildHistoryItem(
-      int index,
-      DateTime startDate,
-      List<DateTime> allPeriods,
-      int typicalCycleLength,
-      ColorScheme colorScheme,
-      TextTheme textTheme) {
-    const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
+class _HistoryBarChart extends StatelessWidget {
+  final HistoryData data;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
 
-    // Compute actual cycle length to the NEXT period (desc sorted → prev index = later date)
-    int? actualLength;
-    if (index > 0) {
-      final prev = allPeriods[index - 1];
-      actualLength = prev.difference(startDate).inDays;
-    }
+  const _HistoryBarChart({
+    required this.data,
+    required this.colorScheme,
+    required this.textTheme,
+  });
 
-    final diff = actualLength ?? typicalCycleLength;
-    final lengthLabel =
-        actualLength != null ? '$diff days' : '~$diff days';
-    final lengthColor = (actualLength == null)
-        ? colorScheme.onSurfaceVariant
-        : (diff < typicalCycleLength - 3 || diff > typicalCycleLength + 3)
-            ? colorScheme.error
-            : colorScheme.tertiary;
+  @override
+  Widget build(BuildContext context) {
+    if (data.history.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
+    // Find max days to scale the height
+    final maxDays = data.history
+        .map((e) => e.durationDays)
+        .reduce((a, b) => a > b ? a : b);
+
+    // Ensure at least 35 for scaling if all are short
+    final scaleMax = (maxDays > 35 ? maxDays : 35).toDouble();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: data.history.map((item) {
+        final ratio = item.durationDays / scaleMax;
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                // Value label
                 Text(
-                  '${startDate.day}',
-                  style: textTheme.titleSmall?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                    height: 1,
-                  ),
-                ),
-                Text(
-                  monthNames[startDate.month - 1],
+                  '${item.durationDays}',
                   style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.primary.withOpacity(0.7),
-                    fontSize: 9,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
+                    fontSize: 9,
                   ),
                 ),
+                const SizedBox(height: 6),
+                // Bar
+                Expanded(
+                  child: FractionallySizedBox(
+                    heightFactor: ratio.clamp(0.01, 1.0),
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            colorScheme.tertiary,
+                            colorScheme.tertiary.withOpacity(0.4),
+                          ],
+                        ),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Month Label
+                Text(
+                  item.monthLabel,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 8,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${monthNames[startDate.month - 1]} ${startDate.day}, ${startDate.year}',
-                  style: textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Cycle started',
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: lengthColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              lengthLabel,
-              style: textTheme.labelSmall?.copyWith(
-                color: lengthColor,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 }
