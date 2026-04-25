@@ -22,6 +22,8 @@ import 'features/insights/insights_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/cycle_tracker/cycle_registration_screen.dart';
 import 'features/cycle_tracker/cycle_calendar_screen.dart';
+import 'features/cycle_tracker/cycle_history_screen.dart';
+import 'features/cycle_tracker/log_feel_screen.dart';
 import 'features/pairing/dream_detail_screen.dart';
 import 'features/partner_insights/partner_insights_screen.dart';
 import 'core/profile_existence_provider.dart';
@@ -140,6 +142,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/cycle_calendar',
           builder: (ctx, _) => const CycleCalendarScreen()),
+      GoRoute(
+          path: '/cycle_history',
+          builder: (ctx, _) => const CycleHistoryScreen()),
+      GoRoute(
+          path: '/log_feel',
+          builder: (ctx, _) => const LogFeelScreen()),
       GoRoute(
           path: '/partner-insights',
           builder: (ctx, _) => const PartnerInsightsScreen()),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 
@@ -216,16 +217,34 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               padding: EdgeInsets.zero,
               alignment: Alignment.centerLeft,
             ),
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: textTheme.bodyLarge?.color?.withOpacity(0.1),
-              backgroundImage: profile.avatarUrl != null
-                  ? NetworkImage(profile.avatarUrl!)
-                  : null,
-              child: profile.avatarUrl == null
-                  ? Icon(Icons.person,
-                      color: textTheme.bodyLarge?.color?.withOpacity(0.5))
-                  : null,
+            GestureDetector(
+              onTap: () => context.push('/cycle_history'),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color:
+                      textTheme.bodyLarge?.color?.withOpacity(0.06) ?? Colors.grey.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_month_rounded,
+                        size: 15,
+                        color: textTheme.bodyLarge?.color?.withOpacity(0.6)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Full Calendar',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: textTheme.bodyLarge?.color?.withOpacity(0.6),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -760,9 +779,9 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               style: textTheme.titleMedium,
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () => context.push('/log_feel'),
               child: Text(
-                "View all",
+                "Log now",
                 style: textTheme.labelMedium?.copyWith(
                   color: colorScheme.tertiary,
                 ),
@@ -779,25 +798,29 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                 "Body",
                 colorScheme.primaryContainer.withOpacity(0.2),
                 colorScheme.primary,
-                textTheme),
+                textTheme,
+                onTap: () => context.push('/log_feel')),
             _buildActionItem(
                 Icons.sentiment_satisfied_outlined,
                 "Mood",
                 colorScheme.tertiaryContainer.withOpacity(0.2),
                 colorScheme.tertiary,
-                textTheme),
+                textTheme,
+                onTap: () => context.push('/log_feel')),
             _buildActionItem(
                 Icons.vaccines_outlined,
                 "Flow",
                 colorScheme.primaryContainer.withOpacity(0.2),
                 colorScheme.primary,
-                textTheme),
+                textTheme,
+                onTap: () => context.push('/log_feel')),
             _buildActionItem(
                 Icons.edit_outlined,
                 "Notes",
                 colorScheme.surfaceContainerHighest,
                 colorScheme.onSurfaceVariant,
-                textTheme),
+                textTheme,
+                onTap: () => context.push('/log_feel')),
           ],
         ),
       ],
@@ -805,29 +828,35 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   }
 
   Widget _buildActionItem(IconData icon, String label, Color bgColor,
-      Color iconColor, TextTheme textTheme) {
-    return Column(
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(22),
+      Color iconColor, TextTheme textTheme, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap?.call();
+      },
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Center(
+              child: Icon(icon, size: 28, color: iconColor),
+            ),
           ),
-          child: Center(
-            child: Icon(icon, size: 28, color: iconColor),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: textTheme.bodyLarge?.color,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          label,
-          style: textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w500,
-            color: textTheme.bodyLarge?.color,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
