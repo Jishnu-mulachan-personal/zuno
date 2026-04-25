@@ -113,7 +113,7 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
       children: [
         _buildLegend(colorScheme, textTheme),
         const SizedBox(height: 24),
-        _buildCalendarCard(cycleData, allPeriods, colorScheme, textTheme),
+        _buildCalendarCard(profile, cycleData, allPeriods, colorScheme, textTheme),
         const SizedBox(height: 16),
         // Cycle stats strip for the displayed month
         _buildMonthStatsStrip(
@@ -160,8 +160,8 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
 
   // ── Calendar card ────────────────────────────────────────────────────────────
 
-  Widget _buildCalendarCard(CycleData cycle, List<DateTime> allPeriods,
-      ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildCalendarCard(UserProfile profile, CycleData cycle,
+      List<DateTime> allPeriods, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -183,7 +183,7 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
               height: 1,
               color: colorScheme.outlineVariant.withOpacity(0.4)),
           _buildWeekdayLabels(colorScheme, textTheme),
-          _buildCalendarGrid(cycle, allPeriods, colorScheme, textTheme),
+          _buildCalendarGrid(profile, cycle, allPeriods, colorScheme, textTheme),
           const SizedBox(height: 12),
         ],
       ),
@@ -253,8 +253,8 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
     );
   }
 
-  Widget _buildCalendarGrid(CycleData cycle, List<DateTime> allPeriods,
-      ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildCalendarGrid(UserProfile profile, CycleData cycle,
+      List<DateTime> allPeriods, ColorScheme colorScheme, TextTheme textTheme) {
     final firstDay =
         DateTime(_displayedMonth.year, _displayedMonth.month, 1);
     final daysInMonth =
@@ -293,14 +293,46 @@ class _CycleHistoryScreenState extends ConsumerState<CycleHistoryScreen> {
                   : _getHistoricalDayType(date, cycle, allPeriods);
 
               return Expanded(
-                  child: _buildDayCell(
-                      date, dayNumber, phase, isToday, colorScheme, textTheme));
+                  child: GestureDetector(
+                onTap: () => _onDateTapped(date, profile, allPeriods),
+                child: _buildDayCell(
+                    date, dayNumber, phase, isToday, colorScheme, textTheme),
+              ));
             }),
           );
         }),
       ),
     );
   }
+
+  void _onDateTapped(
+      DateTime date, UserProfile profile, List<DateTime> allPeriods) {
+    final today = DateTime.now();
+    final todayMid = DateTime(today.year, today.month, today.day);
+    if (date.isAfter(todayMid)) return;
+
+    final isStartDay = allPeriods.any((p) =>
+        p.year == date.year && p.month == date.month && p.day == date.day);
+
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _LogActionSheet(
+        date: date,
+        isStartDay: isStartDay,
+        onAction: (isDelete) async {
+          final notifier = ref.read(dashboardProvider.notifier);
+          if (isDelete) {
+            await notifier.deleteCycleEntry(profile.id, date);
+          } else {
+            await notifier.updateCycleStartDate(profile.id, date);
+          }
+        },
+      ),
+    );
+  }
+
 
   /// Compute the phase for any historical date using the full list of period
   /// starts (sorted ascending). For months that fall between two logged period
@@ -850,3 +882,151 @@ class _NavButton extends StatelessWidget {
     );
   }
 }
+
+// ── Log Action Sheet ─────────────────────────────────────────────────────────
+
+class _LogActionSheet extends StatelessWidget {
+  final DateTime date;
+  final bool isStartDay;
+  final Function(bool isDelete) onAction;
+
+  const _LogActionSheet({
+    required this.date,
+    required this.isStartDay,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tt = theme.textTheme;
+
+    final dateStr = '${date.day} ${_getMonthName(date.month)} ${date.year}';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: cs.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            dateStr,
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isStartDay ? 'Cycle start logged' : 'No cycle start logged',
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 32),
+          if (isStartDay)
+            _ActionButton(
+              label: 'Delete cycle start',
+              icon: Icons.delete_outline_rounded,
+              color: cs.error,
+              onTap: () {
+                onAction(true);
+                Navigator.pop(context);
+              },
+            )
+          else
+            _ActionButton(
+              label: 'Mark as cycle start',
+              icon: Icons.water_drop_outlined,
+              color: cs.primary,
+              onTap: () {
+                onAction(false);
+                Navigator.pop(context);
+              },
+            ),
+          const SizedBox(height: 12),
+          _ActionButton(
+            label: 'Cancel',
+            icon: Icons.close_rounded,
+            color: cs.onSurfaceVariant,
+            isOutlined: true,
+            onTap: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month - 1];
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isOutlined;
+
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.isOutlined = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: isOutlined
+          ? OutlinedButton.icon(
+              onPressed: onTap,
+              icon: Icon(icon, size: 18),
+              label: Text(label),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: color,
+                side: BorderSide(color: color.withOpacity(0.3)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+            )
+          : ElevatedButton.icon(
+              onPressed: onTap,
+              icon: Icon(icon, size: 18),
+              label: Text(label),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color.withOpacity(0.1),
+                foregroundColor: color,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+    );
+  }
+}
+
