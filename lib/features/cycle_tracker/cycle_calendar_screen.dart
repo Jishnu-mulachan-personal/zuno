@@ -17,6 +17,31 @@ class CycleCalendarScreen extends ConsumerStatefulWidget {
 
 class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   DateTime _selectedDate = DateTime.now();
+  late ScrollController _calendarController;
+  bool _isDismissedPeriodCard = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 90 days back, 90 forward. Today is index 90.
+    // Item width is 58.
+    _calendarController = ScrollController();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_calendarController.hasClients) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final targetOffset = (90 * 58.0) - (screenWidth / 2) + 29;
+        _calendarController.jumpTo(targetOffset);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _calendarController.dispose();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +76,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                               _buildPhaseCard(
                                   cycleData, colorScheme, textTheme),
                               const SizedBox(height: 32),
+                              _buildPeriodConfirmationCard(
+                                  cycleData, colorScheme, textTheme, ref),
                               _buildHorizontalCalendar(
                                   cycleData, colorScheme, textTheme),
                               _buildSelectedDayDetail(
@@ -249,35 +276,38 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     final progress = (dayProgress / totalDays).clamp(0.0, 1.0);
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.03),
+            color: colorScheme.shadow.withOpacity(0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
+            flex: 6,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'You are in your',
                   style: textTheme.bodySmall,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   displayName,
                   style: textTheme.headlineSmall?.copyWith(
                     color: mainColor,
-                    height: 1.2,
+                    height: 1.1,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -314,43 +344,222 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
               ],
             ),
           ),
-          SizedBox(
-            width: 100,
-            height: 100,
-            child: Stack(
-              children: [
-                CustomPaint(
-                  size: const Size(100, 100),
-                  painter: _RingPainter(
-                    progress: progress,
-                    gradientStart: gradientStart,
-                    gradientEnd: mainColor,
-                    backgroundColor: colorScheme.surfaceContainerHighest,
-                  ),
-                ),
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$dayProgress',
-                        style: textTheme.headlineMedium?.copyWith(
-                          color: mainColor,
-                          height: 1.1,
-                          fontSize: 26,
+          const SizedBox(width: 8),
+          // Progress Indicator Unit
+          Flexible(
+            flex: 4,
+            child: Center(
+              child: SizedBox(
+                width: 90,
+                height: 90,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CustomPaint(
+                      size: const Size(90, 90),
+                      painter: _RingPainter(
+                        progress: progress,
+                        gradientStart: gradientStart,
+                        gradientEnd: mainColor,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$dayProgress',
+                          style: textTheme.headlineMedium?.copyWith(
+                            color: mainColor,
+                            height: 1.1,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'of $totalDays',
-                        style: textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
+                        Text(
+                          'of $totalDays',
+                          style: textTheme.labelSmall?.copyWith(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          )
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodConfirmationCard(
+      CycleData cycle, ColorScheme colorScheme, TextTheme textTheme, WidgetRef ref) {
+    if (!cycle.shouldShowConfirmationCard || _isDismissedPeriodCard) {
+      return const SizedBox.shrink();
+    }
+
+    final isDelayed = cycle.isPeriodDelayed;
+    final subtitle = isDelayed
+        ? 'Your period was expected a while ago. Has it started?'
+        : 'Your period is expected soon. Has it started?';
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 32),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withOpacity(0.07),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.water_drop_rounded,
+                        color: colorScheme.primary, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cycle.confirmationCardTitle,
+                          style: textTheme.titleMedium?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          subtitle,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Started Today
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.heavyImpact();
+                      ref
+                          .read(dashboardProvider.notifier)
+                          .updateCycleStartDate(cycle.userId, DateTime.now());
+                    },
+                    icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                    label: const Text('Started Today'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Started Earlier
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().subtract(const Duration(days: 1)),
+                        firstDate: DateTime.now().subtract(const Duration(days: 14)),
+                        lastDate: DateTime.now().subtract(const Duration(days: 1)),
+                        builder: (context, child) => Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: colorScheme,
+                          ),
+                          child: child!,
+                        ),
+                      );
+                      if (picked != null) {
+                        HapticFeedback.mediumImpact();
+                        ref
+                            .read(dashboardProvider.notifier)
+                            .updateCycleStartDate(cycle.userId, picked);
+                      }
+                    },
+                    icon: Icon(Icons.calendar_today_outlined,
+                        size: 16, color: colorScheme.primary),
+                    label: Text('Started Earlier',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        )),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: colorScheme.primary.withOpacity(0.4)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Not Yet
+                  TextButton(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _isDismissedPeriodCard = true);
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      'Not yet',
+                      style: textTheme.labelLarge?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -358,12 +567,13 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   Widget _buildHorizontalCalendar(
       CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
     final today = DateTime.now();
-    final dates = List.generate(21,
-        (i) => today.subtract(const Duration(days: 4)).add(Duration(days: i)));
+    final dates = List.generate(181,
+        (i) => today.subtract(const Duration(days: 90)).add(Duration(days: i)));
 
     return SizedBox(
       height: 80,
       child: ListView.builder(
+        controller: _calendarController,
         scrollDirection: Axis.horizontal,
         itemCount: dates.length,
         itemBuilder: (context, index) {
@@ -806,48 +1016,75 @@ class _RingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width / 2, size.height / 2) - 4;
+    final radius = (size.width / 2) - 8;
+    const totalSegments = 30; // High segment count for a smooth premium look
+    const gapAngle = 0.04;
 
-    final bgPaint = Paint()
-      ..color = backgroundColor
-      ..strokeWidth = 6
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final totalAngle = 2 * math.pi;
+    final totalGap = gapAngle * totalSegments;
+    final usableAngle = totalAngle - totalGap;
+    final segmentAngle = usableAngle / totalSegments;
+
+    final filledAngle = usableAngle * progress;
+
+    // 1. Prepare Paints
+    // Solid background track for better visibility of the full circle
+    final trackPaint = Paint()
+      ..color = backgroundColor.withOpacity(0.1)
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    double startAngle = -math.pi / 2;
-    double dashWidth = 0.08;
-    double dashSpace = 0.12;
-    double totalAngles = 2 * math.pi;
-    for (double i = 0; i < totalAngles; i += dashWidth + dashSpace) {
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle + i,
-        dashWidth,
-        false,
-        bgPaint,
-      );
-    }
-
-    final gradient = SweepGradient(
+    final progressGradient = SweepGradient(
       startAngle: -math.pi / 2,
       endAngle: 3 * math.pi / 2,
       colors: [gradientStart, gradientEnd],
       stops: const [0.0, 1.0],
     );
 
-    final highlightPaint = Paint()
-      ..shader =
-          gradient.createShader(Rect.fromCircle(center: center, radius: radius))
-      ..strokeWidth = 6
+    final progressPaint = Paint()
+      ..shader = progressGradient.createShader(rect)
+      ..strokeWidth = 10
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      2 * math.pi * progress,
-      false,
-      highlightPaint,
-    );
+    // Draw a continuous light track underneath the segments
+    canvas.drawArc(rect, 0, 2 * math.pi, false, trackPaint);
+
+    double currentAngle = -math.pi / 2;
+
+    // 2. Draw Segments
+    for (int i = 0; i < totalSegments; i++) {
+      // Draw background segment highlights (optional, adds depth)
+      canvas.drawArc(
+        rect,
+        currentAngle,
+        segmentAngle,
+        false,
+        trackPaint..color = backgroundColor.withOpacity(0.08),
+      );
+
+      // Draw filled segment part
+      if (filledAngle > 0) {
+        final remaining = filledAngle - (i * segmentAngle);
+
+        if (remaining > 0) {
+          final drawAngle =
+              remaining >= segmentAngle ? segmentAngle : remaining;
+
+          canvas.drawArc(
+            rect,
+            currentAngle,
+            drawAngle,
+            false,
+            progressPaint,
+          );
+        }
+      }
+
+      currentAngle += segmentAngle + gapAngle;
+    }
   }
 
   @override

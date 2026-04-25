@@ -280,6 +280,9 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
 
       final dates =
           (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
+      
+      if (!mounted) return;
+
       state = state.copyWith(
         historicalPeriods: dates,
         isLoading: false,
@@ -287,7 +290,9 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
       );
     } catch (e) {
       debugPrint('[CycleHistoryNotifier] loadInitial error: $e');
-      state = state.copyWith(isLoading: false);
+      if (mounted) {
+        state = state.copyWith(isLoading: false);
+      }
     }
   }
 
@@ -310,6 +315,9 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
 
       final dates =
           (rows as List).map((r) => DateTime.parse(r['start_date'])).toList();
+      
+      if (!mounted) return;
+
       if (dates.isEmpty) {
         state = state.copyWith(isLoading: false);
         return;
@@ -322,7 +330,9 @@ class CycleHistoryNotifier extends StateNotifier<CycleHistoryState> {
       );
     } catch (e) {
       debugPrint('[CycleHistoryNotifier] loadMore error: $e');
-      state = state.copyWith(isLoading: false);
+      if (mounted) {
+        state = state.copyWith(isLoading: false);
+      }
     }
   }
 }
@@ -484,7 +494,10 @@ class DashboardState {
     this.isCycleActionLoading = false,
     this.dailyQuestions = const [],
     this.hasShownQuestionPopup = false,
+    this.hasShownPeriodPrompt = false,
   });
+
+  final bool hasShownPeriodPrompt;
 
   DashboardState copyWith({
     String? selectedMood,
@@ -502,6 +515,7 @@ class DashboardState {
     bool? isCycleActionLoading,
     List<InsightQuestion>? dailyQuestions,
     bool? hasShownQuestionPopup,
+    bool? hasShownPeriodPrompt,
   }) {
     return DashboardState(
       selectedMood: selectedMood ?? this.selectedMood,
@@ -520,6 +534,8 @@ class DashboardState {
       dailyQuestions: dailyQuestions ?? this.dailyQuestions,
       hasShownQuestionPopup:
           hasShownQuestionPopup ?? this.hasShownQuestionPopup,
+      hasShownPeriodPrompt:
+          hasShownPeriodPrompt ?? this.hasShownPeriodPrompt,
     );
   }
 }
@@ -569,6 +585,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       final questionsData = response.data['questions'] as List? ?? [];
       final questions = questionsData.map((q) => InsightQuestion.fromMap(Map<String, dynamic>.from(q))).toList();
 
+      if (!mounted) return;
+
       state = state.copyWith(
         isLoadingInsight: false, 
         dailyInsight: insight,
@@ -576,7 +594,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       );
     } catch (e) {
       debugPrint('[fetchDailyInsight] Error: $e');
-      state = state.copyWith(isLoadingInsight: false);
+      if (mounted) {
+        state = state.copyWith(isLoadingInsight: false);
+      }
     }
   }
 
@@ -599,11 +619,16 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       );
       final insight = response.data['insight'] as String?;
       debugPrint('[fetchCycleInsight] Result: $insight');
+      
+      if (!mounted) return;
+
       state =
           state.copyWith(isLoadingCycleInsight: false, cycleInsight: insight);
     } catch (e) {
       debugPrint('[fetchCycleInsight] Error: $e');
-      state = state.copyWith(isLoadingCycleInsight: false);
+      if (mounted) {
+        state = state.copyWith(isLoadingCycleInsight: false);
+      }
     }
   }
 
@@ -642,6 +667,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   void toggleShareWithPartner(bool val) => state = state.copyWith(shareWithPartner: val);
 
   void setHasShownQuestionPopup(bool val) => state = state.copyWith(hasShownQuestionPopup: val);
+
+  void setHasShownPeriodPrompt(bool val) => state = state.copyWith(hasShownPeriodPrompt: val);
 
   Future<void> submitQuestionOption(String questionId, String option) async {
     final originalQuestions = state.dailyQuestions;

@@ -47,6 +47,27 @@ class CycleData {
     return nextPeriodDate.subtract(const Duration(days: 14));
   }
 
+  /// Whether the period is currently delayed
+  bool get isPeriodDelayed {
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final npMidnight =
+        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
+    return todayMidnight.isAfter(npMidnight) &&
+        currentPhase != 'Menstruation';
+  }
+
+  /// Whether the period is predicted to start soon (within 2 days)
+  bool get isUpcomingPeriod {
+    if (currentPhase == 'Menstruation') return false;
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final npMidnight =
+        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
+    final diff = npMidnight.difference(todayMidnight).inDays;
+    return diff >= 0 && diff <= 2;
+  }
+
   /// Phase categorization
   String get currentPhase {
     final day = currentCycleDay;
@@ -227,15 +248,6 @@ class CycleData {
       return "Your cycle is delayed by $diff ${diff == 1 ? 'day' : 'days'}";
     }
     return "Is your period late?";
-  }
-
-  /// Whether the period is currently considered late
-  bool get isPeriodDelayed {
-    final today = DateTime.now();
-    final todayMidnight = DateTime(today.year, today.month, today.day);
-    final nextPMidnight =
-        DateTime(nextPeriodDate.year, nextPeriodDate.month, nextPeriodDate.day);
-    return todayMidnight.isAfter(nextPMidnight);
   }
 
   factory CycleData.fromMap(Map<String, dynamic> map) {
