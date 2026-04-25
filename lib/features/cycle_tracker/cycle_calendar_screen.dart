@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math' as math;
+import 'package:flutter/services.dart';
 
 import '../../core/theme_provider.dart';
 import '../dashboard/dashboard_state.dart';
@@ -52,6 +53,8 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                               const SizedBox(height: 32),
                               _buildHorizontalCalendar(
                                   cycleData, colorScheme, textTheme),
+                              _buildSelectedDayDetail(
+                                  cycleData, colorScheme, textTheme),
                               const SizedBox(height: 32),
                               _buildEnergyCard(colorScheme, textTheme),
                               const SizedBox(height: 32),
@@ -71,6 +74,105 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                   ],
                 ),
     );
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  Widget _buildSelectedDayDetail(
+      CycleData cycle, ColorScheme colorScheme, TextTheme textTheme) {
+    if (_isToday(_selectedDate)) return const SizedBox.shrink();
+
+    final type = cycle.getDayType(_selectedDate);
+    final dayProgress = cycle.getDayProgress(_selectedDate);
+
+    String phaseName = "Follicular Phase";
+    Color accentColor = colorScheme.secondary;
+    if (type == 'period') {
+      phaseName = "Menstruation";
+      accentColor = colorScheme.primary;
+    } else if (type == 'fertile' || type == 'maybe_fertile') {
+      phaseName = "Ovulation Window";
+      accentColor = colorScheme.tertiary;
+    } else if (type == 'delayed' || type == 'next_period') {
+      phaseName = "Upcoming Period";
+      accentColor = colorScheme.primary;
+    }
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: Container(
+        margin: const EdgeInsets.only(top: 24),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: accentColor.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: accentColor.withOpacity(0.15)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "${_getMonthName(_selectedDate.month)} ${_selectedDate.day}",
+                  style: textTheme.labelLarge?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Icon(Icons.calendar_today_outlined,
+                    size: 14, color: accentColor),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              phaseName,
+              style: textTheme.headlineSmall?.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (dayProgress.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                dayProgress,
+                style: textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: textTheme.bodySmall?.color?.withOpacity(0.7),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Text(
+              _getPhaseInsight(phaseName),
+              style: textTheme.bodySmall?.copyWith(
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getPhaseInsight(String phase) {
+    if (phase == "Menstruation") {
+      return "Focus on gentle movement and nourishing foods. Your body is in a state of release.";
+    } else if (phase == "Ovulation Window") {
+      return "Energy and confidence are at their peak. A great time for social activities and meaningful work.";
+    } else if (phase == "Upcoming Period") {
+      return "You might notice a shift in energy. Start winding down and prioritize quality sleep.";
+    } else if (phase == "Luteal Phase") {
+      return "Progesterone is high, urging you to turn inward. It's perfectly okay to decline social invitations.";
+    }
+    return "Estrogen is rising, helping you feel more outgoing and productive. Harness this creative spark.";
   }
 
   Widget _buildHeader(UserProfile profile, TextTheme textTheme) {
@@ -284,17 +386,19 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
 
           return GestureDetector(
             onTap: () {
+              HapticFeedback.lightImpact();
               setState(() {
                 _selectedDate = date;
               });
             },
+            behavior: HitTestBehavior.opaque,
             child: SizedBox(
               width: 58,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   Positioned(
-                    bottom: 12, // Perfectly aligned through dot center
+                    bottom: 11, // Adjusted to perfectly bisect the 6px dot
                     left: 0,
                     right: 0,
                     child: Container(
