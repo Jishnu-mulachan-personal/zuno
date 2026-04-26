@@ -82,12 +82,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<bool> signInWithGoogle() async {
     state = state.copyWith(isLoading: true, clearError: true, needsVerification: false);
+    print('DEBUG: Starting Google Sign-In...');
 
     try {
       final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
       final iosClientId = dotenv.env['GOOGLE_IOS_CLIENT_ID'];
       
+      print('DEBUG: Web Client ID present: ${webClientId != null}');
+      print('DEBUG: iOS Client ID present: ${iosClientId != null}');
+      
       if (webClientId == null) {
+        print('DEBUG ERROR: Google Client ID not found in environment.');
         throw 'Google Client ID not found in environment.';
       }
 
@@ -96,29 +101,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
         serverClientId: webClientId,
       );
       
+      print('DEBUG: Attempting googleSignIn.signIn()...');
       final googleUser = await googleSignIn.signIn();
+      
       if (googleUser == null) {
+        print('DEBUG: googleSignIn.signIn() returned null (user canceled or error occurred)');
         state = state.copyWith(isLoading: false);
         return false;
       }
+      
+      print('DEBUG: User signed in: ${googleUser.email}');
       
       final googleAuth = await googleUser.authentication;
       final accessToken = googleAuth.accessToken;
       final idToken = googleAuth.idToken;
 
+      print('DEBUG: Access Token present: ${accessToken != null}');
+      print('DEBUG: ID Token present: ${idToken != null}');
+
       if (accessToken == null || idToken == null) {
+        print('DEBUG ERROR: Missing Google Auth Tokens.');
         throw 'Missing Google Auth Tokens.';
       }
 
+      print('DEBUG: Attempting Supabase signInWithIdToken...');
       await _supabase.auth.signInWithIdToken(
         provider: supabase.OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
       );
 
+      print('DEBUG: Supabase sign-in successful!');
       state = state.copyWith(isLoading: false);
       return true;
-    } catch (e) {
+    } catch (e, stack) {
+      print('DEBUG ERROR: Google Sign-In Exception: $e');
+      print('DEBUG STACKTRACE: $stack');
       state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }

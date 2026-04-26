@@ -63,6 +63,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '490454276986',
     projectId: 'zuno-c2636',
     storageBucket: 'zuno-c2636.firebasestorage.app',
-    iosBundleId: 'com.zuno.zuno',
+    iosBundleId: 'com.techzart.zuno',
   );
 }
