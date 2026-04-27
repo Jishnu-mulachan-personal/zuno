@@ -96,12 +96,21 @@ serve(async (req) => {
       Recent Logs: ${JSON.stringify(recentLogs || [])}.
       
       [TASK]
-      Analyze the user's cycle phase and their recent daily logs to predict their "Energy Level" for today.
+      Analyze the user's cycle phase and their recent daily logs to:
+      1. Predict their "Energy Level" for today.
+      2. Predict potential "Physical Symptoms" and "Moods" they might be experiencing today.
       
       [WEIGHTING RULES]
-      1. CRITICAL: The LATEST daily log (if available) should have the highest weight. If it shows low mood or symptoms, the energy level should reflect that, even if the cycle phase suggests otherwise.
+      1. CRITICAL: The LATEST daily log (if available) should have the highest weight. If it shows low mood or symptoms, the energy level and predictions should reflect that, even if the cycle phase suggests otherwise.
       2. Cycle Day: Use this as the baseline. (e.g., Follicular/Ovulation usually higher energy, Luteal/Menstruation usually lower).
       
+      [OPTIONS FOR PREDICTION]
+      Physical Symptoms (Choose 1-3):
+      - physical:cramps, physical:bloating, physical:headache, physical:back_pain, physical:tender_breasts, physical:fatigue, physical:acne
+      
+      Moods (Choose 1-3):
+      - mood:calm, mood:happy, mood:social, mood:irritable, mood:anxious, mood:sensitive, mood:motivated
+
       [ENERGY CATEGORIES]
       - Radiant: Very high energy, social, glowing.
       - Sparkling: Creative, inspired, energetic.
@@ -114,7 +123,9 @@ serve(async (req) => {
         "energy_category": "Predict one of [Radiant, Sparkling, Balanced, Calm, Unplugged]",
         "energy_message": "A warm, 1-sentence insight (max 15 words) explaining why they feel this way based on logs/cycle.",
         "insight": "A general, kind cycle tip for today (max 15 words). NO JARGON (don't say 'Luteal', 'Estrogen', etc).",
-        "energy_image_name": "the lowercase category name + .png (e.g., radiant.png)"
+        "energy_image_name": "the lowercase category name + .png (e.g., radiant.png)",
+        "predicted_physical": ["list", "of", "physical:tags"],
+        "predicted_mood": ["list", "of", "mood:tags"]
       }
 
       Write in ${language}.
@@ -136,7 +147,7 @@ serve(async (req) => {
     const categoryLower = (data.energy_category || "radiant").toLowerCase();
     const finalImageName = data.energy_image_name || `${categoryLower}.png`;
 
-    console.log(`[generate_cycle_insight] Prediction: ${data.energy_category}, Image: ${finalImageName}`);
+    console.log(`[generate_cycle_insight] Prediction: ${data.energy_category}, Image: ${finalImageName}, Physical: ${data.predicted_physical}, Mood: ${data.predicted_mood}`);
 
     // 5. Upsert into Database
     await supabaseClient.from('daily_cycle_insights').upsert({
@@ -145,6 +156,8 @@ serve(async (req) => {
       energy_category: data.energy_category,
       energy_message: data.energy_message,
       energy_image_name: finalImageName,
+      predicted_physical: data.predicted_physical || [],
+      predicted_mood: data.predicted_mood || [],
       last_generated_at: today
     });
 

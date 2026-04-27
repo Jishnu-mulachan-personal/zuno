@@ -478,6 +478,8 @@ class DashboardState {
   final String? energyMessage;
   final String? energyImageName;
   final String? energySignedUrl;
+  final List<String> predictedPhysical;
+  final List<String> predictedMood;
   final bool isLoadingCycleInsight;
   final bool isCycleActionLoading;
   final List<InsightQuestion> dailyQuestions;
@@ -498,6 +500,8 @@ class DashboardState {
     this.energyMessage,
     this.energyImageName,
     this.energySignedUrl,
+    this.predictedPhysical = const [],
+    this.predictedMood = const [],
     this.isLoadingCycleInsight = false,
     this.isCycleActionLoading = false,
     this.dailyQuestions = const [],
@@ -523,6 +527,8 @@ class DashboardState {
     String? energyMessage,
     String? energyImageName,
     String? energySignedUrl,
+    List<String>? predictedPhysical,
+    List<String>? predictedMood,
     bool? isLoadingCycleInsight,
     bool? isCycleActionLoading,
     List<InsightQuestion>? dailyQuestions,
@@ -544,6 +550,8 @@ class DashboardState {
       energyMessage: energyMessage ?? this.energyMessage,
       energyImageName: energyImageName ?? this.energyImageName,
       energySignedUrl: energySignedUrl ?? this.energySignedUrl,
+      predictedPhysical: predictedPhysical ?? this.predictedPhysical,
+      predictedMood: predictedMood ?? this.predictedMood,
       isLoadingCycleInsight:
           isLoadingCycleInsight ?? this.isLoadingCycleInsight,
       isCycleActionLoading: isCycleActionLoading ?? this.isCycleActionLoading,
@@ -600,6 +608,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           energyCategory: response['energy_category'],
           energyMessage: response['energy_message'],
           energyImageName: response['energy_image_name'],
+          predictedPhysical: List<String>.from(response['predicted_physical'] ?? []),
+          predictedMood: List<String>.from(response['predicted_mood'] ?? []),
         );
         _fetchSignedEnergyUrl(response['energy_image_name']);
       }
@@ -677,6 +687,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       final energyCategory = response.data['energy_category'] as String?;
       final energyMessage = response.data['energy_message'] as String?;
       final energyImageName = response.data['energy_image_name'] as String?;
+      final predictedPhysical = List<String>.from(response.data['predicted_physical'] ?? []);
+      final predictedMood = List<String>.from(response.data['predicted_mood'] ?? []);
       debugPrint('[fetchCycleInsight] Result: $insight ($energyCategory)');
       
       if (!mounted) return;
@@ -687,6 +699,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         energyCategory: energyCategory,
         energyMessage: energyMessage,
         energyImageName: energyImageName,
+        predictedPhysical: predictedPhysical,
+        predictedMood: predictedMood,
       );
       _fetchSignedEnergyUrl(energyImageName);
     } catch (e) {

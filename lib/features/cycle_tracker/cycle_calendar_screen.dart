@@ -103,7 +103,7 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
                                   textTheme,
                                 ),
                                 const SizedBox(height: 32),
-                                _buildLogQuickActions(colorScheme, textTheme),
+                                _buildUnifiedLogBlock(state, colorScheme, textTheme),
                                 const SizedBox(height: 32),
                                 _buildAIInsight(
                                     state.cycleInsight, colorScheme, textTheme),
@@ -835,6 +835,37 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
     );
   }
 
+  Widget _buildUnifiedLogBlock(
+      DashboardState state, ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (state.predictedPhysical.isNotEmpty ||
+              state.predictedMood.isNotEmpty) ...[
+            _buildPredictedSection(state, colorScheme, textTheme),
+            const SizedBox(height: 32),
+            Divider(color: colorScheme.outlineVariant.withOpacity(0.5)),
+            const SizedBox(height: 24),
+          ],
+          _buildLogQuickActions(colorScheme, textTheme),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLogQuickActions(ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -857,38 +888,42 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildActionItem(
-                Icons.water_drop_outlined,
-                "Body",
-                colorScheme.primaryContainer.withOpacity(0.2),
-                colorScheme.primary,
-                textTheme,
-                onTap: () => context.push('/log_feel')),
+              Icons.water_drop_outlined,
+              "Body",
+              colorScheme.primaryContainer.withOpacity(0.2),
+              colorScheme.primary,
+              textTheme,
+              onTap: () => context.push('/log_feel'),
+            ),
             _buildActionItem(
-                Icons.sentiment_satisfied_outlined,
-                "Mood",
-                colorScheme.tertiaryContainer.withOpacity(0.2),
-                colorScheme.tertiary,
-                textTheme,
-                onTap: () => context.push('/log_feel')),
+              Icons.sentiment_satisfied_outlined,
+              "Mood",
+              colorScheme.tertiaryContainer.withOpacity(0.2),
+              colorScheme.tertiary,
+              textTheme,
+              onTap: () => context.push('/log_feel'),
+            ),
             _buildActionItem(
-                Icons.vaccines_outlined,
-                "Flow",
-                colorScheme.primaryContainer.withOpacity(0.2),
-                colorScheme.primary,
-                textTheme,
-                onTap: () => context.push('/log_feel')),
+              Icons.vaccines_outlined,
+              "Flow",
+              colorScheme.primaryContainer.withOpacity(0.2),
+              colorScheme.primary,
+              textTheme,
+              onTap: () => context.push('/log_feel'),
+            ),
             _buildActionItem(
-                Icons.edit_outlined,
-                "Notes",
-                colorScheme.surfaceContainerHighest,
-                colorScheme.onSurfaceVariant,
-                textTheme,
-                onTap: () => context.push('/log_feel')),
+              Icons.edit_outlined,
+              "Notes",
+              colorScheme.surfaceContainerHighest,
+              colorScheme.onSurfaceVariant,
+              textTheme,
+              onTap: () => context.push('/log_feel'),
+            ),
           ],
         ),
       ],
@@ -898,33 +933,129 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
   Widget _buildActionItem(IconData icon, String label, Color bgColor,
       Color iconColor, TextTheme textTheme,
       {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap?.call();
-      },
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(22),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap?.call();
+        },
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Center(
+                child: Icon(icon, size: 24, color: iconColor),
+              ),
             ),
-            child: Center(
-              child: Icon(icon, size: 28, color: iconColor),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                  color: textTheme.bodyLarge?.color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPredictedSection(
+      DashboardState state, ColorScheme colorScheme, TextTheme textTheme) {
+    final physical = state.predictedPhysical.take(3).toList();
+    final moods = state.predictedMood.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, size: 16, color: colorScheme.tertiary),
+                const SizedBox(width: 8),
+                Text(
+                  "Zuno Predicted",
+                  style: textTheme.labelMedium?.copyWith(
+                    color: colorScheme.tertiary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (physical.isNotEmpty) ...[
+          Text(
+            "Potential Symptoms",
+            style: textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
-              color: textTheme.bodyLarge?.color,
-            ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: physical.map((tag) {
+              final label = tag.split(':').last.replaceAll('_', ' ');
+              return _buildPredictedChip(
+                  label, colorScheme.primary, colorScheme);
+            }).toList(),
           ),
         ],
+        if (moods.isNotEmpty) ...[
+          if (physical.isNotEmpty) const SizedBox(height: 16),
+          Text(
+            "Likely Moods",
+            style: textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: moods.map((tag) {
+              final label = tag.split(':').last.replaceAll('_', ' ');
+              return _buildPredictedChip(
+                  label, colorScheme.tertiary, colorScheme);
+            }).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPredictedChip(String label, Color color, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
