@@ -78,7 +78,10 @@ serve(async (req) => {
     const relSummary = relMemReq.data;
     const relevantUsers = partnersReq.data || [userData];
     const relevantIds = relevantUsers.map((u: any) => u.id);
-    const partnerData = relevantUsers.find((u: any) => u.id !== userData.id) || {};
+    const partnerData = relevantUsers.find((u: any) => u.id !== userData.id);
+    const hasPartner = !!(userData.relationship_id && partnerData?.id);
+
+    console.log(`[DEBUG] Insight Generation for ${userData.display_name} (ID: ${userData.id}). RelID: ${userData.relationship_id}, Partner Found: ${!!partnerData?.id}`);
 
     // 3. Fetch logs and cycle info
     const currentDate = new Date().toISOString().split('T')[0];
@@ -179,33 +182,34 @@ serve(async (req) => {
       }
     }
 
+
     // 5. Generate Insight using fallback logic
     const temperature = 0.7;
 
-   const insightPrompt = `
+    const insightPrompt = `
       You are Zuno, an empathetic AI relationship companion. 
       Today's Date: ${currentDate}.
       Current Time: ${currentFullTime}.
       User: ${userData.display_name}. 
-      Partner: ${partnerData.display_name || 'your partner'}.
+      ${hasPartner ? `Partner: ${partnerData.display_name || 'your partner'}.` : ''}
       
       [CONTEXT]
       Last Insight: "${lastInsight}"
       User Status: ${userSummary?.summary_text || 'Stable'} | Moods: ${userMoodContext.length > 0 ? userMoodContext.join(', ') : 'None'} | Journals: ${userJournalContext.length > 0 ? userJournalContext.join(' | ') : 'None'}
-      Partner Status: ${relSummary?.summary_text || 'Stable'} | Moods: ${partnerMoodContext.length > 0 ? partnerMoodContext.join(', ') : 'None'} | Journals: ${partnerJournalContext.length > 0 ? partnerJournalContext.join(' | ') : 'None'}
+      ${hasPartner ? `Partner Status: ${relSummary?.summary_text || 'Stable'} | Moods: ${partnerMoodContext.length > 0 ? partnerMoodContext.join(', ') : 'None'} | Journals: ${partnerJournalContext.length > 0 ? partnerJournalContext.join(' | ') : 'None'}` : ''}
       Biological Energy: ${cycleContext.length > 0 ? cycleContext.join('\n') : 'Typical energy levels.'}
 
       [GUIDELINES]
       - Speak like a supportive friend. Simple, everyday vocabulary. No therapist jargon.
-      - PARTNER FOCUS: If partner is struggling, acknowledge it.
+      ${hasPartner ? '- PARTNER FOCUS: If partner is struggling, acknowledge it.' : '- FOCUS: Focus on the user\'s well-being and personal growth.'}
       - BIOLOGICAL NUANCE: Use cycle data for activity suggestions.
 
       [TASK]
       Return a JSON object with:
-      1. "insight": A warm, 3-sentence relationship insight in ${language}. 
+      1. "insight": A warm, 3-sentence insight in ${language}. 
          - Sentence 1: Mirror user's state. 
-         - Sentence 2: Window into partner's vibe. 
-         - Sentence 3: Bridge to connection (low-friction action).
+         - Sentence 2: ${hasPartner ? "Window into partner's vibe." : "A focus on self-care, wellness, or personal growth."}
+         - Sentence 3: ${hasPartner ? "Bridge to connection (low-friction action)." : "A gentle, encouraging thought for the day."}
       2. "questions": A list of 1-2 personalized questions in ${language} based on the context above (moods, journals, or special day vibes).
          Each question should have:
          - "text": The question string.
