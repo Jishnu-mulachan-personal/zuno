@@ -8,7 +8,6 @@ import '../settings/profile_image_service.dart';
 import '../auth/user_repository.dart';
 import '../dashboard/dashboard_state.dart';
 
-
 // ── Model ─────────────────────────────────────────────────────────────────────
 enum SharedPostType { post, dailyLog }
 
@@ -39,7 +38,6 @@ class SharedPost {
     this.moodEmoji,
   });
 
-
   SharedPost copyWith({
     String? caption,
     List<String>? contextTags,
@@ -61,19 +59,21 @@ class SharedPost {
     return SharedPost(
       id: row['id'] as String,
       userId: row['user_id'] as String,
-      userDisplayName: (row['users'] as Map?)?['display_name'] as String? ?? 'Partner',
+      userDisplayName:
+          (row['users'] as Map?)?['display_name'] as String? ?? 'Partner',
       avatarUrl: (row['users'] as Map?)?['avatar_url'] as String?,
       caption: row['caption'] as String? ?? '',
       imageUrl: row['image_url'] as String?,
       contextTags: List<String>.from(row['context_tags'] ?? []),
       createdAt: DateTime.parse(row['created_at'] as String),
       updatedAt: DateTime.parse(row['updated_at'] as String),
-      type: row['type'] == 'daily_log' ? SharedPostType.dailyLog : SharedPostType.post,
+      type: row['type'] == 'daily_log'
+          ? SharedPostType.dailyLog
+          : SharedPostType.post,
       moodEmoji: row['mood_emoji'] as String?,
     );
   }
 }
-
 
 // ── Feed provider ────────────────────────────────────────────────────────────
 
@@ -172,16 +172,19 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
           .from('users')
           .select('id')
           .eq('relationship_id', relationshipId);
-      final memberIds = (memberRows as List).map((m) => m['id'] as String).toList();
+      final memberIds =
+          (memberRows as List).map((m) => m['id'] as String).toList();
 
       // Step 2: Fetch regular posts
       var postsQuery = supabase
           .from('shared_posts')
-          .select('id, user_id, caption, image_url, context_tags, created_at, updated_at')
+          .select(
+              'id, user_id, caption, image_url, context_tags, created_at, updated_at')
           .eq('relationship_id', relationshipId);
 
       if (beforeTimestamp != null) {
-        postsQuery = postsQuery.lt('created_at', beforeTimestamp.toIso8601String());
+        postsQuery =
+            postsQuery.lt('created_at', beforeTimestamp.toIso8601String());
       }
 
       final postRows = await postsQuery
@@ -191,12 +194,14 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
       // Step 3: Fetch shared daily logs
       var logsFetchQuery = supabase
           .from('daily_logs')
-          .select('id, user_id, journal_note, context_tags, created_at, mood_emoji')
+          .select(
+              'id, user_id, journal_note, context_tags, created_at, mood_emoji')
           .eq('share_with_partner', true)
           .inFilter('user_id', memberIds);
 
       if (beforeTimestamp != null) {
-        logsFetchQuery = logsFetchQuery.lt('created_at', beforeTimestamp.toIso8601String());
+        logsFetchQuery =
+            logsFetchQuery.lt('created_at', beforeTimestamp.toIso8601String());
       }
 
       final logRows = await logsFetchQuery
@@ -247,28 +252,34 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
       // Add shared daily logs
       for (final l in logRows) {
         final userData = userDataMap[l['user_id'] as String];
-        
+
         // Decrypt journal note
         String decryptedNote = '';
         if (l['journal_note'] != null) {
           try {
             final dynamic jn = l['journal_note'];
             if (jn is List) {
-              decryptedNote = EncryptionService.decrypt(List<int>.from(jn)) ?? '';
+              decryptedNote =
+                  EncryptionService.decrypt(List<int>.from(jn)) ?? '';
             } else if (jn is String) {
               if (jn.startsWith('\\x')) {
                 final hexStr = jn.substring(2);
                 final asciiBytes = <int>[];
                 for (int i = 0; i < hexStr.length; i += 2) {
-                  asciiBytes.add(int.parse(hexStr.substring(i, i + 2), radix: 16));
+                  asciiBytes
+                      .add(int.parse(hexStr.substring(i, i + 2), radix: 16));
                 }
                 final inner = String.fromCharCodes(asciiBytes);
                 if (inner.startsWith('[')) {
                   final stripped = inner.substring(1, inner.length - 1).trim();
                   if (stripped.isNotEmpty) {
-                    final parsedBytes = stripped.split(',').map((e) => int.parse(e.trim())).toList();
+                    final parsedBytes = stripped
+                        .split(',')
+                        .map((e) => int.parse(e.trim()))
+                        .toList();
                     try {
-                      decryptedNote = EncryptionService.decrypt(parsedBytes) ?? '';
+                      decryptedNote =
+                          EncryptionService.decrypt(parsedBytes) ?? '';
                     } catch (_) {
                       decryptedNote = String.fromCharCodes(parsedBytes);
                     }
@@ -279,7 +290,10 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
               } else if (jn.startsWith('[')) {
                 final stripped = jn.substring(1, jn.length - 1).trim();
                 if (stripped.isNotEmpty) {
-                  final codeUnits = stripped.split(',').map((e) => int.parse(e.trim())).toList();
+                  final codeUnits = stripped
+                      .split(',')
+                      .map((e) => int.parse(e.trim()))
+                      .toList();
                   decryptedNote = String.fromCharCodes(codeUnits);
                 }
               } else {
@@ -310,10 +324,10 @@ class SharedPostsNotifier extends StateNotifier<SharedPostsState> {
       allPosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       return allPosts.take(_pageSize).toList();
-
     } catch (e) {
       debugPrint('[SharedPostsNotifier] ERROR: $e');
-      state = state.copyWith(error: e.toString(), isLoading: false, isLoadingMore: false);
+      state = state.copyWith(
+          error: e.toString(), isLoading: false, isLoadingMore: false);
       return null;
     }
   }
@@ -323,7 +337,6 @@ final sharedPostsProvider =
     StateNotifierProvider<SharedPostsNotifier, SharedPostsState>((ref) {
   return SharedPostsNotifier();
 });
-
 
 // ── Compose / Edit / Delete state ────────────────────────────────────────────
 
@@ -347,7 +360,8 @@ class UsPostState {
   }) {
     return UsPostState(
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      editingPostId: clearEditing ? null : (editingPostId ?? this.editingPostId),
+      editingPostId:
+          clearEditing ? null : (editingPostId ?? this.editingPostId),
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -452,7 +466,7 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
       final supabase = Supabase.instance.client;
 
       // Step 1: Delete database record
-      // We use .select().maybeSingle() to verify that the row was actually 
+      // We use .select().maybeSingle() to verify that the row was actually
       // deleted (which confirms the ID exists AND the user has RLS permission).
       final response = await supabase
           .from('shared_posts')
@@ -462,7 +476,8 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
           .maybeSingle();
 
       if (response == null) {
-        throw Exception('Post not found or you do not have permission to delete it.');
+        throw Exception(
+            'Post not found or you do not have permission to delete it.');
       }
 
       // Step 2: Delete storage image (best-effort)
@@ -480,8 +495,8 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
     }
   }
 
-  void setEditing(String? postId) =>
-      state = state.copyWith(editingPostId: postId, clearEditing: postId == null);
+  void setEditing(String? postId) => state =
+      state.copyWith(editingPostId: postId, clearEditing: postId == null);
 
   // ── Update relationship photo ──────────────────────────────────────────────
 
@@ -502,14 +517,16 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
 
       // 2. Update DB
       await ref.read(userRepositoryProvider).updateRelationshipDetails(
-        relationshipId: relationshipId,
-        usPhotoUrl: newPath,
-      );
+            relationshipId: relationshipId,
+            usPhotoUrl: newPath,
+          );
 
       // 3. Cleanup old (best-effort but awaited for reliability)
       if (oldPath != null && oldPath.isNotEmpty) {
-        debugPrint('[UsPostNotifier.updateUsPhoto] Cleaning up old photo: $oldPath');
-        await ProfileImageService.deleteByUrl(ProfileImageService.bucketUsPhotos, oldPath);
+        debugPrint(
+            '[UsPostNotifier.updateUsPhoto] Cleaning up old photo: $oldPath');
+        await ProfileImageService.deleteByUrl(
+            ProfileImageService.bucketUsPhotos, oldPath);
       }
 
       ref.invalidate(userProfileProvider);
@@ -522,7 +539,6 @@ class UsPostNotifier extends StateNotifier<UsPostState> {
     }
   }
 }
-
 
 final usPostNotifierProvider =
     StateNotifierProvider<UsPostNotifier, UsPostState>((ref) {

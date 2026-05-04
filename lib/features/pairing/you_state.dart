@@ -120,7 +120,21 @@ class UserPostsNotifier extends StateNotifier<UserPostsState> {
           .order('created_at', ascending: false)
           .limit(_pageSize);
 
-      if (postRows.isEmpty && logRows.isEmpty) return [];
+      // Step 2.5: Fetch daily question answers
+      var answersQuery = supabase
+          .from('couple_daily_answers')
+          .select('id, answer, created_at, couple_daily_questions(assigned_date, daily_questions(question_text))')
+          .eq('user_id', userId);
+
+      if (beforeTimestamp != null) {
+        answersQuery = answersQuery.lt('created_at', beforeTimestamp.toIso8601String());
+      }
+
+      final answerRows = await answersQuery
+          .order('created_at', ascending: false)
+          .limit(_pageSize);
+
+      if (postRows.isEmpty && logRows.isEmpty && answerRows.isEmpty) return [];
 
       // Step 3: Fetch user profile for display info
       final profile = await supabase
@@ -207,6 +221,26 @@ class UserPostsNotifier extends StateNotifier<UserPostsState> {
           updatedAt: DateTime.parse(l['created_at'] as String),
           type: SharedPostType.dailyLog,
           moodEmoji: l['mood_emoji'] as String?,
+        ));
+      }
+
+      // Add daily question answers
+      for (final a in answerRows) {
+        final qData = a['couple_daily_questions'] as Map?;
+        final dqData = qData?['daily_questions'] as Map?;
+        final questionText = dqData?['question_text'] as String? ?? 'Daily Question';
+        final answerText = a['answer'] as String? ?? '';
+
+        allPosts.add(SharedPost(
+          id: a['id'] as String,
+          userId: userId,
+          userDisplayName: displayName,
+          avatarUrl: avatarUrl,
+          caption: 'Q: $questionText\nA: $answerText',
+          contextTags: [],
+          createdAt: DateTime.parse(a['created_at'] as String),
+          updatedAt: DateTime.parse(a['created_at'] as String),
+          type: SharedPostType.dailyLog, // Use dailyLog as fallback type
         ));
       }
 

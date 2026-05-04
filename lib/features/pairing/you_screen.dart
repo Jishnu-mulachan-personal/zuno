@@ -314,62 +314,42 @@ class _PostCard extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           color: ZunoTheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: ZunoTheme.outlineVariant.withValues(alpha: 0.1),
           ),
           boxShadow: [
             BoxShadow(
               color: ZunoTheme.onSurface.withValues(alpha: 0.03),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Author row ──────────────────────────────────────────────────
+            // ── Subtle Header ───────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  ProfileAvatar(
-                    url: post.avatarUrl,
-                    radius: 19,
-                    name: post.userDisplayName,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Me',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: ZunoTheme.onSurface,
-                          ),
-                        ),
-                        Text(
-                          relativeTime(post.createdAt),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: ZunoTheme.onSurfaceVariant
-                                .withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
+                  Text(
+                    relativeTime(post.createdAt).toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
+                      color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.4),
                     ),
                   ),
                   if (isOwn)
                     GestureDetector(
                       onTap: () => _showPostOptions(context, ref),
                       child: Icon(Icons.more_horiz_rounded,
-                          color:
-                              ZunoTheme.onSurfaceVariant.withValues(alpha: 0.4),
-                          size: 20),
+                          color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.3),
+                          size: 18),
                     ),
                 ],
               ),
@@ -377,20 +357,20 @@ class _PostCard extends ConsumerWidget {
 
             // ── Image ───────────────────────────────────────────────────────
             if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(22),
-                  bottomRight: Radius.circular(22),
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxHeight: 300,
-                    minHeight: 200,
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: _AuthenticatedImage(
-                      url: post.imageUrl!,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxHeight: 320,
+                      minHeight: 180,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: _AuthenticatedImage(
+                        url: post.imageUrl!,
+                      ),
                     ),
                   ),
                 ),
@@ -399,14 +379,13 @@ class _PostCard extends ConsumerWidget {
             // ── Caption ─────────────────────────────────────────────────────
             if (post.caption.isNotEmpty)
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 child: Text(
                   post.caption,
                   style: GoogleFonts.notoSerif(
                     fontSize: 15,
-                    height: 1.55,
-                    color: ZunoTheme.onSurface,
+                    height: 1.6,
+                    color: ZunoTheme.onSurface.withValues(alpha: 0.9),
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -415,17 +394,17 @@ class _PostCard extends ConsumerWidget {
             // ── Context tags ────────────────────────────────────────────────
             if (post.contextTags.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Wrap(
-                  spacing: 8,
+                  spacing: 6,
                   runSpacing: 6,
                   children: post.contextTags
-                      .map((tag) => _TagChip(label: tag))
+                      .map((tag) => _TagChip(label: tag, small: true))
                       .toList(),
                 ),
               )
-            else if (post.caption.isEmpty && post.imageUrl != null)
-              const SizedBox(height: 14),
+            else
+              const SizedBox(height: 12),
           ],
         ),
       ),
@@ -452,98 +431,296 @@ class _JournalCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bgColor = ZunoTheme.surfaceContainerLow;
-    final borderColor = ZunoTheme.outlineVariant.withValues(alpha: 0.12);
+    final caption = post.caption;
+    
+    bool isQA = false;
+    String question = '';
+    String answer = '';
+
+    // Parsing logic: support both old 'Q: \nA: ' and new '->' formats
+    if (caption.startsWith('Q: ') && caption.contains('\nA: ')) {
+      isQA = true;
+      final parts = caption.split('\nA: ');
+      question = parts[0].substring(3);
+      answer = parts.length > 1 ? parts[1] : '';
+    } else if (caption.contains(' -> ')) {
+      isQA = true;
+      final parts = caption.split(' -> ');
+      question = parts[0].trim();
+      // Join remaining parts in case there are multiple '->'
+      answer = parts.sublist(1).join(' -> ').trim();
+    } else if (caption.contains('->')) {
+      // Handle cases without spaces around ->
+      isQA = true;
+      final parts = caption.split('->');
+      question = parts[0].trim();
+      answer = parts.sublist(1).join('->').trim();
+    }
 
     return Container(
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: borderColor),
+        color: ZunoTheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(
+          color: ZunoTheme.primary.withValues(alpha: 0.12),
+          width: 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: ZunoTheme.onSurface.withValues(alpha: 0.02),
-            blurRadius: 12,
+            color: ZunoTheme.onSurface.withValues(alpha: 0.04),
+            blurRadius: 30,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Stack(
+          children: [
+            // Subtle Background Gradient Accent
+            Positioned(
+              top: -40,
+              right: -40,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      ZunoTheme.primary.withValues(alpha: 0.08),
+                      ZunoTheme.primary.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header Row
+                  Row(
+                    children: [
+                      _buildMoodOrIcon(isQA),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isQA ? 'JOURNAL Q&A' : 'DAILY REFLECTION',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.8,
+                                color: ZunoTheme.primary.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              relativeTime(post.createdAt),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isOwn)
+                        GestureDetector(
+                          onTap: () => _showPostOptions(context, ref),
+                          child: Icon(
+                            Icons.more_horiz_rounded,
+                            color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.3),
+                            size: 20,
+                          ),
+                        ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  if (isQA) ...[
+                    // Premium Question Block
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            ZunoTheme.primary.withValues(alpha: 0.06),
+                            ZunoTheme.primary.withValues(alpha: 0.02),
+                          ],
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(24),
+                          bottomLeft: Radius.circular(24),
+                          bottomRight: Radius.circular(24),
+                        ),
+                        border: Border.all(
+                          color: ZunoTheme.primary.withValues(alpha: 0.05),
+                        ),
+                      ),
+                      child: Text(
+                        question,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          height: 1.45,
+                          color: ZunoTheme.onSurface.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Answer Section
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 2,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  ZunoTheme.secondary.withValues(alpha: 0.4),
+                                  ZunoTheme.secondary.withValues(alpha: 0.05),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'THE RESPONSE',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    color: ZunoTheme.secondary.withValues(alpha: 0.7),
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  answer,
+                                  style: GoogleFonts.notoSerif(
+                                    fontSize: 16,
+                                    height: 1.7,
+                                    fontStyle: FontStyle.italic,
+                                    color: ZunoTheme.onSurface.withValues(alpha: 0.85),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    // Standard Reflection
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        post.caption,
+                        style: GoogleFonts.notoSerif(
+                          fontSize: 17,
+                          color: ZunoTheme.onSurface.withValues(alpha: 0.85),
+                          height: 1.75,
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                  
+                  if (post.contextTags.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: post.contextTags
+                          .map((tag) => _TagChip(label: tag, small: true))
+                          .toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoodOrIcon(bool isQA) {
+    if (post.moodEmoji != null && !isQA) {
+      return Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: ZunoTheme.primary.withValues(alpha: 0.08),
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          post.moodEmoji!,
+          style: const TextStyle(fontSize: 22),
+        ),
+      );
+    }
+
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ZunoTheme.primary,
+            ZunoTheme.primary.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: ZunoTheme.primary.withValues(alpha: 0.2),
+            blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                ProfileAvatar(
-                  url: post.avatarUrl,
-                  radius: 19,
-                  name: post.userDisplayName,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Me',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: ZunoTheme.onSurface,
-                        ),
-                      ),
-                      Text(
-                        '${relativeTime(post.createdAt)} • Daily Log',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: ZunoTheme.onSurfaceVariant.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (post.moodEmoji != null)
-                  Text(
-                    post.moodEmoji!,
-                    style: const TextStyle(fontSize: 22),
-                  ),
-              ],
-            ),
-          ),
-          if (post.caption.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: ZunoTheme.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ZunoTheme.outlineVariant.withValues(alpha: 0.1)),
-                ),
-                child: Text(
-                  post.caption,
-                  style: GoogleFonts.notoSerif(
-                    fontSize: 15,
-                    color: ZunoTheme.onSurface,
-                    height: 1.5,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ),
-          if (post.contextTags.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: post.contextTags.map((tag) => _TagChip(label: tag)).toList(),
-              ),
-            ),
-        ],
+      child: Icon(
+        isQA ? Icons.auto_awesome_rounded : Icons.format_quote_rounded,
+        color: ZunoTheme.onPrimary,
+        size: 20,
       ),
+    );
+  }
+
+  void _showPostOptions(BuildContext context, WidgetRef ref) {
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PostOptionsSheet(post: post),
     );
   }
 }
