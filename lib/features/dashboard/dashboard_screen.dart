@@ -59,7 +59,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         .where((q) => q.selectedOption == null)
         .map((q) => q.id)
         .toList();
-        
+
     if (initialUnansweredIds.isEmpty) return;
 
     showModalBottomSheet(
@@ -1958,9 +1958,12 @@ class _QuestionOptionButtonState extends State<_QuestionOptionButton> {
         : ZunoTheme.outlineVariant.withOpacity(0.4);
 
     return GestureDetector(
-      onTapDown: widget.isAnswered ? null : (_) => setState(() => _isPressed = true),
-      onTapUp: widget.isAnswered ? null : (_) => setState(() => _isPressed = false),
-      onTapCancel: widget.isAnswered ? null : () => setState(() => _isPressed = false),
+      onTapDown:
+          widget.isAnswered ? null : (_) => setState(() => _isPressed = true),
+      onTapUp:
+          widget.isAnswered ? null : (_) => setState(() => _isPressed = false),
+      onTapCancel:
+          widget.isAnswered ? null : () => setState(() => _isPressed = false),
       onTap: widget.isAnswered
           ? null
           : () {
@@ -1978,7 +1981,7 @@ class _QuestionOptionButtonState extends State<_QuestionOptionButton> {
           color: bgColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: borderColor, 
+            color: borderColor,
             width: widget.isSelected ? 2.5 : 1.5,
           ),
           boxShadow: widget.isSelected
@@ -1999,7 +2002,8 @@ class _QuestionOptionButtonState extends State<_QuestionOptionButton> {
                 widget.option,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,
-                  fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight:
+                      widget.isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: textColor,
                   height: 1.2,
                 ),
