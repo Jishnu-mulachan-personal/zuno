@@ -20,6 +20,8 @@ class ZunoImage extends StatelessWidget {
   final Widget? errorWidget;
   final Color? color;
   final BlendMode? colorBlendMode;
+  final bool enableTapToView;
+  final String? heroTag;
 
   const ZunoImage({
     super.key,
@@ -33,6 +35,8 @@ class ZunoImage extends StatelessWidget {
     this.errorWidget,
     this.color,
     this.colorBlendMode,
+    this.enableTapToView = false,
+    this.heroTag,
   });
 
   @override
@@ -41,24 +45,23 @@ class ZunoImage extends StatelessWidget {
 
     final cacheKey = _getCacheKey();
 
-    return ClipRRect(
+    Widget imageWidget = ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: FutureBuilder<String>(
-        // We only generate a signed URL if we don't have a public one.
-        // The FutureBuilder ensures we get a fresh URL if needed.
         future: _getImageUrl(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return _buildErrorWidget();
           }
 
-          // While we are waiting for the signed URL, we show the shimmer.
           if (!snapshot.hasData) {
             return _buildPlaceholder();
           }
 
-          return CachedNetworkImage(
-            imageUrl: snapshot.data!,
+          final imageUrl = snapshot.data!;
+
+          Widget current = CachedNetworkImage(
+            imageUrl: imageUrl,
             cacheKey: cacheKey,
             width: width,
             height: height,
@@ -68,24 +71,57 @@ class ZunoImage extends StatelessWidget {
             placeholder: (context, url) => _buildPlaceholder(),
             errorWidget: (context, url, error) => _buildErrorWidget(),
           );
+
+          if (heroTag != null) {
+            current = Hero(
+              tag: heroTag!,
+              child: current,
+            );
+          }
+
+          if (enableTapToView) {
+            return GestureDetector(
+              onTap: () => _showFullView(context, imageUrl, cacheKey),
+              child: current,
+            );
+          }
+
+          return current;
+        },
+      ),
+    );
+
+    return imageWidget;
+  }
+
+  void _showFullView(BuildContext context, String imageUrl, String cacheKey) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        pageBuilder: (context, _, __) => ZunoImageFullView(
+          imageUrl: imageUrl,
+          cacheKey: cacheKey,
+          heroTag: heroTag,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
   }
 
   /// Derives a stable cache key from the storage path.
+// ... existing _getCacheKey, _getImageUrl, _buildPlaceholder, _buildErrorWidget ...
   String _getCacheKey() {
     if (!pathOrUrl.startsWith('http')) {
       return bucket != null ? '$bucket/$pathOrUrl' : pathOrUrl;
     }
 
-    // If it's a URL, try to extract the storage path to keep the cache stable
-    // even if the signed URL query parameters change.
     try {
       final uri = Uri.parse(pathOrUrl);
       final segments = uri.pathSegments;
       
-      // Supabase storage URLs usually contain the bucket name.
       if (bucket != null) {
         final bucketIdx = segments.indexOf(bucket!);
         if (bucketIdx != -1 && bucketIdx + 1 < segments.length) {
@@ -98,15 +134,9 @@ class ZunoImage extends StatelessWidget {
   }
 
   Future<String> _getImageUrl() async {
-    // If it's already a full URL, return it.
     if (pathOrUrl.startsWith('http')) return pathOrUrl;
-
-    // If we have a path but no bucket, we can't do much.
     if (bucket == null) return pathOrUrl;
 
-    // Generate a signed URL that lasts 1 hour.
-    // Note: Since we use cacheKey, the expiration only matters if the image
-    // is NOT already in the local cache.
     return Supabase.instance.client.storage
         .from(bucket!)
         .createSignedUrl(pathOrUrl, 3600);
@@ -141,3 +171,66 @@ class ZunoImage extends StatelessWidget {
     );
   }
 }
+
+class ZunoImageFullView extends StatelessWidget {
+  final String imageUrl;
+  final String cacheKey;
+  final String? heroTag;
+
+  const ZunoImageFullView({
+    super.key,
+    required this.imageUrl,
+    required this.cacheKey,
+    this.heroTag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Center(
+                child: heroTag != null
+                    ? Hero(
+                        tag: heroTag!,
+                        child: _buildImage(),
+                      )
+                    : _buildImage(),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      cacheKey: cacheKey,
+      fit: BoxFit.contain,
+      placeholder: (context, url) => const Center(
+        child: CircularProgressIndicator(color: Colors.white24),
+      ),
+      errorWidget: (context, url, error) => const Icon(
+        Icons.broken_image_outlined,
+        color: Colors.white24,
+        size: 40,
+      ),
+    );
+  }
+}
+

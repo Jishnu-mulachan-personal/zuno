@@ -251,6 +251,8 @@ class _PairedHeader extends ConsumerWidget {
                   pathOrUrl: profile.usPhotoUrl!,
                   bucket: ProfileImageService.bucketUsPhotos,
                   borderRadius: 24,
+                  enableTapToView: true,
+                  heroTag: 'us_cover_photo',
                 ),
               ),
             ),
@@ -743,6 +745,8 @@ class _PostCard extends ConsumerWidget {
                     child: ZunoImage(
                       pathOrUrl: post.imageUrl!,
                       bucket: 'shared-posts',
+                      enableTapToView: true,
+                      heroTag: 'post_${post.id}',
                     ),
                   ),
                 ),

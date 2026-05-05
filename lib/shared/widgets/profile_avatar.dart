@@ -8,12 +8,14 @@ class ProfileAvatar extends StatelessWidget {
   final String? url;
   final double radius;
   final String name;
+  final bool enableTapToView;
 
   const ProfileAvatar({
     super.key,
     this.url,
     required this.radius,
     required this.name,
+    this.enableTapToView = false,
   });
 
   @override
@@ -40,6 +42,9 @@ class ProfileAvatar extends StatelessWidget {
       height: radius * 2,
       borderRadius: radius * 2, // Large enough to be circular
       isAvatar: true,
+      enableTapToView: enableTapToView,
+      heroTag: enableTapToView ? 'avatar_$url' : null,
     );
   }
 }
+
