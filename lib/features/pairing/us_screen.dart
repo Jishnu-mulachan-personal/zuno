@@ -13,6 +13,7 @@ import 'us_image_service.dart';
 import 'us_state.dart';
 import '../settings/profile_image_service.dart';
 import '../../shared/widgets/profile_avatar.dart';
+import '../../shared/widgets/zuno_image.dart';
 import 'widgets/daily_questions_card.dart';
 import 'widgets/daily_questions_history.dart';
 import 'widgets/our_dreams_section.dart';
@@ -246,20 +247,10 @@ class _PairedHeader extends ConsumerWidget {
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
-                child: FutureBuilder<String>(
-                  future: ProfileImageService.createSignedUrl(
-                    ProfileImageService.bucketUsPhotos,
-                    profile.usPhotoUrl!,
-                  ),
-                  builder: (ctx, snap) {
-                    if (snap.hasData) {
-                      return Image.network(
-                        snap.data!,
-                        fit: BoxFit.cover,
-                      );
-                    }
-                    return Container(color: ZunoTheme.surfaceContainerHigh);
-                  },
+                child: ZunoImage(
+                  pathOrUrl: profile.usPhotoUrl!,
+                  bucket: ProfileImageService.bucketUsPhotos,
+                  borderRadius: 24,
                 ),
               ),
             ),
@@ -749,8 +740,9 @@ class _PostCard extends ConsumerWidget {
                   ),
                   child: SizedBox(
                     width: double.infinity,
-                    child: _AuthenticatedImage(
-                      url: post.imageUrl!,
+                    child: ZunoImage(
+                      pathOrUrl: post.imageUrl!,
+                      bucket: 'shared-posts',
                     ),
                   ),
                 ),
@@ -910,75 +902,6 @@ class _JournalCard extends ConsumerWidget {
 // Accepts both plain storage paths and legacy full public URLs.
 // Size is controlled by the parent SizedBox; this widget always fills it.
 
-class _AuthenticatedImage extends StatelessWidget {
-  final String url;
-
-  const _AuthenticatedImage({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-      future: UsImageService.createSignedUrl(url),
-      builder: (ctx, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Container(
-            width: double.infinity,
-            height: 300,
-            color: ZunoTheme.surfaceContainerHigh,
-            child: Center(
-              child: CircularProgressIndicator(
-                  color: ZunoTheme.primary, strokeWidth: 2),
-            ),
-          );
-        }
-
-        if (snap.hasError || !snap.hasData) {
-          debugPrint(
-              '[_AuthenticatedImage] Signed URL error for $url: ${snap.error}');
-          return Container(
-            width: double.infinity,
-            height: 300,
-            color: ZunoTheme.surfaceContainerHigh,
-            child: Center(
-              child: Icon(Icons.broken_image_outlined,
-                  color: ZunoTheme.outlineVariant),
-            ),
-          );
-        }
-
-        return Image.network(
-          snap.data!,
-          width: double.infinity,
-          fit: BoxFit.cover, // crops to fill only if constrained by max height
-          loadingBuilder: (ctx, child, progress) {
-            if (progress == null) return child;
-            return Container(
-              width: double.infinity,
-              height: 300,
-              color: ZunoTheme.surfaceContainerHigh,
-              child: Center(
-                child: CircularProgressIndicator(
-                    color: ZunoTheme.primary, strokeWidth: 2),
-              ),
-            );
-          },
-          errorBuilder: (ctx, error, __) {
-            debugPrint('[_AuthenticatedImage] Network load error: $error');
-            return Container(
-              width: double.infinity,
-              height: 300,
-              color: ZunoTheme.surfaceContainerHigh,
-              child: Center(
-                child: Icon(Icons.broken_image_outlined,
-                    color: ZunoTheme.outlineVariant),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
 
 // ─── Post options sheet (edit / delete) ──────────────────────────────────────
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
 import '../../features/settings/profile_image_service.dart';
+import 'zuno_image.dart';
 
 class ProfileAvatar extends StatelessWidget {
   final String? url;
@@ -32,27 +33,13 @@ class ProfileAvatar extends StatelessWidget {
       );
     }
 
-    return FutureBuilder<String>(
-      future: ProfileImageService.createSignedUrl(
-          ProfileImageService.bucketAvatars, url!),
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          return CircleAvatar(
-            radius: radius,
-            backgroundImage: NetworkImage(snapshot.data!),
-            backgroundColor: ZunoTheme.surfaceContainerHigh,
-          );
-        }
-        return CircleAvatar(
-          radius: radius,
-          backgroundColor: ZunoTheme.surfaceContainerHigh,
-          child: SizedBox(
-            width: radius * 0.4,
-            height: radius * 0.4,
-            child: const CircularProgressIndicator(strokeWidth: 2),
-          ),
-        );
-      },
+    return ZunoImage(
+      pathOrUrl: url!,
+      bucket: ProfileImageService.bucketAvatars,
+      width: radius * 2,
+      height: radius * 2,
+      borderRadius: radius * 2, // Large enough to be circular
+      isAvatar: true,
     );
   }
 }

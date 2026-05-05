@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../app_theme.dart';
+import '../../shared/widgets/zuno_image.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -14,12 +15,12 @@ class WelcomeScreen extends StatelessWidget {
         children: [
           // ── Background image ────────────────────────────────────────────
           Positioned.fill(
-            child: Image.network(
-              'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+            child: ZunoImage(
+              pathOrUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
               fit: BoxFit.cover,
               color: Colors.white.withOpacity(0.6),
               colorBlendMode: BlendMode.lighten,
-              errorBuilder: (_, __, ___) => Container(color: ZunoTheme.primaryFixed.withOpacity(0.3)),
+              errorWidget: Container(color: ZunoTheme.primaryFixed.withOpacity(0.3)),
             ),
           ),
           // ── Gradient overlays ───────────────────────────────────────────

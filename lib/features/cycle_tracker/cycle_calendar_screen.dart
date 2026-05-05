@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
+import '../../shared/widgets/zuno_image.dart';
 
 import '../../core/theme_provider.dart';
 import '../dashboard/dashboard_state.dart';
@@ -758,17 +759,13 @@ class _CycleCalendarScreenState extends ConsumerState<CycleCalendarScreen> {
             child: SizedBox(
               height: 190,
               child: signedUrl != null && signedUrl.isNotEmpty
-                  ? Image.network(
-                      signedUrl,
+                  ? ZunoImage(
+                      pathOrUrl: signedUrl,
                       fit: BoxFit.contain,
-                      errorBuilder: (ctx, err, stack) {
-                        debugPrint(
-                            '[EnergyCard] Network image failed to load: $err');
-                        return Image.asset(
-                          'assets/images/energy_character.png',
-                          fit: BoxFit.contain,
-                        );
-                      },
+                      errorWidget: Image.asset(
+                        'assets/images/energy_character.png',
+                        fit: BoxFit.contain,
+                      ),
                     )
                   : Image.asset(
                       'assets/images/energy_character.png',

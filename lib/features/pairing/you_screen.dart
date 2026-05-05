@@ -14,6 +14,7 @@ import 'us_state.dart'; // For SharedPost model and related logic
 import 'you_state.dart';
 import '../settings/profile_image_service.dart';
 import '../../shared/widgets/profile_avatar.dart';
+import '../../shared/widgets/zuno_image.dart';
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -432,8 +433,10 @@ class _PostCard extends ConsumerWidget {
                     ),
                     child: SizedBox(
                       width: double.infinity,
-                      child: _AuthenticatedImage(
-                        url: post.imageUrl!,
+                      child: ZunoImage(
+                        pathOrUrl: post.imageUrl!,
+                        bucket: 'personal-posts',
+                        borderRadius: 16,
                       ),
                     ),
                   ),
@@ -769,63 +772,6 @@ class _JournalCard extends ConsumerWidget {
   }
 }
 
-// ─── Authenticated Image ──────────────────────────────────────────────────────
-
-class _AuthenticatedImage extends StatelessWidget {
-  final String url;
-
-  const _AuthenticatedImage({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-      future: PersonalImageService.createSignedUrl(url),
-      builder: (ctx, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Container(
-            width: double.infinity,
-            height: 300,
-            color: ZunoTheme.surfaceContainerHigh,
-            child: Center(
-              child: CircularProgressIndicator(
-                  color: ZunoTheme.primary, strokeWidth: 2),
-            ),
-          );
-        }
-
-        if (snap.hasError || !snap.hasData) {
-          return Container(
-            width: double.infinity,
-            height: 300,
-            color: ZunoTheme.surfaceContainerHigh,
-            child: const Center(
-              child: Icon(Icons.broken_image_outlined,
-                  color: Colors.grey),
-            ),
-          );
-        }
-
-        return Image.network(
-          snap.data!,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          loadingBuilder: (ctx, child, progress) {
-            if (progress == null) return child;
-            return Container(
-              width: double.infinity,
-              height: 300,
-              color: ZunoTheme.surfaceContainerHigh,
-              child: Center(
-                child: CircularProgressIndicator(
-                    color: ZunoTheme.primary, strokeWidth: 2),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
 
 // ─── Post options sheet (edit / delete) ──────────────────────────────────────
 
