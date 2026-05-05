@@ -115,9 +115,11 @@ class _YouScreenState extends ConsumerState<YouScreen> {
 
 // ─── App Bar ─────────────────────────────────────────────────────────────────
 
-class _YouAppBar extends StatelessWidget {
+class _YouAppBar extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(timelineFilterProvider);
+
     return SliverAppBar(
       floating: true,
       pinned: true,
@@ -143,6 +145,37 @@ class _YouAppBar extends StatelessWidget {
           color: ZunoTheme.primary,
         ),
       ),
+      actions: [
+        IconButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            ref.read(timelineFilterProvider.notifier).state =
+                filter == TimelineFilter.all
+                    ? TimelineFilter.reflectionsOnly
+                    : TimelineFilter.all;
+          },
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: filter == TimelineFilter.reflectionsOnly
+                  ? ZunoTheme.primary.withValues(alpha: 0.1)
+                  : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              filter == TimelineFilter.reflectionsOnly
+                  ? Icons.auto_awesome_mosaic_rounded
+                  : Icons.filter_list_rounded,
+              color: ZunoTheme.primary,
+              size: 20,
+            ),
+          ),
+          tooltip: filter == TimelineFilter.reflectionsOnly
+              ? 'Showing Reflections'
+              : 'Filter Timeline',
+        ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 }
@@ -244,13 +277,44 @@ class _UserFeed extends ConsumerWidget {
       );
     }
 
-    if (state.posts.isEmpty) {
-      return SliverToBoxAdapter(child: _EmptyState());
+    // Filter posts if needed
+    final filter = ref.watch(timelineFilterProvider);
+    final posts = filter == TimelineFilter.all
+        ? state.posts
+        : state.posts.where((p) {
+            final caption = p.caption;
+            final isQA = (caption.startsWith('Q: ') && caption.contains('\nA: ')) ||
+                caption.contains(' -> ') ||
+                caption.contains('->');
+            return !isQA;
+          }).toList();
+
+    if (posts.isEmpty && !state.isLoading) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(48.0),
+          child: Column(
+            children: [
+              Icon(Icons.filter_list_off_rounded, 
+                  size: 48, color: ZunoTheme.onSurfaceVariant.withOpacity(0.2)),
+              const SizedBox(height: 16),
+              Text(
+                'No reflections found matching your filter',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     // Group posts by Month/Year
     final Map<String, List<SharedPost>> groups = {};
-    for (final p in state.posts) {
+    for (final p in posts) {
       final groupKey = _formatMonthYear(p.createdAt);
       groups.putIfAbsent(groupKey, () => []).add(p);
     }
