@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:gal/gal.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../app_theme.dart';
@@ -9,6 +14,7 @@ import '../../app_theme.dart';
 /// 2. Smart caching using storage paths as cache keys.
 /// 3. Shimmer loading effect.
 /// 4. Error states.
+/// 5. Tap to view full screen with download option.
 class ZunoImage extends StatelessWidget {
   final String pathOrUrl;
   final String? bucket;
@@ -112,7 +118,6 @@ class ZunoImage extends StatelessWidget {
   }
 
   /// Derives a stable cache key from the storage path.
-// ... existing _getCacheKey, _getImageUrl, _buildPlaceholder, _buildErrorWidget ...
   String _getCacheKey() {
     if (!pathOrUrl.startsWith('http')) {
       return bucket != null ? '$bucket/$pathOrUrl' : pathOrUrl;
@@ -172,7 +177,7 @@ class ZunoImage extends StatelessWidget {
   }
 }
 
-class ZunoImageFullView extends StatelessWidget {
+class ZunoImageFullView extends StatefulWidget {
   final String imageUrl;
   final String cacheKey;
   final String? heroTag;
@@ -185,31 +190,93 @@ class ZunoImageFullView extends StatelessWidget {
   });
 
   @override
+  State<ZunoImageFullView> createState() => _ZunoImageFullViewState();
+}
+
+class _ZunoImageFullViewState extends State<ZunoImageFullView> {
+  bool _isDownloading = false;
+
+  Future<void> _downloadImage() async {
+    if (_isDownloading) return;
+
+    setState(() => _isDownloading = true);
+    HapticFeedback.mediumImpact();
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final path = '${tempDir.path}/zuno_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      
+      await Dio().download(widget.imageUrl, path);
+      await Gal.putImage(path);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image saved to gallery! ✨', 
+              style: TextStyle(color: ZunoTheme.onTertiary)),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: ZunoTheme.tertiaryContainer,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[ZunoImage] Download error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save image. Please check permissions.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
+          // Main Image
           Positioned.fill(
             child: InteractiveViewer(
               minScale: 0.5,
               maxScale: 4.0,
               child: Center(
-                child: heroTag != null
+                child: widget.heroTag != null
                     ? Hero(
-                        tag: heroTag!,
+                        tag: widget.heroTag!,
                         child: _buildImage(),
                       )
                     : _buildImage(),
               ),
             ),
           ),
+
+          // Top Bar Actions
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
+            left: 20,
             right: 20,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () => Navigator.of(context).pop(),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Close Button
+                _CircleAction(
+                  icon: Icons.close_rounded,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+
+                // Download Button
+                _CircleAction(
+                  icon: _isDownloading ? Icons.hourglass_bottom_rounded : Icons.download_for_offline_rounded,
+                  isLoading: _isDownloading,
+                  onPressed: _downloadImage,
+                ),
+              ],
             ),
           ),
         ],
@@ -219,8 +286,8 @@ class ZunoImageFullView extends StatelessWidget {
 
   Widget _buildImage() {
     return CachedNetworkImage(
-      imageUrl: imageUrl,
-      cacheKey: cacheKey,
+      imageUrl: widget.imageUrl,
+      cacheKey: widget.cacheKey,
       fit: BoxFit.contain,
       placeholder: (context, url) => const Center(
         child: CircularProgressIndicator(color: Colors.white24),
@@ -233,4 +300,42 @@ class ZunoImageFullView extends StatelessWidget {
     );
   }
 }
+
+class _CircleAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool isLoading;
+
+  const _CircleAction({
+    required this.icon,
+    required this.onPressed,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.4),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
+        ),
+        child: isLoading 
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white70,
+              ),
+            )
+          : Icon(icon, color: Colors.white, size: 24),
+      ),
+    );
+  }
+}
+
 
