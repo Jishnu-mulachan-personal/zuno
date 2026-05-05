@@ -503,4 +503,4 @@ final userLogsProvider = FutureProvider<List<DailyLog>>((ref) async {
 // ── Timeline Filtering ────────────────────────────────────────────────────────
 enum TimelineFilter { all, reflectionsOnly }
 
-final timelineFilterProvider = StateProvider<TimelineFilter>((ref) => TimelineFilter.all);
+final timelineFilterProvider = StateProvider<TimelineFilter>((ref) => TimelineFilter.reflectionsOnly);

@@ -78,14 +78,20 @@ class _YouScreenState extends ConsumerState<YouScreen> {
                         delegate: SliverChildListDelegate([
                           _ProfileHero(profile: profile),
                           const SizedBox(height: 32),
-                          Text(
-                            'YOUR TIMELINE',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 2.2,
-                              color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'YOUR TIMELINE',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 2.2,
+                                  color: ZunoTheme.onSurfaceVariant.withOpacity(0.4),
+                                ),
+                              ),
+                              const Spacer(),
+                              const _TimelineFilterSelector(),
+                            ],
                           ),
                           const SizedBox(height: 16),
                         ]),
@@ -109,6 +115,91 @@ class _YouScreenState extends ConsumerState<YouScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+// ─── Timeline Filter Selector ────────────────────────────────────────────────
+
+class _TimelineFilterSelector extends ConsumerWidget {
+  const _TimelineFilterSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(timelineFilterProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: ZunoTheme.surfaceContainerHigh.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _FilterChip(
+            label: 'All',
+            isActive: filter == TimelineFilter.all,
+            onTap: () => ref.read(timelineFilterProvider.notifier).state =
+                TimelineFilter.all,
+          ),
+          _FilterChip(
+            label: 'Reflections',
+            isActive: filter == TimelineFilter.reflectionsOnly,
+            onTap: () => ref.read(timelineFilterProvider.notifier).state =
+                TimelineFilter.reflectionsOnly,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? ZunoTheme.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+            color: isActive
+                ? ZunoTheme.primary
+                : ZunoTheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
     );
   }
@@ -146,37 +237,6 @@ class _YouAppBar extends ConsumerWidget {
           color: ZunoTheme.primary,
         ),
       ),
-      actions: [
-        IconButton(
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            ref.read(timelineFilterProvider.notifier).state =
-                filter == TimelineFilter.all
-                    ? TimelineFilter.reflectionsOnly
-                    : TimelineFilter.all;
-          },
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: filter == TimelineFilter.reflectionsOnly
-                  ? ZunoTheme.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              filter == TimelineFilter.reflectionsOnly
-                  ? Icons.auto_awesome_mosaic_rounded
-                  : Icons.filter_list_rounded,
-              color: ZunoTheme.primary,
-              size: 20,
-            ),
-          ),
-          tooltip: filter == TimelineFilter.reflectionsOnly
-              ? 'Showing Reflections'
-              : 'Filter Timeline',
-        ),
-        const SizedBox(width: 8),
-      ],
     );
   }
 }
