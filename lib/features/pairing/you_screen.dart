@@ -616,21 +616,21 @@ class _JournalCard extends ConsumerWidget {
                   const SizedBox(height: 24),
                   
                   if (isQA) ...[
-                    // Clean Question presentation
+                    // Light Question presentation
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
                         question,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          height: 1.4,
-                          color: ZunoTheme.onSurface.withValues(alpha: 0.9),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          height: 1.5,
+                          color: ZunoTheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                     ),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     
                     // Answer Section
                     Padding(
