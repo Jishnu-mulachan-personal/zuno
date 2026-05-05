@@ -546,35 +546,15 @@ class _JournalCard extends ConsumerWidget {
                   const SizedBox(height: 24),
                   
                   if (isQA) ...[
-                    // Premium Question Block
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            ZunoTheme.primary.withValues(alpha: 0.06),
-                            ZunoTheme.primary.withValues(alpha: 0.02),
-                          ],
-                        ),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(4),
-                          topRight: Radius.circular(24),
-                          bottomLeft: Radius.circular(24),
-                          bottomRight: Radius.circular(24),
-                        ),
-                        border: Border.all(
-                          color: ZunoTheme.primary.withValues(alpha: 0.05),
-                        ),
-                      ),
+                    // Clean Question presentation
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
                         question,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 17,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
-                          height: 1.45,
+                          height: 1.4,
                           color: ZunoTheme.onSurface.withValues(alpha: 0.9),
                         ),
                       ),
